@@ -35,6 +35,7 @@ import com.navercorp.pinpoint.bootstrap.plugin.request.ClientRequestWrapper;
 import com.navercorp.pinpoint.bootstrap.plugin.request.ClientRequestWrapperAdaptor;
 import com.navercorp.pinpoint.bootstrap.plugin.request.DefaultRequestTraceWriter;
 import com.navercorp.pinpoint.bootstrap.plugin.request.RequestTraceWriter;
+import com.navercorp.pinpoint.common.util.ArrayUtils;
 import com.navercorp.pinpoint.plugin.netty.NettyClientRequestWrapper;
 import com.navercorp.pinpoint.plugin.netty.NettyConfig;
 import com.navercorp.pinpoint.plugin.netty.NettyConstants;
@@ -44,6 +45,8 @@ import com.navercorp.pinpoint.plugin.netty.field.accessor.AsyncStartFlagFieldAcc
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpMessage;
+
+import java.util.Objects;
 
 /**
  * @author Taejin Koo
@@ -60,21 +63,15 @@ public class HttpEncoderInterceptor implements AroundInterceptor {
     private final RequestTraceWriter<HttpMessage> requestTraceWriter;
 
     public HttpEncoderInterceptor(TraceContext traceContext, MethodDescriptor methodDescriptor) {
-        if (traceContext == null) {
-            throw new NullPointerException("traceContext");
-        }
-        if (methodDescriptor == null) {
-            throw new NullPointerException("methodDescriptor");
-        }
+        this.traceContext = Objects.requireNonNull(traceContext, "traceContext");
+        this.methodDescriptor = Objects.requireNonNull(methodDescriptor, "methodDescriptor");
 
-        this.traceContext = traceContext;
-        this.methodDescriptor = methodDescriptor;
         final NettyConfig config = new NettyConfig(traceContext.getProfilerConfig());
 
         ClientRequestAdaptor<ClientRequestWrapper> clientRequestAdaptor = ClientRequestWrapperAdaptor.INSTANCE;
-        this.clientRequestRecorder = new ClientRequestRecorder<ClientRequestWrapper>(config.isParam(), clientRequestAdaptor);
+        this.clientRequestRecorder = new ClientRequestRecorder<>(config.isParam(), clientRequestAdaptor);
         ClientHeaderAdaptor<HttpMessage> clientHeaderAdaptor = new HttpMessageClientHeaderAdaptor();
-        this.requestTraceWriter = new DefaultRequestTraceWriter<HttpMessage>(clientHeaderAdaptor, traceContext);
+        this.requestTraceWriter = new DefaultRequestTraceWriter<>(clientHeaderAdaptor, traceContext);
     }
 
     @Override
@@ -108,9 +105,11 @@ public class HttpEncoderInterceptor implements AroundInterceptor {
     private void beforeAsync(Object target, Object[] args) {
         ((AsyncStartFlagFieldAccessor) args[1])._$PINPOINT$_setAsyncStartFlag(true);
 
-        final AsyncContext asyncContext = getAsyncContext(args[1]);
+        final AsyncContext asyncContext = AsyncContextAccessorUtils.getAsyncContext(args, 1);
         if (asyncContext == null) {
-            logger.debug("AsyncContext not found");
+            if (isDebug) {
+                logger.debug("AsyncContext not found");
+            }
             return;
         }
 
@@ -187,9 +186,11 @@ public class HttpEncoderInterceptor implements AroundInterceptor {
     }
 
     private void afterAsync(Object target, Object[] args, Object result, Throwable throwable) {
-        final AsyncContext asyncContext = getAsyncContext(args[1]);
+        final AsyncContext asyncContext = AsyncContextAccessorUtils.getAsyncContext(args, 1);
         if (asyncContext == null) {
-            logger.debug("AsyncContext not found");
+            if (isDebug) {
+                logger.debug("AsyncContext not found");
+            }
             return;
         }
 
@@ -231,15 +232,12 @@ public class HttpEncoderInterceptor implements AroundInterceptor {
         this.clientRequestRecorder.record(recorder, new NettyClientRequestWrapper(httpMessage, channelHandlerContext), throwable);
     }
 
-    protected AsyncContext getAsyncContext(Object target) {
-        return AsyncContextAccessorUtils.getAsyncContext(target);
-    }
 
     private Trace getAsyncTrace(AsyncContext asyncContext) {
         final Trace trace = asyncContext.continueAsyncTraceObject();
         if (trace == null) {
-            if (logger.isWarnEnabled()) {
-                logger.warn("Failed to continue async trace. 'result is null'");
+            if (isDebug) {
+                logger.debug("Failed to continue async trace. 'result is null'");
             }
             return null;
         }
@@ -288,7 +286,7 @@ public class HttpEncoderInterceptor implements AroundInterceptor {
     }
 
     private boolean validate(Object[] args) {
-        if (args.length != 3) {
+        if (ArrayUtils.getLength(args) != 3) {
             return false;
         }
 

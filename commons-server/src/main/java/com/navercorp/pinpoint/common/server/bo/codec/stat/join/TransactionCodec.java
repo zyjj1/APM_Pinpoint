@@ -29,11 +29,8 @@ import com.navercorp.pinpoint.common.server.bo.codec.stat.strategy.UnsignedLongE
 import com.navercorp.pinpoint.common.server.bo.codec.strategy.EncodingStrategy;
 import com.navercorp.pinpoint.common.server.bo.serializer.stat.ApplicationStatDecodingContext;
 import com.navercorp.pinpoint.common.server.bo.stat.join.JoinLongFieldBo;
-import com.navercorp.pinpoint.common.server.bo.stat.join.JoinStatBo;
 import com.navercorp.pinpoint.common.server.bo.stat.join.JoinTransactionBo;
 import com.navercorp.pinpoint.common.util.CollectionUtils;
-
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -43,31 +40,29 @@ import java.util.Objects;
 /**
  * @author minwoo.jung
  */
-@Component("joinTransactionCodec")
-public class TransactionCodec implements ApplicationStatCodec {
+@Component
+public class TransactionCodec implements ApplicationStatCodec<JoinTransactionBo> {
     private static final byte VERSION = 1;
 
     private final AgentStatDataPointCodec codec;
 
-    @Autowired
     public TransactionCodec(AgentStatDataPointCodec codec) {
-        this.codec = Objects.requireNonNull(codec, "agentStatDataPointCodec");
+        this.codec = Objects.requireNonNull(codec, "codec");
     }
 
     @Override
-    public void encodeValues(Buffer valueBuffer, List<JoinStatBo> joinTransactionBoList) {
+    public void encodeValues(Buffer valueBuffer, List<JoinTransactionBo> joinTransactionBoList) {
         if (CollectionUtils.isEmpty(joinTransactionBoList)) {
             throw new IllegalArgumentException("joinTransactionBoList must not be empty");
         }
 
         final int numValues = joinTransactionBoList.size();
         valueBuffer.putVInt(numValues);
-        List<Long> timestamps = new ArrayList<Long>(numValues);
+        List<Long> timestamps = new ArrayList<>(numValues);
         UnsignedLongEncodingStrategy.Analyzer.Builder collectIntervalAnalyzerBuilder = new UnsignedLongEncodingStrategy.Analyzer.Builder();
         JoinLongFieldStrategyAnalyzer.Builder totalCountAnalyzerBuilder = new JoinLongFieldStrategyAnalyzer.Builder();
 
-        for (JoinStatBo joinStatBo : joinTransactionBoList) {
-            JoinTransactionBo joinTransactionBo = (JoinTransactionBo) joinStatBo;
+        for (JoinTransactionBo joinTransactionBo : joinTransactionBoList) {
             timestamps.add(joinTransactionBo.getTimestamp());
             collectIntervalAnalyzerBuilder.addValue(joinTransactionBo.getCollectInterval());
             totalCountAnalyzerBuilder.addValue(joinTransactionBo.getTotalCountJoinValue());
@@ -94,7 +89,7 @@ public class TransactionCodec implements ApplicationStatCodec {
     }
 
     @Override
-    public List<JoinStatBo> decodeValues(Buffer valueBuffer, ApplicationStatDecodingContext decodingContext) {
+    public List<JoinTransactionBo> decodeValues(Buffer valueBuffer, ApplicationStatDecodingContext decodingContext) {
         final String id = decodingContext.getApplicationId();
         final long baseTimestamp = decodingContext.getBaseTimestamp();
         final long timestampDelta = decodingContext.getTimestampDelta();
@@ -113,7 +108,7 @@ public class TransactionCodec implements ApplicationStatCodec {
         List<Long> collectIntervalList = this.codec.decodeValues(valueBuffer, collectIntervalEncodingStrategy, numValues);
         final List<JoinLongFieldBo> totalCountList = this.codec.decodeValues(valueBuffer, totalCountEncodingStrategy, numValues);
 
-        List<JoinStatBo> joinTransactionBoList = new ArrayList<JoinStatBo>();
+        List<JoinTransactionBo> joinTransactionBoList = new ArrayList<>();
         for (int i = 0 ; i < numValues ; i++) {
             JoinTransactionBo joinTransactionBo = new JoinTransactionBo();
             joinTransactionBo.setId(id);

@@ -1,8 +1,18 @@
 :host {
-    display: block;
+    display: flex;
+    flex-flow: row wrap;
     width: 100%;
     height: 100%;
 }
+
+section {
+    position: relative;
+    display: flex;
+    flex: 1;
+    flex-wrap: wrap;
+    overflow: hidden;
+}
+
 .l-main-contents-top {
     display: flex;
     flex-flow: row wrap;
@@ -16,8 +26,9 @@
     justify-content: flex-end;
     position:absolute;
 }
+
 .fas {
-    color:#a8acb5;
+    color:var(--icon-default);
     font-size:18px;
 }
 

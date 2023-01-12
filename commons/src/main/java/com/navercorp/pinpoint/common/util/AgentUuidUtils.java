@@ -16,9 +16,9 @@
 
 package com.navercorp.pinpoint.common.util;
 
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -73,9 +73,8 @@ public class AgentUuidUtils {
      * @throws IllegalArgumentException if {@code uuidString} is not a valid string representation of uuid
      */
     public static String encode(String uuidString) {
-        if (uuidString == null) {
-            throw new NullPointerException("uuidString");
-        }
+        Objects.requireNonNull(uuidString, "uuidString");
+
         UUID uuid = UUID.fromString(uuidString);
         return encode(uuid);
     }
@@ -92,13 +91,12 @@ public class AgentUuidUtils {
      * @throws IllegalArgumentException if {@code uuid} is not a valid uuid
      */
     public static String encode(UUID uuid) {
-        if (uuid == null) {
-            throw new NullPointerException("uuid");
-        }
-        ByteBuffer byteBuffer = ByteBuffer.allocate(16);
-        byteBuffer.putLong(uuid.getMostSignificantBits());
-        byteBuffer.putLong(uuid.getLeastSignificantBits());
-        byte[] encoded = encodeUuidBytes(byteBuffer.array());
+        Objects.requireNonNull(uuid, "uuid");
+
+        final byte[] bytes = new byte[16];
+        BytesUtils.writeLong(uuid.getMostSignificantBits(), bytes, 0);
+        BytesUtils.writeLong(uuid.getLeastSignificantBits(), bytes, BytesUtils.LONG_BYTE_LENGTH);
+        byte[] encoded = encodeUuidBytes(bytes);
         return new String(encoded, StandardCharsets.US_ASCII);
     }
 
@@ -148,15 +146,13 @@ public class AgentUuidUtils {
      *                                  trailing pad characters
      */
     public static UUID decode(String src) {
-        if (src == null) {
-            throw new NullPointerException("src");
-        }
+        Objects.requireNonNull(src, "src");
 
         byte[] decoded = decodeToUuidBytes(src.getBytes(StandardCharsets.US_ASCII));
-        ByteBuffer byteBuffer = ByteBuffer.wrap(decoded);
-        long mostSignificantBits = byteBuffer.getLong();
-        long leastSignificanBits = byteBuffer.getLong();
-        return new UUID(mostSignificantBits, leastSignificanBits);
+
+        long mostSigBits = BytesUtils.bytesToLong(decoded, 0);
+        long leastSigBits = BytesUtils.bytesToLong(decoded, BytesUtils.LONG_BYTE_LENGTH);
+        return new UUID(mostSigBits, leastSigBits);
     }
 
     private static byte[] decodeToUuidBytes(byte[] src) {

@@ -28,8 +28,8 @@ import com.navercorp.pinpoint.grpc.trace.PStringMetaData;
 import com.navercorp.pinpoint.io.request.ServerRequest;
 import com.navercorp.pinpoint.io.request.ServerResponse;
 import io.grpc.Status;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.springframework.stereotype.Service;
 
 import java.util.Objects;
@@ -39,7 +39,7 @@ import java.util.Objects;
  */
 @Service
 public class GrpcStringMetaDataHandler implements RequestResponseHandler<GeneratedMessageV3, GeneratedMessageV3> {
-    private final Logger logger = LoggerFactory.getLogger(getClass());
+    private final Logger logger = LogManager.getLogger(getClass());
     private final boolean isDebug = logger.isDebugEnabled();
 
     private final StringMetaDataService stringMetaDataService;
@@ -69,8 +69,12 @@ public class GrpcStringMetaDataHandler implements RequestResponseHandler<Generat
             final Header agentInfo = ServerContext.getAgentInfo();
             final String agentId = agentInfo.getAgentId();
             final long agentStartTime = agentInfo.getAgentStartTime();
-            final StringMetaDataBo stringMetaDataBo = new StringMetaDataBo(agentId, agentStartTime, stringMetaData.getStringId());
-            stringMetaDataBo.setStringValue(stringMetaData.getStringValue());
+
+            final String stringValue = stringMetaData.getStringValue();
+
+            final StringMetaDataBo stringMetaDataBo = new StringMetaDataBo(agentId, agentStartTime,
+                    stringMetaData.getStringId(), stringValue);
+
             stringMetaDataService.insert(stringMetaDataBo);
             return PResult.newBuilder().setSuccess(true).build();
         } catch (Exception e) {

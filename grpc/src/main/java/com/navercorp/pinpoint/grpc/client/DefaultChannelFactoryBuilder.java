@@ -18,10 +18,14 @@ package com.navercorp.pinpoint.grpc.client;
 
 import com.navercorp.pinpoint.common.util.Assert;
 import com.navercorp.pinpoint.grpc.client.config.ClientOption;
+import com.navercorp.pinpoint.grpc.client.config.SslOption;
+import com.navercorp.pinpoint.grpc.security.SslClientConfig;
+import com.navercorp.pinpoint.grpc.util.Resource;
+
 import io.grpc.ClientInterceptor;
 import io.grpc.NameResolverProvider;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import java.util.LinkedList;
 import java.util.Objects;
@@ -31,7 +35,7 @@ import java.util.Objects;
  */
 public class DefaultChannelFactoryBuilder implements ChannelFactoryBuilder {
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
 
     private final String factoryName;
 
@@ -39,8 +43,9 @@ public class DefaultChannelFactoryBuilder implements ChannelFactoryBuilder {
     private HeaderFactory headerFactory;
 
     private ClientOption clientOption;
+    private SslOption sslOption;
 
-    private final LinkedList<ClientInterceptor> clientInterceptorList = new LinkedList<ClientInterceptor>();
+    private final LinkedList<ClientInterceptor> clientInterceptorList = new LinkedList<>();
     private NameResolverProvider nameResolverProvider;
 
     public DefaultChannelFactoryBuilder(String factoryName) {
@@ -76,6 +81,12 @@ public class DefaultChannelFactoryBuilder implements ChannelFactoryBuilder {
     }
 
     @Override
+    public void setSslOption(SslOption sslOption) {
+        // nullable
+        this.sslOption = sslOption;
+    }
+
+    @Override
     public void setNameResolverProvider(NameResolverProvider nameResolverProvider) {
         this.nameResolverProvider = Objects.requireNonNull(nameResolverProvider, "nameResolverProvider");
     }
@@ -86,8 +97,15 @@ public class DefaultChannelFactoryBuilder implements ChannelFactoryBuilder {
         Objects.requireNonNull(headerFactory, "headerFactory");
         Objects.requireNonNull(clientOption, "clientOption");
 
+        SslClientConfig sslClientConfig = SslClientConfig.DISABLED_CONFIG;
+        if (sslOption != null && sslOption.isEnable()) {
+            String providerType = sslOption.getProviderType();
+            Resource trustCertResource = sslOption.getTrustCertResource();
+            sslClientConfig = new SslClientConfig(true, providerType, trustCertResource);
+        }
+
         return new DefaultChannelFactory(factoryName, executorQueueSize,
                 headerFactory, nameResolverProvider,
-                clientOption, clientInterceptorList);
+                clientOption, sslClientConfig, clientInterceptorList);
     }
 }

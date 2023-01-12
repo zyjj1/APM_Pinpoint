@@ -7,9 +7,12 @@ import com.navercorp.pinpoint.bootstrap.context.scope.TraceScope;
 import com.navercorp.pinpoint.bootstrap.interceptor.AroundInterceptor;
 import com.navercorp.pinpoint.bootstrap.logging.PLogger;
 import com.navercorp.pinpoint.bootstrap.logging.PLoggerFactory;
+import com.navercorp.pinpoint.common.util.ArrayUtils;
 import com.navercorp.pinpoint.plugin.rabbitmq.client.RabbitMQClientConstants;
 import com.rabbitmq.client.Consumer;
 import com.rabbitmq.client.Envelope;
+
+import java.util.Objects;
 
 /**
  * @author Jinkai.Ma
@@ -25,13 +28,8 @@ public class ConsumerHandleDeliveryInterceptor implements AroundInterceptor {
     private final MethodDescriptor methodDescriptor;
 
     public ConsumerHandleDeliveryInterceptor(TraceContext traceContext, MethodDescriptor methodDescriptor) {
-        if (traceContext == null) {
-            throw new NullPointerException("traceContext");
-        }
-        if (methodDescriptor == null) {
-            throw new NullPointerException("methodDescriptor");
-        }
-        this.methodDescriptor = methodDescriptor;
+        Objects.requireNonNull(traceContext, "traceContext");
+        this.methodDescriptor = Objects.requireNonNull(methodDescriptor, "methodDescriptor");
     }
 
     @Override
@@ -39,7 +37,7 @@ public class ConsumerHandleDeliveryInterceptor implements AroundInterceptor {
         if (!validate(target, args)) {
             return;
         }
-        final AsyncContext asyncContext = AsyncContextAccessorUtils.getAsyncContext(args[1]);
+        AsyncContext asyncContext = AsyncContextAccessorUtils.getAsyncContext(args, 1);
         if (asyncContext == null) {
             return;
         }
@@ -73,7 +71,7 @@ public class ConsumerHandleDeliveryInterceptor implements AroundInterceptor {
         if (!validate(target, args)) {
             return;
         }
-        final AsyncContext asyncContext = AsyncContextAccessorUtils.getAsyncContext(args[1]);
+        AsyncContext asyncContext = AsyncContextAccessorUtils.getAsyncContext(args, 1);
         if (asyncContext == null) {
             return;
         }
@@ -118,7 +116,7 @@ public class ConsumerHandleDeliveryInterceptor implements AroundInterceptor {
         if (!(target instanceof Consumer)) {
             return false;
         }
-        if (args == null || args.length < 2) {
+        if (ArrayUtils.getLength(args) < 2) {
             return false;
         }
         if (!(args[1] instanceof Envelope)) {
@@ -136,8 +134,8 @@ public class ConsumerHandleDeliveryInterceptor implements AroundInterceptor {
     private Trace getAsyncTrace(AsyncContext asyncContext) {
         final Trace trace = asyncContext.continueAsyncTraceObject();
         if (trace == null) {
-            if (logger.isWarnEnabled()) {
-                logger.warn("Failed to continue async trace. 'result is null'");
+            if (isDebug) {
+                logger.debug("Failed to continue async trace. 'result is null'");
             }
             return null;
         }

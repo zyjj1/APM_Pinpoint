@@ -20,23 +20,29 @@ import com.navercorp.pinpoint.io.util.TypeLocator;
 import com.navercorp.pinpoint.thrift.dto.command.TCommandEcho;
 import com.navercorp.pinpoint.thrift.dto.command.TCommandTransferResponse;
 import com.navercorp.pinpoint.thrift.dto.command.TRouteResult;
-import com.navercorp.pinpoint.thrift.io.*;
+import com.navercorp.pinpoint.thrift.io.DeserializerFactory;
+import com.navercorp.pinpoint.thrift.io.HeaderTBaseDeserializer;
+import com.navercorp.pinpoint.thrift.io.HeaderTBaseDeserializerFactory;
+import com.navercorp.pinpoint.thrift.io.HeaderTBaseSerializer;
+import com.navercorp.pinpoint.thrift.io.HeaderTBaseSerializerFactory;
+import com.navercorp.pinpoint.thrift.io.SerializerFactory;
+import com.navercorp.pinpoint.thrift.io.TCommandRegistry;
+import com.navercorp.pinpoint.thrift.io.TCommandTypeVersion;
 import org.apache.thrift.TBase;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Taejin Koo
  */
 public class PinpointRouteResponseTest {
 
-    TProtocolFactory protocolFactory = new TCompactProtocol.Factory();
     TypeLocator<TBase<?, ?>> commandTbaseRegistry = TCommandRegistry.build(TCommandTypeVersion.getVersion("1.5.0-SNAPSHOT"));
 
-    SerializerFactory<HeaderTBaseSerializer> serializerFactory = new HeaderTBaseSerializerFactory(true, 10000, protocolFactory, commandTbaseRegistry);
-    DeserializerFactory<HeaderTBaseDeserializer> deserializerFactory = new HeaderTBaseDeserializerFactory(protocolFactory, commandTbaseRegistry);
+    SerializerFactory<HeaderTBaseSerializer> serializerFactory = new HeaderTBaseSerializerFactory(10000, commandTbaseRegistry);
+    DeserializerFactory<HeaderTBaseDeserializer> deserializerFactory = new HeaderTBaseDeserializerFactory(commandTbaseRegistry);
 
     @Test
     public void routeResponseTest1() throws Exception {
@@ -47,8 +53,8 @@ public class PinpointRouteResponseTest {
         DefaultPinpointRouteResponse response = new DefaultPinpointRouteResponse(contents);
         response.parse(deserializerFactory);
 
-        Assert.assertEquals(TRouteResult.UNKNOWN, response.getRouteResult());
-        Assert.assertTrue(response.getResponse() instanceof TCommandEcho);
+        Assertions.assertEquals(TRouteResult.UNKNOWN, response.getRouteResult());
+        Assertions.assertTrue(response.getResponse() instanceof TCommandEcho);
     }
 
     @Test
@@ -61,9 +67,9 @@ public class PinpointRouteResponseTest {
         DefaultPinpointRouteResponse response = new DefaultPinpointRouteResponse(responsePayload);
         response.parse(deserializerFactory);
 
-        Assert.assertEquals(TRouteResult.OK, response.getRouteResult());
-        Assert.assertTrue(response.getResponse() instanceof TCommandEcho);
-        Assert.assertNull(response.getMessage());
+        Assertions.assertEquals(TRouteResult.OK, response.getRouteResult());
+        Assertions.assertTrue(response.getResponse() instanceof TCommandEcho);
+        Assertions.assertNull(response.getMessage());
     }
 
     @Test
@@ -76,9 +82,9 @@ public class PinpointRouteResponseTest {
         DefaultPinpointRouteResponse response = new DefaultPinpointRouteResponse(responsePayload);
         response.parse(deserializerFactory);
 
-        Assert.assertEquals(TRouteResult.OK, response.getRouteResult());
-        Assert.assertNull(response.getResponse());
-        Assert.assertEquals(message, response.getMessage());
+        Assertions.assertEquals(TRouteResult.OK, response.getRouteResult());
+        Assertions.assertNull(response.getResponse());
+        Assertions.assertEquals(message, response.getMessage());
     }
 
     private TCommandEcho createCommandEcho(String message) {

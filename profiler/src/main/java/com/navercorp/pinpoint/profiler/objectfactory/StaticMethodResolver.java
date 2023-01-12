@@ -14,13 +14,10 @@
  */
 package com.navercorp.pinpoint.profiler.objectfactory;
 
-import com.navercorp.pinpoint.common.profiler.util.IntegerUtils;
-
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
@@ -43,7 +40,7 @@ public class StaticMethodResolver {
     }
     
     private List<Method> getCandidates() {
-        List<Method> result = new ArrayList<Method>();
+        List<Method> result = new ArrayList<>();
         
         for (Method method : type.getMethods()) {
             if (!Modifier.isStatic(method.getModifiers())) {
@@ -56,8 +53,8 @@ public class StaticMethodResolver {
             
             result.add(method);
         }
-        
-        Collections.sort(result, COMPARATOR);
+
+        result.sort(COMPARATOR);
         return result;
     }
 
@@ -89,13 +86,6 @@ public class StaticMethodResolver {
         return resolvedArguments;
     }
 
-    private static final Comparator<Method> COMPARATOR = new Comparator<Method>() {
+    private static final Comparator<Method> COMPARATOR = Comparator.comparingInt(Method::getParameterCount).reversed();
 
-        @Override
-        public int compare(Method o1, Method o2) {
-            int p1 = o1.getParameterTypes().length;
-            int p2 = o2.getParameterTypes().length;
-            return IntegerUtils.compare(p2, p1);
-        }
-    };
 }

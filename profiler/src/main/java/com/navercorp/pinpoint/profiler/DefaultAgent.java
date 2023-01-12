@@ -23,6 +23,9 @@ import com.navercorp.pinpoint.bootstrap.config.ProfilerConfig;
 import com.navercorp.pinpoint.bootstrap.config.Profiles;
 import com.navercorp.pinpoint.bootstrap.plugin.util.SocketAddressUtils;
 import com.navercorp.pinpoint.common.profiler.concurrent.PinpointThreadFactory;
+
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Objects;
 import com.navercorp.pinpoint.profiler.context.module.ApplicationContext;
 import com.navercorp.pinpoint.profiler.context.module.DefaultApplicationContext;
@@ -34,8 +37,8 @@ import com.navercorp.pinpoint.profiler.logging.Log4j2LoggingSystem;
 import com.navercorp.pinpoint.profiler.logging.LoggingSystem;
 import com.navercorp.pinpoint.profiler.util.SystemPropertyDumper;
 import com.navercorp.pinpoint.rpc.ClassPreLoader;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import java.util.Map;
 import java.util.Properties;
@@ -66,11 +69,11 @@ public class DefaultAgent implements Agent {
 
         this.profilerConfig = agentOption.getProfilerConfig();
 
-        final String logConfigPath = getLogConfigPath(profilerConfig);
+        final Path logConfigPath = getLogConfigPath(profilerConfig);
         this.loggingSystem = newLoggingSystem(logConfigPath);
         this.loggingSystem.start();
 
-        logger = LoggerFactory.getLogger(this.getClass());
+        logger = LogManager.getLogger(this.getClass());
         dumpAgentOption(agentOption);
 
         dumpSystemProperties();
@@ -92,12 +95,12 @@ public class DefaultAgent implements Agent {
         logger.info("AgentOption");
         logger.info("- agentId:{}", agentOption.getAgentId());
         logger.info("- applicationName:{}", agentOption.getApplicationName());
+        logger.info("- agentName:{}", agentOption.getAgentName());
         logger.info("- isContainer:{}", agentOption.isContainer());
         logger.info("- instrumentation:{}", agentOption.getInstrumentation());
     }
 
-    private LoggingSystem newLoggingSystem(String profilePath) {
-//        return new Log4jLoggingSystem(logConfigPath);
+    private LoggingSystem newLoggingSystem(Path profilePath) {
         return new Log4j2LoggingSystem(profilePath);
     }
 
@@ -136,12 +139,12 @@ public class DefaultAgent implements Agent {
         }
     }
 
-    private String getLogConfigPath(ProfilerConfig config) {
+    private Path getLogConfigPath(ProfilerConfig config) {
         final String location = config.readString(Profiles.LOG_CONFIG_LOCATION_KEY, null);
         if (location == null) {
             throw new IllegalStateException("logPath($PINPOINT_DIR/profiles/${profile}/) not found");
         }
-        return location;
+        return Paths.get(location);
     }
 
 
@@ -167,20 +170,26 @@ public class DefaultAgent implements Agent {
 
     @Override
     public void registerStopHandler() {
-        logger.info("registerStopHandler");
-        ShutdownHookRegisterProvider shutdownHookRegisterProvider = new ShutdownHookRegisterProvider(profilerConfig);
-        ShutdownHookRegister shutdownHookRegister = shutdownHookRegisterProvider.get();
+        if (applicationContext instanceof DefaultApplicationContext) {
+            logger.info("registerStopHandler");
 
-        PinpointThreadFactory pinpointThreadFactory = new PinpointThreadFactory("Pinpoint-shutdown-hook", false);
-        Thread shutdownThread = pinpointThreadFactory.newThread(new Runnable() {
-            @Override
-            public void run() {
-                logger.info("stop() started. threadName:" + Thread.currentThread().getName());
-                DefaultAgent.this.stop();
-            }
-        });
+            DefaultApplicationContext context = (DefaultApplicationContext) applicationContext;
+            ShutdownHookRegisterProvider shutdownHookRegisterProvider = context.getShutdownHookRegisterProvider();
+            ShutdownHookRegister shutdownHookRegister = shutdownHookRegisterProvider.get();
 
-        shutdownHookRegister.register(shutdownThread);
+            PinpointThreadFactory pinpointThreadFactory = new PinpointThreadFactory("Pinpoint-shutdown-hook", false);
+            Thread shutdownThread = pinpointThreadFactory.newThread(new Runnable() {
+                @Override
+                public void run() {
+                    logger.info("stop() started. threadName:" + Thread.currentThread().getName());
+                    DefaultAgent.this.stop();
+                }
+            });
+
+            shutdownHookRegister.register(shutdownThread);
+
+        }
+
     }
 
     @Override

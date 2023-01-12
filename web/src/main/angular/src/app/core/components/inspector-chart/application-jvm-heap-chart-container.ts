@@ -5,6 +5,7 @@ import { IInspectorChartContainer } from './inspector-chart-container-factory';
 import { makeYData, makeXData, getMaxTickValue } from 'app/core/utils/chart-util';
 import { IInspectorChartData, InspectorChartDataService } from './inspector-chart-data.service';
 import { getAgentId } from './inspector-chart-util';
+import { InspectorChartThemeService } from './inspector-chart-theme.service';
 
 export class ApplicationJVMHeapChartContainer implements IInspectorChartContainer {
     private apiUrl = 'getApplicationStat/memory/chart.pinpoint';
@@ -15,10 +16,11 @@ export class ApplicationJVMHeapChartContainer implements IInspectorChartContaine
     title = 'Heap Usage';
 
     constructor(
-        private inspectorChartDataService: InspectorChartDataService
+        private inspectorChartDataService: InspectorChartDataService,
+        private inspectorChartThemeService: InspectorChartThemeService,
     ) {}
 
-    getData(range: number[]): Observable<IInspectorChartData | AjaxException> {
+    getData(range: number[]): Observable<IInspectorChartData> {
         return this.inspectorChartDataService.getData(this.apiUrl, range);
     }
 
@@ -43,9 +45,7 @@ export class ApplicationJVMHeapChartContainer implements IInspectorChartContaine
                 max: 'Max',
             },
             colors: {
-                min: '#66B2FF',
-                avg: '#4C0099',
-                max: '#0000CC',
+                ...this.inspectorChartThemeService.getMinAvgMaxColors()
             }
         };
     }
@@ -84,14 +84,18 @@ export class ApplicationJVMHeapChartContainer implements IInspectorChartContaine
         };
     }
 
+    makeTooltipOptions(): {[key: string]: any} {
+        return {};
+    }
+
     convertWithUnit(value: number): string {
         const unitList = ['', 'K', 'M', 'G'];
 
         return [...unitList].reduce((acc: string, curr: string, i: number, arr: string[]) => {
             const v = Number(acc);
 
-            return v >= 1000
-                ? (v / 1000).toString()
+            return v >= 1024
+                ? (v / 1024).toString()
                 : (arr.splice(i + 1), Number.isInteger(v) ? `${v}${curr}` : `${v.toFixed(2)}${curr}`);
         }, value.toString());
     }

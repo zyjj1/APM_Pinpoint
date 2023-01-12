@@ -18,11 +18,12 @@ package com.navercorp.pinpoint.bootstrap.instrument.matcher;
 import com.navercorp.pinpoint.bootstrap.instrument.matcher.operand.MatcherOperand;
 import com.navercorp.pinpoint.bootstrap.instrument.matcher.operand.PackageInternalNameMatcherOperand;
 import com.navercorp.pinpoint.bootstrap.instrument.matcher.operator.OrMatcherOperator;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * @author jaehong.kim
@@ -30,7 +31,7 @@ import static org.junit.Assert.*;
 public class DefaultMultiPackageBasedMatcherTest {
 
     @Test
-    public void getMatcherOperandWithMulitPackageName() throws Exception {
+    public void getMatcherOperandWithMulitPackageName() {
         DefaultMultiPackageBasedMatcher matcher = new DefaultMultiPackageBasedMatcher(Arrays.asList("java", "javax"));
         assertTrue(matcher.getBasePackageNames().contains("java"));
         assertTrue(matcher.getBasePackageNames().contains("javax"));

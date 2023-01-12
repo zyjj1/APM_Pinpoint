@@ -23,40 +23,41 @@ import com.navercorp.pinpoint.rpc.TestByteUtils;
 import com.navercorp.pinpoint.rpc.util.PinpointRPCTestUtils;
 import com.navercorp.pinpoint.test.server.TestPinpointServerAcceptor;
 import com.navercorp.pinpoint.test.server.TestServerMessageListenerFactory;
-import com.navercorp.pinpoint.test.utils.TestAwaitTaskUtils;
-import com.navercorp.pinpoint.test.utils.TestAwaitUtils;
 import com.navercorp.pinpoint.testcase.util.SocketUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.awaitility.Awaitility;
 import org.jboss.netty.channel.ChannelFuture;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 
 
 /**
  * @author emeroad
  */
 public class PinpointClientFactoryTest {
-    private Logger logger = LoggerFactory.getLogger(this.getClass());
+    private Logger logger = LogManager.getLogger(this.getClass());
 
     private static DefaultPinpointClientFactory clientFactory;
-    
-    @BeforeClass
+
+    @BeforeAll
     public static void setUp() throws IOException {
         clientFactory = new DefaultPinpointClientFactory();
         clientFactory.setPingDelay(100);
     }
-    
-    @AfterClass
+
+    @AfterAll
     public static void tearDown() {
         if (clientFactory != null) {
             clientFactory.release();
@@ -68,10 +69,10 @@ public class PinpointClientFactoryTest {
         try {
             int availableTcpPort = SocketUtils.findAvailableTcpPort(47000);
             clientFactory.connect("127.0.0.1", availableTcpPort);
-            Assert.fail();
+            Assertions.fail();
         } catch (PinpointSocketException e) {
-            Assert.assertTrue(ConnectException.class.isInstance(e.getCause()));
-        } 
+            Assertions.assertTrue(ConnectException.class.isInstance(e.getCause()));
+        }
     }
 
     @Test
@@ -81,9 +82,9 @@ public class PinpointClientFactoryTest {
         InetSocketAddress remoteAddress = new InetSocketAddress("127.0.0.1", availableTcpPort);
         ChannelFuture reconnect = clientFactory.reconnect(remoteAddress);
         reconnect.await();
-        Assert.assertFalse(reconnect.isSuccess());
-        Assert.assertTrue(ConnectException.class.isInstance(reconnect.getCause()));
-        
+        Assertions.assertFalse(reconnect.isSuccess());
+        Assertions.assertTrue(ConnectException.class.isInstance(reconnect.getCause()));
+
         Thread.sleep(1000);
     }
 
@@ -111,13 +112,15 @@ public class PinpointClientFactoryTest {
         try {
             PinpointClient client = clientFactory.connect("127.0.0.1", bindPort);
 
-            boolean await = TestAwaitUtils.await(new TestAwaitTaskUtils() {
-                @Override
-                public boolean checkCompleted() {
-                    return serverMessageListener.hasReceivedPing();
-                }
-            }, 100, 3000);
-            Assert.assertTrue(await);
+            Awaitility.await()
+                    .pollDelay(100, TimeUnit.MILLISECONDS)
+                    .timeout(3000, TimeUnit.MILLISECONDS)
+                    .until(new Callable<Boolean>() {
+                        @Override
+                        public Boolean call() {
+                            return serverMessageListener.hasReceivedPing();
+                        }
+                    });
             PinpointRPCTestUtils.close(client);
         } finally {
             testPinpointServerAcceptor.close();
@@ -145,11 +148,11 @@ public class PinpointClientFactoryTest {
 
         try {
             PinpointClient client = clientFactory.connect("127.0.0.1", bindPort);
-            
+
             byte[] randomByte = TestByteUtils.createRandomByte(10);
             byte[] response = PinpointRPCTestUtils.request(client, randomByte);
-            
-            Assert.assertArrayEquals(randomByte, response);
+
+            Assertions.assertArrayEquals(randomByte, response);
             PinpointRPCTestUtils.close(client);
         } finally {
             testPinpointServerAcceptor.close();
@@ -185,7 +188,7 @@ public class PinpointClientFactoryTest {
             byte[] randomByte = TestByteUtils.createRandomByte(20);
             byte[] response = PinpointRPCTestUtils.request(client, randomByte);
 
-            Assert.assertArrayEquals(randomByte, response);
+            Assertions.assertArrayEquals(randomByte, response);
             PinpointRPCTestUtils.close(client);
         } finally {
             testPinpointServerAcceptor.close();
@@ -201,44 +204,46 @@ public class PinpointClientFactoryTest {
             pinpointClientFactory = new DefaultPinpointClientFactory();
             pinpointClientFactory.setConnectTimeout(timeout);
             int connectTimeout = pinpointClientFactory.getConnectTimeout();
-            
-            Assert.assertEquals(timeout, connectTimeout);
+
+            Assertions.assertEquals(timeout, connectTimeout);
         } finally {
             pinpointClientFactory.release();
         }
     }
 
-    @Test(expected = PinpointSocketException.class)
-    @Ignore
+    @Disabled
+    @Test
     public void throwWriteBufferFullExceptionTest() {
-        TestPinpointServerAcceptor testPinpointServerAcceptor = new TestPinpointServerAcceptor();
-        int bindPort = testPinpointServerAcceptor.bind();
+        Assertions.assertThrows(PinpointSocketException.class, () -> {
+            TestPinpointServerAcceptor testPinpointServerAcceptor = new TestPinpointServerAcceptor();
+            int bindPort = testPinpointServerAcceptor.bind();
 
-        int defaultWriteBufferHighWaterMark = clientFactory.getWriteBufferHighWaterMark();
-        int defaultWriteBufferLowWaterMark = clientFactory.getWriteBufferLowWaterMark();
-        try {
-            clientFactory.setWriteBufferHighWaterMark(2);
-            clientFactory.setWriteBufferLowWaterMark(1);
+            int defaultWriteBufferHighWaterMark = clientFactory.getWriteBufferHighWaterMark();
+            int defaultWriteBufferLowWaterMark = clientFactory.getWriteBufferLowWaterMark();
+            try {
+                clientFactory.setWriteBufferHighWaterMark(2);
+                clientFactory.setWriteBufferLowWaterMark(1);
 
-            PinpointClient client = clientFactory.connect("127.0.0.1", bindPort);
+                PinpointClient client = clientFactory.connect("127.0.0.1", bindPort);
 
-            List<Future> futureList = new ArrayList();
-            for (int i = 0; i < 30; i++) {
-                Future<ResponseMessage> requestFuture = client.request(new byte[20]);
-                futureList.add(requestFuture);
+                List<Future> futureList = new ArrayList();
+                for (int i = 0; i < 30; i++) {
+                    Future<ResponseMessage> requestFuture = client.request(new byte[20]);
+                    futureList.add(requestFuture);
+                }
+
+                for (Future future : futureList) {
+                    future.getResult();
+                }
+
+                PinpointRPCTestUtils.close(client);
+            } finally {
+                clientFactory.setWriteBufferHighWaterMark(defaultWriteBufferHighWaterMark);
+                clientFactory.setWriteBufferLowWaterMark(defaultWriteBufferLowWaterMark);
+
+                testPinpointServerAcceptor.close();
             }
-
-            for (Future future : futureList) {
-                future.getResult();
-            }
-
-            PinpointRPCTestUtils.close(client);
-        } finally {
-            clientFactory.setWriteBufferHighWaterMark(defaultWriteBufferHighWaterMark);
-            clientFactory.setWriteBufferLowWaterMark(defaultWriteBufferLowWaterMark);
-
-            testPinpointServerAcceptor.close();
-        }
+        });
     }
 
 

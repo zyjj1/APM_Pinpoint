@@ -20,11 +20,12 @@ import com.navercorp.pinpoint.bootstrap.instrument.matcher.operand.InterfaceInte
 import com.navercorp.pinpoint.bootstrap.instrument.matcher.operand.MatcherOperand;
 import com.navercorp.pinpoint.bootstrap.instrument.matcher.operator.AndMatcherOperator;
 import com.navercorp.pinpoint.bootstrap.instrument.matcher.operator.OrMatcherOperator;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * @author jaehong.kim
@@ -32,7 +33,7 @@ import static org.junit.Assert.*;
 public class DefaultMultiClassBasedMatcherTest {
 
     @Test
-    public void getMatcherOperandWithMultiClassName() throws Exception {
+    public void getMatcherOperandWithMultiClassName() {
         // (class OR class)
         DefaultMultiClassBasedMatcher matcher = new DefaultMultiClassBasedMatcher(Arrays.asList("java.lang.String", "java.lang.Thread"));
         assertTrue(matcher.getBaseClassNames().contains("java.lang.String"));
@@ -51,7 +52,7 @@ public class DefaultMultiClassBasedMatcherTest {
     }
 
     @Test
-    public void getMatcherOperandWithMultiClassNameAndAdditional() throws Exception {
+    public void getMatcherOperandWithMultiClassNameAndAdditional() {
         // (class OR class) AND interface
         InterfaceInternalNameMatcherOperand additional = new InterfaceInternalNameMatcherOperand("java/lang/Runnable", false);
         DefaultMultiClassBasedMatcher matcher = new DefaultMultiClassBasedMatcher(Arrays.asList("java.lang.String", "java.lang.Thread"), additional);
@@ -68,7 +69,6 @@ public class DefaultMultiClassBasedMatcherTest {
         InterfaceInternalNameMatcherOperand rightOperand = (InterfaceInternalNameMatcherOperand) operator.getRightOperand();
         assertEquals("java/lang/Runnable", rightOperand.getInterfaceInternalName());
     }
-
 
 
 }

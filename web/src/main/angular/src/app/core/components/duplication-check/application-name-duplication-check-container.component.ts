@@ -61,14 +61,14 @@ export class ApplicationNameDuplicationCheckContainerComponent implements OnInit
                     })
                 );
             }),
-            filter(({ res }) => {
+            filter(({res}) => {
                 return this.isValueAvailable(res.code) ? true : (this.onCheckFail(res.message), false);
             }),
             pluck('value')
         ).subscribe((value: string) => {
             this.onCheckSuccess(value, '');
-        }, (error: IServerErrorFormat) => {
-            this.onCheckFail(error.exception.message);
+        }, (error: IServerError) => {
+            this.onCheckFail(error.message);
         });
         this.analyticsService.trackEvent(TRACKED_EVENT_LIST.CHECK_APPLICATION_NAME_DUPLICATION);
     }

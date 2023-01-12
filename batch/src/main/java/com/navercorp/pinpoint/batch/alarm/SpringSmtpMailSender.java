@@ -18,8 +18,8 @@ package com.navercorp.pinpoint.batch.alarm;
 import com.navercorp.pinpoint.batch.alarm.checker.AlarmChecker;
 import com.navercorp.pinpoint.batch.common.BatchConfiguration;
 import com.navercorp.pinpoint.web.service.UserGroupService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.springframework.batch.core.StepExecution;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 
@@ -34,9 +34,7 @@ import java.util.Objects;
  * @author minwoo.jung
  */
 public class SpringSmtpMailSender implements MailSender {
-
-    private static final InternetAddress[] EMPTY_RECEIVERS = new InternetAddress[0];
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
 
     private final UserGroupService userGroupService;
     private final String batchEnv;
@@ -60,10 +58,10 @@ public class SpringSmtpMailSender implements MailSender {
     }
 
     @Override
-    public void sendEmail(AlarmChecker checker, int sequenceCount, StepExecution stepExecution) {
+    public void sendEmail(AlarmChecker<?> checker, int sequenceCount, StepExecution stepExecution) {
         List<String> receivers = userGroupService.selectEmailOfMember(checker.getUserGroupId());
 
-        if (receivers.size() == 0) {
+        if (receivers.isEmpty()) {
             return;
         }
 
@@ -78,7 +76,7 @@ public class SpringSmtpMailSender implements MailSender {
             message.setContent(mailTemplate.createBody(), "text/html");
             springMailSender.send(message);
             logger.info("send email : {}", subject);
-        }catch(Exception e){
+        } catch(Exception e) {
             logger.error("can't send alarm email. {}", checker.getRule(), e);
         }
     }

@@ -15,7 +15,28 @@
  */
 package com.navercorp.pinpoint.web.controller;
 
-import static org.hamcrest.Matchers.hasKey;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.navercorp.pinpoint.common.server.util.json.TypeRef;
+import com.navercorp.pinpoint.web.dao.AlarmDao;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.springframework.test.context.web.WebAppConfiguration;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
+
+import java.util.List;
+import java.util.Map;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -23,34 +44,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.MediaType;
-import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
-import org.springframework.test.context.web.WebAppConfiguration;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.web.context.WebApplicationContext;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.navercorp.pinpoint.web.dao.AlarmDao;
+import static com.navercorp.pinpoint.web.TestTraceUtils.hasKey;
 
 /**
  * @author minwoo.jung
  */
-@Ignore
-@RunWith(SpringJUnit4ClassRunner.class)
+@Disabled
+@ExtendWith(SpringExtension.class)
 @WebAppConfiguration
 @ContextConfiguration(locations = {"classpath:servlet-context-web.xml", "classpath:applicationContext-web.xml"})
 public class AlarmControllerTest {
@@ -76,23 +76,24 @@ public class AlarmControllerTest {
 
     private final static String NOTES = "for unit test";
     private final static String NOTES_UPDATED = "";
-    
+
     @Autowired
     private WebApplicationContext wac;
     
     @Autowired
     private AlarmDao alarmDao;
 
+    private final ObjectMapper mapper = new ObjectMapper();
+
     private MockMvc mockMvc;
     
-    @Before
+    @BeforeEach
     public void setup() {
         this.mockMvc = MockMvcBuilders.webAppContextSetup(this.wac).build();
         this.alarmDao.deleteRuleByUserGroupId(USER_GROUP_ID);
         this.alarmDao.deleteRuleByUserGroupId(USER_GROUP_ID_UPDATED);
     }
     
-    @SuppressWarnings("unchecked")
     @Test
     public void insertAndSelectAndDeleteRule() throws Exception {
         String jsonParm = "{" +
@@ -112,10 +113,9 @@ public class AlarmControllerTest {
                                             .andReturn();
         String content = result.getResponse().getContentAsString();
 
-        ObjectMapper objectMapper = new ObjectMapper();
-        Map<String, String> resultMap = objectMapper.readValue(content, HashMap.class);
-        Assert.assertEquals(resultMap.get("result"), "SUCCESS");
-        Assert.assertNotNull(resultMap.get("ruleId"));
+        Map<String, Object> resultMap = mapper.readValue(content, TypeRef.map());
+        Assertions.assertEquals(resultMap.get("result"), "SUCCESS");
+        Assertions.assertNotNull(resultMap.get("ruleId"));
         
         this.mockMvc.perform(get("/alarmRule.pinpoint?userGroupId=" + USER_GROUP_ID))
                 .andExpect(status().isOk())
@@ -138,7 +138,6 @@ public class AlarmControllerTest {
                         .andReturn();
     }
     
-    @SuppressWarnings("unchecked")
     @Test
     public void updateRule() throws Exception {
         String jsonParm = "{" +
@@ -158,10 +157,9 @@ public class AlarmControllerTest {
                                             .andReturn();
         String content = result.getResponse().getContentAsString();
 
-        ObjectMapper objectMapper = new ObjectMapper();
-        Map<String, String> resultMap = objectMapper.readValue(content, HashMap.class);
-        Assert.assertEquals(resultMap.get("result"), "SUCCESS");
-        Assert.assertNotNull(resultMap.get("ruleId"));
+        Map<String, Object> resultMap = mapper.readValue(content, TypeRef.map());
+        Assertions.assertEquals(resultMap.get("result"), "SUCCESS");
+        Assertions.assertNotNull(resultMap.get("ruleId"));
         
         String updatedJsonParm = "{" +
                 "\"ruleId\" : \"" + resultMap.get("ruleId") + "\"," + 
@@ -199,8 +197,8 @@ public class AlarmControllerTest {
                                 .andReturn();
         
         String content = result.getResponse().getContentAsString();
-        ObjectMapper objectMapper = new ObjectMapper();
-        List<String> checkerList = objectMapper.readValue(content, List.class);
-        Assert.assertNotEquals(checkerList.size(), 0);
+
+        List<String> checkerList = mapper.readValue(content, new TypeReference<>() {});
+        Assertions.assertNotEquals(checkerList.size(), 0);
     }
 }

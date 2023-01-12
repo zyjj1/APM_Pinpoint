@@ -19,6 +19,7 @@ package com.navercorp.pinpoint.plugin.kafka.interceptor;
 import com.navercorp.pinpoint.bootstrap.interceptor.AroundInterceptor;
 import com.navercorp.pinpoint.bootstrap.logging.PLogger;
 import com.navercorp.pinpoint.bootstrap.logging.PLoggerFactory;
+import com.navercorp.pinpoint.common.util.ArrayUtils;
 import com.navercorp.pinpoint.common.util.StringUtils;
 import com.navercorp.pinpoint.plugin.kafka.field.accessor.EndPointFieldAccessor;
 
@@ -47,16 +48,16 @@ public class ConsumerRecordsInterceptor implements AroundInterceptor {
             logger.afterInterceptor(target, args, result, throwable);
         }
 
-        if (args == null || args.length != 1) {
+        if (ArrayUtils.getLength(args) != 1) {
             return;
         }
         if (!(args[0] instanceof Map)) {
             return;
         }
 
-        Map consumerRecordsMap = (Map) args[0];
-        Set<Map.Entry> entrySet = consumerRecordsMap.entrySet();
-        for (Map.Entry entry : entrySet) {
+        Map<?, ?> consumerRecordsMap = (Map<?, ?>) args[0];
+        Set<? extends Map.Entry<?, ?>> entrySet = consumerRecordsMap.entrySet();
+        for (Map.Entry<?, ?> entry : entrySet) {
             if (entry == null) {
                 continue;
             }
@@ -65,7 +66,7 @@ public class ConsumerRecordsInterceptor implements AroundInterceptor {
             if (StringUtils.hasText(endPoint)) {
                 Object value = entry.getValue();
                 if (value instanceof List) {
-                    List consumerRecordList = (List) value;
+                    List<?> consumerRecordList = (List<?>) value;
                     for (Object endPointFieldAccessor : consumerRecordList) {
                         if (endPointFieldAccessor instanceof EndPointFieldAccessor) {
                             ((EndPointFieldAccessor) endPointFieldAccessor)._$PINPOINT$_setEndPoint(endPoint);

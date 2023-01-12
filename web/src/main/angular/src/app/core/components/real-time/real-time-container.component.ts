@@ -41,7 +41,8 @@ export class RealTimeContainerComponent implements OnInit, AfterViewInit, OnDest
     activeOnly = false;
     isPinUp = true;
     lastHeight: number;
-    minHeight = 343;
+    defaultHeight = 225;
+    minHeight = 35;
     maxHeightPadding = 50; // Header Height
     timezone$: Observable<string>;
     dateFormat$: Observable<string>;
@@ -70,7 +71,7 @@ export class RealTimeContainerComponent implements OnInit, AfterViewInit, OnDest
     ) {}
 
     ngOnInit() {
-        this.lastHeight = this.webAppSettingDataService.getLayerHeight() || this.minHeight;
+        this.lastHeight = this.webAppSettingDataService.getLayerHeight() || this.defaultHeight;
         this.newUrlStateNotificationService.onUrlStateChange$.pipe(
             takeUntil(this.unsubscribe),
         ).subscribe(() => {
@@ -115,7 +116,7 @@ export class RealTimeContainerComponent implements OnInit, AfterViewInit, OnDest
         this.timezone$ = this.storeHelperService.getTimezone(this.unsubscribe);
         this.dateFormat$ = this.storeHelperService.getDateFormat(this.unsubscribe, 0);
         this.messageQueueService.receiveMessage(this.unsubscribe, MESSAGE_TO.SERVER_MAP_DATA_UPDATE).pipe(
-            filter((data: ServerMapData) => data.getNodeCount() === 0)
+            filter(({serverMapData}: {serverMapData: ServerMapData}) => serverMapData.getNodeCount() === 0)
         ).subscribe(() => {
             this.hiddenComponent = true;
             this.cd.markForCheck();
@@ -149,12 +150,12 @@ export class RealTimeContainerComponent implements OnInit, AfterViewInit, OnDest
         const visibility$ = fromEvent(document, 'visibilitychange').pipe(takeUntil(this.unsubscribe));
 
         // visible
-        visibility$.pipe(
-            filter(() => !document.hidden),
-            filter(() => !this.realTimeWebSocketService.isOpened())
-        ).subscribe(() => {
-            this.onRetry();
-        });
+        // visibility$.pipe(
+        //     filter(() => !document.hidden),
+        //     filter(() => !this.realTimeWebSocketService.isOpened())
+        // ).subscribe(() => {
+        //     this.onRetry();
+        // });
 
         // hidden
         visibility$.pipe(

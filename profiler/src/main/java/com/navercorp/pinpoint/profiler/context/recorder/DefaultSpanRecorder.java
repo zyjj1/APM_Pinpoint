@@ -22,37 +22,31 @@ import com.navercorp.pinpoint.profiler.context.Annotation;
 import com.navercorp.pinpoint.profiler.context.DefaultTrace;
 import com.navercorp.pinpoint.profiler.context.Span;
 import com.navercorp.pinpoint.profiler.context.errorhandler.IgnoreErrorHandler;
-import com.navercorp.pinpoint.profiler.context.id.TraceRoot;
+import com.navercorp.pinpoint.profiler.context.id.Shared;
 import com.navercorp.pinpoint.profiler.metadata.SqlMetaDataService;
 import com.navercorp.pinpoint.profiler.metadata.StringMetaDataService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
- * 
+ *
  * @author jaehong.kim
  *
  */
 public class DefaultSpanRecorder extends AbstractRecorder implements SpanRecorder {
-    private static final Logger logger = LoggerFactory.getLogger(DefaultTrace.class.getName());
+    private static final Logger logger = LogManager.getLogger(DefaultTrace.class.getName());
     private static final boolean isDebug = logger.isDebugEnabled();
-    
+
     private final Span span;
-    private final boolean isRoot;
-    private final boolean sampling;
-    
-    public DefaultSpanRecorder(final Span span, final boolean isRoot, final boolean sampling,
-                               final StringMetaDataService stringMetaDataService, SqlMetaDataService sqlMetaDataService,
+
+    public DefaultSpanRecorder(final Span span,
+                               final StringMetaDataService stringMetaDataService,
+                               final SqlMetaDataService sqlMetaDataService,
                                final IgnoreErrorHandler errorHandler) {
         super(stringMetaDataService, sqlMetaDataService, errorHandler);
         this.span = span;
-        this.isRoot = isRoot;
-        this.sampling = sampling;
     }
 
-    public Span getSpan() {
-        return span;
-    }
 
     @Override
     public void recordStartTime(long startTime) {
@@ -66,8 +60,7 @@ public class DefaultSpanRecorder extends AbstractRecorder implements SpanRecorde
 
     @Override
     void maskErrorCode(final int errorCode) {
-        final TraceRoot traceRoot = span.getTraceRoot();
-        traceRoot.getShared().maskErrorCode(errorCode);
+        getShared().maskErrorCode(errorCode);
     }
 
     @Override
@@ -80,7 +73,7 @@ public class DefaultSpanRecorder extends AbstractRecorder implements SpanRecorde
     }
 
     @Override
-    void addAnnotation(Annotation annotation) {
+    void addAnnotation(Annotation<?> annotation) {
         span.addAnnotation(annotation);
     }
 
@@ -92,7 +85,7 @@ public class DefaultSpanRecorder extends AbstractRecorder implements SpanRecorde
     @Override
     public void recordRpcName(String rpc) {
 //        span.setRpc(rpc);
-        span.getTraceRoot().getShared().setRpcName(rpc);
+        getShared().setRpcName(rpc);
     }
 
     @Override
@@ -103,7 +96,7 @@ public class DefaultSpanRecorder extends AbstractRecorder implements SpanRecorde
     @Override
     public void recordEndPoint(String endPoint) {
 //        span.setEndPoint(endPoint);
-        span.getTraceRoot().getShared().setEndPoint(endPoint);
+        getShared().setEndPoint(endPoint);
     }
 
     @Override
@@ -125,18 +118,17 @@ public class DefaultSpanRecorder extends AbstractRecorder implements SpanRecorde
 
     @Override
     public boolean canSampled() {
-        return sampling;
+        return true;
     }
 
     @Override
     public boolean isRoot() {
-        return isRoot;
+        return span.getTraceRoot().getTraceId().isRoot();
     }
     
     @Override
     public void recordLogging(LoggingInfo loggingInfo) {
-        final TraceRoot traceRoot = span.getTraceRoot();
-        traceRoot.getShared().setLoggingInfo(loggingInfo.getCode());
+        getShared().setLoggingInfo(loggingInfo.getCode());
     }
     
     @Override
@@ -170,6 +162,21 @@ public class DefaultSpanRecorder extends AbstractRecorder implements SpanRecorde
 
     @Override
     public void recordStatusCode(int statusCode) {
-        span.getTraceRoot().getShared().setStatusCode(statusCode);
+        getShared().setStatusCode(statusCode);
+    }
+
+    private Shared getShared() {
+        return span.getTraceRoot().getShared();
+    }
+
+    @Override
+    public boolean recordUriTemplate(String uriTemplate) {
+        return recordUriTemplate(uriTemplate, false);
+    }
+
+
+    @Override
+    public boolean recordUriTemplate(String uriTemplate, boolean force) {
+        return getShared().setUriTemplate(uriTemplate, force);
     }
 }

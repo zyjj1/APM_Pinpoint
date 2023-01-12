@@ -1,4 +1,4 @@
-import { Component, OnInit, OnChanges, SimpleChanges, Input, Output, EventEmitter, ViewEncapsulation } from '@angular/core';
+import { Component, OnInit, OnChanges, SimpleChanges, Input, Output, EventEmitter, ViewEncapsulation, Renderer2 } from '@angular/core';
 import * as moment from 'moment-timezone';
 import { GridOptions } from 'ag-grid-community';
 
@@ -10,6 +10,7 @@ export interface IGridData {
     responseTime: number;
     exception: number;
     agentId: string;
+    agentName?: string;
     clientIp: string;
     traceId: string;
     spanId: string;
@@ -26,17 +27,23 @@ export class TransactionTableGridComponent implements OnInit, OnChanges {
     @Input() rowData: IGridData[];
     @Input() addData: IGridData[];
     @Input() resized: any;
-    @Input() currentTraceId: string;
+    @Input() selectedTransactionId: string;
     @Input() timezone: string;
     @Input() dateFormat: string;
+    @Input() dataEmptyText: string;
     @Output() outSelectTransaction = new EventEmitter<{[key: string]: any}>();
     @Output() outSelectTransactionView = new EventEmitter<{[key: string]: any}>();
 
     gridOptions: GridOptions;
+    overlayNoRowsTemplate: string;
 
-    constructor() {}
+    constructor(
+        private renderer: Renderer2,
+    ) {}
+
     ngOnInit() {
         this.initGridOptions();
+        this.overlayNoRowsTemplate = `<span class="l-overlay-template l-no-rows">${this.dataEmptyText}</span>`;
     }
 
     ngOnChanges(changes: SimpleChanges) {
@@ -78,10 +85,10 @@ export class TransactionTableGridComponent implements OnInit, OnChanges {
                 return params.data.exception === 1 ? 'ag-row-exception' : '';
             },
             onCellClicked: (params: any) => {
-                if ( params.colDef.field === 'path' ) {
+                if (params.colDef.field === 'path') {
                     const tag = params.event.target.tagName.toUpperCase();
                     if (tag === 'I' || tag === 'BUTTON' ) {
-                        this.outSelectTransactionView.next({
+                        this.outSelectTransactionView.emit({
                             agentId: params.data.agentId,
                             traceId: params.data.traceId,
                             collectorAcceptTime: params.data.collectorAcceptTime,
@@ -90,33 +97,42 @@ export class TransactionTableGridComponent implements OnInit, OnChanges {
                         return;
                     }
                 }
-                if ( this.currentTraceId === params.data.traceId ) {
+
+                const selectedTransactionId = `${params.data.agentId}${params.data.spanId}${params.data.traceId}${params.data.collectorAcceptTime}`;
+
+                if (this.selectedTransactionId === selectedTransactionId) {
                     return;
                 }
-                this.currentTraceId = params.data.traceId;
-                this.outSelectTransaction.next({
+
+                this.outSelectTransaction.emit({
+                    agentId: params.data.agentId,
+                    spanId: params.data.spanId,
                     traceId: params.data.traceId,
                     collectorAcceptTime: params.data.collectorAcceptTime,
                     elapsed: params.data.responseTime
                 });
-            }
+            },
+            getRowNodeId: (data) => `${data.agentId}${data.spanId}${data.traceId}${data.collectorAcceptTime}`
         };
     }
 
-    onGridReady(params: GridOptions): void {
-        this.gridOptions.api.forEachNode((node) => {
-            if (this.currentTraceId === node.data.traceId) {
-                node.setSelected(true);
-            }
-        });
-    }
-
-    onGridSizeChanged(params: GridOptions): void {
+    onGridReady(_: GridOptions): void {}
+    onGridSizeChanged(_: GridOptions): void {
         this.gridOptions.api.sizeColumnsToFit();
     }
 
+    // TODO: Set selected row whenever data gets updated?
     onRendered(): void {
         this.gridOptions.api.sizeColumnsToFit();
+
+        if (!this.selectedTransactionId) {
+            return;
+        }
+
+        const selectedRow = this.gridOptions.api.getRowNode(this.selectedTransactionId);
+
+        selectedRow.setSelected(true, true);
+        this.gridOptions.api.ensureIndexVisible(selectedRow.rowIndex, 'middle');
     }
 
     private makeColumnDefs(): any {
@@ -145,7 +161,14 @@ export class TransactionTableGridComponent implements OnInit, OnChanges {
                 field: 'path',
                 width: 370,
                 cellRenderer: (params: any) => {
-                    return '<button style="margin-right:3px"><i class="fa fa-list-alt" aria-hidden="true"></i></button>' + params.value;
+                    const span = this.renderer.createElement('span');
+                    const text = this.renderer.createText(params.value);
+                    const btnStr = '<button style="margin-right:3px"><i class="fa fa-list-alt" aria-hidden="true"></i></button>';
+
+                    this.renderer.setProperty(span, 'innerHTML', btnStr);
+                    this.renderer.appendChild(span, text);
+
+                    return span;
                 },
                 tooltipField: 'path'
             },
@@ -184,7 +207,7 @@ export class TransactionTableGridComponent implements OnInit, OnChanges {
                 suppressSizeToFit: true
             },
             {
-                headerName: 'Agent',
+                headerName: 'Agent Id',
                 field: 'agentId',
                 width: 200,
                 tooltipField: 'agentId'
@@ -200,6 +223,12 @@ export class TransactionTableGridComponent implements OnInit, OnChanges {
                 width: 270,
                 // suppressSizeToFit: true,
                 tooltipField: 'traceId'
+            },
+            {
+                headerName: 'Agent Name',
+                field: 'agentName',
+                width: 100,
+                tooltipField: 'agentName'
             }
         ];
     }

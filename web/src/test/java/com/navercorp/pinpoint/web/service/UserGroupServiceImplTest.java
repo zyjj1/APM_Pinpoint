@@ -22,23 +22,23 @@ import com.navercorp.pinpoint.web.dao.UserGroupDao;
 import com.navercorp.pinpoint.web.util.UserInfoDecoder;
 import com.navercorp.pinpoint.web.vo.User;
 import com.navercorp.pinpoint.web.vo.UserPhoneInfo;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
 
 /**
  * @author minwoo.jung
  */
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class UserGroupServiceImplTest {
 
     @Mock
@@ -52,7 +52,7 @@ public class UserGroupServiceImplTest {
 
     UserGroupServiceImpl userGroupService;
 
-    @Before
+    @BeforeEach
     public void before() throws Exception {
         userGroupService = new UserGroupServiceImpl(userGroupDao, Optional.of(userInfoDecoder), alarmService, new ConfigProperties(), userService);
     }
@@ -125,6 +125,7 @@ public class UserGroupServiceImplTest {
         List<UserPhoneInfo> userPhoneInfoList = new ArrayList<>(2);
         userPhoneInfoList.add(new UserPhoneInfo(82, "ASDFG@#$%T"));
         userPhoneInfoList.add(new UserPhoneInfo(82, "ASDF@#%$HG"));
+        userPhoneInfoList.add(new UserPhoneInfo(82, null));
 
         when(userGroupDao.selectPhoneInfoOfMember(groupId)).thenReturn(userPhoneInfoList);
 
@@ -178,7 +179,7 @@ public class UserGroupServiceImplTest {
     private final static String REMOVED_HYPHEN_CHANGED_PHONE_NUMBER = "12345678900";
     private final static String DECODED_EMAIL = "user@navercorp.com";
 
-    private class CustomUserInfoDecoder implements UserInfoDecoder {
+    private static class CustomUserInfoDecoder implements UserInfoDecoder {
 
         @Override
         public List<String> decodePhoneNumberList(List<String> phoneNumberList) {
@@ -212,13 +213,12 @@ public class UserGroupServiceImplTest {
         @Override
         public User decodeUserInfo(User user) {
             if (user == null) {
-                return user;
+                return null;
             }
 
             String phoneNumber = decodePhoneNumber(user.getPhoneNumber());
             String email = decodeEmail(user.getEmail());
-            User decodedUser = new User(user.getNumber(), user.getUserId(), user.getName(), user.getDepartment(), user.getPhoneCountryCode(), phoneNumber, email);
-            return decodedUser;
+            return new User(user.getNumber(), user.getUserId(), user.getName(), user.getDepartment(), user.getPhoneCountryCode(), phoneNumber, email);
         }
 
         @Override

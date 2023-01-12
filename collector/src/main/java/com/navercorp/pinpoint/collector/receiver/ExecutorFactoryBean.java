@@ -16,6 +16,7 @@
 
 package com.navercorp.pinpoint.collector.receiver;
 
+import com.navercorp.pinpoint.collector.config.ExecutorConfiguration;
 import com.navercorp.pinpoint.collector.monitor.CountingRejectedExecutionHandler;
 import com.navercorp.pinpoint.collector.monitor.BypassRunnableDecorator;
 import com.navercorp.pinpoint.collector.monitor.LoggingRejectedExecutionHandler;
@@ -26,8 +27,6 @@ import com.navercorp.pinpoint.collector.monitor.RunnableDecorator;
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ThreadFactory;
@@ -41,6 +40,8 @@ public class ExecutorFactoryBean extends org.springframework.scheduling.concurre
 
     private int logRate = 100;
     private String beanName;
+
+    private boolean enableMonitoring = false;
 
     private MetricRegistry registry;
 
@@ -71,7 +72,7 @@ public class ExecutorFactoryBean extends org.springframework.scheduling.concurre
     }
 
     private ThreadPoolExecutor newThreadPoolExecutor(int corePoolSize, int maxPoolSize, int keepAliveSeconds, BlockingQueue<Runnable> queue, ThreadFactory threadFactory, RejectedExecutionHandler rejectedExecutionHandler) {
-        if (registry != null) {
+        if (enableMonitoring) {
             return newMonitoredExecutorService(corePoolSize, maxPoolSize, keepAliveSeconds, queue, threadFactory, rejectedExecutionHandler);
         }
 
@@ -102,26 +103,30 @@ public class ExecutorFactoryBean extends org.springframework.scheduling.concurre
 
     private RejectedExecutionHandler wrapHandlerChain(RejectedExecutionHandler rejectedExecutionHandler) {
 
-        final List<RejectedExecutionHandler> handlerList = new ArrayList<>();
+        RejectedExecutionHandlerChain.Builder builder = new RejectedExecutionHandlerChain.Builder();
         if (registry != null) {
             RejectedExecutionHandler countingHandler = new CountingRejectedExecutionHandler(beanName, registry);
-            handlerList.add(countingHandler);
+            builder.addRejectHandler(countingHandler);
         }
 
         if (logRate > -1) {
             RejectedExecutionHandler loggingHandler = new LoggingRejectedExecutionHandler(beanName, logRate);
-            handlerList.add(loggingHandler);
+            builder.addRejectHandler(loggingHandler);
         }
 
         // original exception policy
-        handlerList.add(rejectedExecutionHandler);
+        builder.addRejectHandler(rejectedExecutionHandler);
 
-        if (handlerList.isEmpty()) {
-            return rejectedExecutionHandler;
-        }
-        return RejectedExecutionHandlerChain.build(handlerList);
+        return builder.build();
     }
 
+
+    public void setExecutorConfiguration(ExecutorConfiguration executorConfiguration) {
+        setCorePoolSize(executorConfiguration.getThreadSize());
+        setMaxPoolSize(executorConfiguration.getThreadSize());
+        setQueueCapacity(executorConfiguration.getQueueSize());
+        this.enableMonitoring = executorConfiguration.isMonitorEnable();
+    }
 
     public void setPreStartAllCoreThreads(boolean preStartAllCoreThreads) {
         this.preStartAllCoreThreads = preStartAllCoreThreads;

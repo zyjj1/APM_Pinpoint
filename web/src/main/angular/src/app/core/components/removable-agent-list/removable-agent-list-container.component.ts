@@ -1,5 +1,5 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
-import { Subject, Observable, forkJoin, merge, of } from 'rxjs';
+import { Subject, Observable, forkJoin, merge, EMPTY } from 'rxjs';
 import { filter, tap, switchMap, catchError, map } from 'rxjs/operators';
 import { TranslateService } from '@ngx-translate/core';
 
@@ -28,7 +28,7 @@ export class RemovableAgentListContainerComponent implements OnInit, OnDestroy {
     useDisable = false;
     showLoading = false;
     errorMessage: string;
-    agentList$: Observable<{[key: string]: any}>;
+    agentList$: Observable<any[]>;
     selectedApplication: IApplication = null;
     removeAgent: string;
     i18nText: {[key: string]: string} = {
@@ -73,18 +73,20 @@ export class RemovableAgentListContainerComponent implements OnInit, OnDestroy {
         ).pipe(
             tap(() => this.showProcessing()),
             switchMap(() => this.removableAgentDataService.getAgentList(this.selectedApplication.getApplicationName()).pipe(
-                map((data: IAgentList) => {
-                    return Object.entries(data).reduce((acc: {[key: string]: any}[], [key, value]: [string, IAgent[]]) => {
-                        return [...acc, ...value.map((agent: IAgent) => {
-                            const {applicationName, hostName, agentId, agentVersion, startTimestamp, ip} = agent;
+                map((data: IServerAndAgentDataV2[]) => {
+                    return data.map(({instancesList}: IServerAndAgentDataV2) => {
+                        return instancesList.map((agent: IAgentDataV2) => {
+                            const {applicationName, hostName, agentId, agentName, agentVersion, startTimestamp, ip} = agent;
+                            const agentNameText = agentName ? agentName : 'N/A';
 
-                            return {applicationName, hostName, agentId, agentVersion, startTimestamp, ip};
-                        })];
-                    }, []);
+                            return {applicationName, hostName, agentId, agentNameText, agentVersion, startTimestamp, ip};
+                        })
+                    }).flat();
                 }),
-                catchError((error: IServerErrorFormat) => {
-                    this.errorMessage = error.exception.message;
-                    return of(null);
+                catchError((error: IServerError) => {
+                    this.errorMessage = error.message;
+                    this.hideProcessing();
+                    return EMPTY;
                 }),
                 tap(() => this.hideProcessing())
             )),
@@ -154,8 +156,8 @@ export class RemovableAgentListContainerComponent implements OnInit, OnDestroy {
                 this.selectedApplication = null;
                 this.removeType = REMOVE_TYPE.NONE;
                 this.hideProcessing();
-            }, (error: IServerErrorFormat) => {
-                this.errorMessage = error.exception.message;
+            }, (error: IServerError) => {
+                this.errorMessage = error.message;
                 this.hideProcessing();
             });
         } else {
@@ -169,8 +171,8 @@ export class RemovableAgentListContainerComponent implements OnInit, OnDestroy {
             ).subscribe(() => {
                 this.removeType = REMOVE_TYPE.NONE;
                 this.outAgentRemove.next();
-            }, (error: IServerErrorFormat) => {
-                this.errorMessage = error.exception.message;
+            }, (error: IServerError) => {
+                this.errorMessage = error.message;
                 this.hideProcessing();
             });
         }

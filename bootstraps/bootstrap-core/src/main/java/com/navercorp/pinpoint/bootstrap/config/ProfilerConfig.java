@@ -16,9 +16,9 @@
 
 package com.navercorp.pinpoint.bootstrap.config;
 
-import com.navercorp.pinpoint.bootstrap.config.util.ValueResolver;
 import com.navercorp.pinpoint.common.annotations.InterfaceAudience;
 import com.navercorp.pinpoint.common.annotations.VisibleForTesting;
+import com.navercorp.pinpoint.common.config.util.ValueResolver;
 
 import java.util.List;
 import java.util.Map;
@@ -31,25 +31,10 @@ public interface ProfilerConfig {
 
     String getActiveProfile();
 
-//    String[] getOptionalProfiles();
 
     Properties getProperties();
-    
-    int getInterceptorRegistrySize();
 
     TransportModule getTransportModule();
-
-    List<String> getAllowJdkClassName();
-
-    boolean isTraceAgentActiveThread();
-
-    boolean isTraceAgentDataSource();
-
-    int getDataSourceTraceLimitSize();
-
-    boolean isDeadlockMonitorEnable();
-
-    long getDeadlockMonitorInterval();
 
 
     boolean isProfileEnable();
@@ -60,70 +45,15 @@ public interface ProfilerConfig {
 
     int getMaxSqlBindValueSize();
 
-    boolean isSamplingEnable();
-
-    int getSamplingRate();
-
-    int getSamplingNewThroughput();
-
-    int getSamplingContinueThroughput();
-
-    boolean isIoBufferingEnable();
-
-    int getIoBufferingBufferSize();
-
-    String getProfilerJvmVendorName();
-
-    String getProfilerOSName();
-
-    int getProfileJvmStatCollectIntervalMs();
-
-    int getProfileJvmStatBatchSendCount();
-
-    boolean isProfilerJvmStatCollectDetailedMetrics();
-
-    long getAgentInfoSendRetryInterval();
-
     @InterfaceAudience.Private
     @VisibleForTesting
     boolean getStaticResourceCleanup();
-
-
-    Filter<String> getProfilableClassFilter();
-
-    List<String> getApplicationTypeDetectOrder();
-
-    List<String> getPluginLoadOrder();
-
-    List<String> getDisabledPlugins();
-
-    String getApplicationServerType();
-
-    int getCallStackMaxDepth();
-
-    boolean isPropagateInterceptorException();
-
-    String getProfileInstrumentEngine();
-
-    boolean isSupportLambdaExpressions();
-
-    boolean isInstrumentMatcherEnable();
-
-    boolean isProxyHttpHeaderEnable();
 
     HttpStatusCodeErrors getHttpStatusCodeErrors();
 
     String getInjectionModuleFactoryClazzName();
 
     String getApplicationNamespace();
-
-    boolean isCustomMetricEnable();
-
-    int getCustomMetricLimitSize();
-
-    boolean isUriStatEnable();
-
-    int getCompletedUriStatDataLimitSize();
 
     String readString(String propertyName, String defaultValue);
 

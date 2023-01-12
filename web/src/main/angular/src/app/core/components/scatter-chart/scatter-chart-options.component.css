@@ -1,9 +1,10 @@
 .l-tool-box {
+    display: flex;
+    justify-content: space-between;
     font-size:14px;
-    color:#b3b5b9;
-    text-align:right;
+    color: var(--icon-default);
     position:relative;
-    padding: 0 25px 0
+    padding: 0 25px 0;
 }
 .l-tool-box button {
     margin:0 0 0 14px;
@@ -13,8 +14,6 @@
 
 }
 .l-tool-box button.l-last-child:before {
-    /* padding-left: 14px;
-    border-left: 1px solid #e9ebec; */
 }
 .fas {
     font-size: 18px;

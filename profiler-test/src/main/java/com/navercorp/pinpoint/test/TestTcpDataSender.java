@@ -16,6 +16,7 @@
 package com.navercorp.pinpoint.test;
 
 import com.navercorp.pinpoint.profiler.metadata.ApiMetaData;
+import com.navercorp.pinpoint.profiler.metadata.MetaDataType;
 import com.navercorp.pinpoint.profiler.metadata.SqlMetaData;
 import com.navercorp.pinpoint.profiler.metadata.StringMetaData;
 import com.navercorp.pinpoint.profiler.sender.EnhancedDataSender;
@@ -37,7 +38,7 @@ import java.util.NoSuchElementException;
  * @author Jongho Moon
  * @author jaehong.kim
  */
-public class TestTcpDataSender implements EnhancedDataSender<Object> {
+public class TestTcpDataSender implements EnhancedDataSender<MetaDataType> {
 
     private final List<Object> datas = Collections.synchronizedList(new ArrayList<>());
 
@@ -47,26 +48,19 @@ public class TestTcpDataSender implements EnhancedDataSender<Object> {
 
     private final BiHashMap<Integer, String> stringIdMap = newBiHashMap();
 
-    private static final Comparator<Pair<Integer, String>> COMPARATOR = new Comparator<Pair<Integer, String>>() {
-        @Override
-        public int compare(Pair<Integer, String> o1, Pair<Integer, String> o2) {
-            final int key1 = o1.getKey();
-            final int key2 = o2.getKey();
-            return Integer.compare(key1, key2);
-        }
-    };
+    private static final Comparator<Pair<Integer, ?>> COMPARATOR = Comparator.comparingInt(Pair::getKey);
 
     private <K, V> BiHashMap<K, V> newBiHashMap() {
         return new BiHashMap<>();
     }
 
     @Override
-    public boolean send(Object data) {
+    public boolean send(MetaDataType data) {
         addData(data);
         return false;
     }
 
-    private void addData(Object data) {
+    private void addData(MetaDataType data) {
         if (data instanceof ApiMetaData) {
             ApiMetaData md = (ApiMetaData)data;
 
@@ -105,6 +99,12 @@ public class TestTcpDataSender implements EnhancedDataSender<Object> {
         }
     }
 
+    private <K, V> int syncSize(BiHashMap<K, V> map) {
+        synchronized (map) {
+            return map.size();
+        }
+    }
+
     private String toJavaMethodDescriptor(ApiMetaData apiMetaData) {
 //        1st method type check
 //        int type = apiMetaData.getType();
@@ -128,19 +128,19 @@ public class TestTcpDataSender implements EnhancedDataSender<Object> {
     }
 
     @Override
-    public boolean request(Object data) {
+    public boolean request(MetaDataType data) {
         addData(data);
         return true;
     }
 
     @Override
-    public boolean request(Object data, int retry) {
+    public boolean request(MetaDataType data, int retry) {
         addData(data);
         return true;
     }
 
     @Override
-    public boolean request(Object data, FutureListener<ResponseMessage> listener) {
+    public boolean request(MetaDataType data, FutureListener<ResponseMessage> listener) {
         addData(data);
         return true;
     }
@@ -198,27 +198,45 @@ public class TestTcpDataSender implements EnhancedDataSender<Object> {
     }
 
     public void printDatas(PrintStream out) {
-        out.println("API(" + apiIdMap.size() + "):");
+        out.println("API(" + syncSize(apiIdMap) + "):");
         printApis(out);
-        out.println("SQL(" + sqlIdMap.size() + "):");
+        out.println("SQL(" + syncSize(sqlIdMap) + "):");
         printSqls(out);
-        out.println("STRING(" + stringIdMap.size() + "):");
+        out.println("STRING(" + syncSize(stringIdMap) + "):");
         printStrings(out);
     }
     
     public void printApis(PrintStream out) {
         List<Pair<Integer, String>> apis = syncCopy(apiIdMap);
-        printEntries(out, apis);
+        apis.sort(COMPARATOR);
+        List<String> apiList = toStringList(apis);
+        printEntries(out, apiList);
     }
     
     public void printStrings(PrintStream out) {
         List<Pair<Integer, String>> strings = syncCopy(stringIdMap);
-        printEntries(out, strings);
+        strings.sort(COMPARATOR);
+        List<String> strList = toStringList(strings);
+        printEntries(out, strList);
     }
 
     public void printSqls(PrintStream out) {
         List<Pair<Integer, String>> sqls = syncCopy(sqlIdMap);
-        printEntries(out, sqls);
+        sqls.sort(COMPARATOR);
+        List<String> sqlList = toStringList(sqls);
+        printEntries(out, sqlList);
+    }
+
+    private <K, V> List<String> toStringList(List<Pair<K, V>> list) {
+        List<String> result = new ArrayList<>(list.size());
+        for (Pair<K, V> pair : list) {
+            result.add(toStringPair(pair));
+        }
+        return result;
+    }
+
+    public <K, V> String toStringPair(Pair<K, V> input) {
+        return input.getKey() + ":" + input.getValue();
     }
 
     private <K, V> List<Pair<K, V>> syncCopy(BiHashMap<K, V> map) {
@@ -231,10 +249,10 @@ public class TestTcpDataSender implements EnhancedDataSender<Object> {
         }
     }
 
-    private void printEntries(PrintStream out, List<Pair<Integer, String>> entries) {
-        Collections.sort(entries, COMPARATOR);
-        for (Pair<Integer, String> e : entries) {
-            out.println(e.getKey() + ": " + e.getValue());
+
+    private void printEntries(PrintStream out, List<String> list) {
+        for (String str : list) {
+            out.println(str);
         }
     }
     

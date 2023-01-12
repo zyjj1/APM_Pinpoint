@@ -16,20 +16,12 @@
 
 package com.navercorp.pinpoint.rpc.client;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
-
-import java.util.Objects;
-
 import com.navercorp.pinpoint.common.util.Assert;
-import com.navercorp.pinpoint.common.util.StringUtils;
 import com.navercorp.pinpoint.rpc.cluster.ClusterOption;
-import com.navercorp.pinpoint.rpc.cluster.Role;
+import com.navercorp.pinpoint.rpc.control.ProtocolException;
+import com.navercorp.pinpoint.rpc.packet.ControlHandshakePacket;
+import com.navercorp.pinpoint.rpc.packet.ControlHandshakeResponsePacket;
+import com.navercorp.pinpoint.rpc.packet.HandshakeResponseCode;
 import com.navercorp.pinpoint.rpc.util.ClassUtils;
 import com.navercorp.pinpoint.rpc.util.ControlMessageEncodingUtils;
 import com.navercorp.pinpoint.rpc.util.MapUtils;
@@ -39,17 +31,19 @@ import org.jboss.netty.channel.ChannelFutureListener;
 import org.jboss.netty.util.Timeout;
 import org.jboss.netty.util.Timer;
 import org.jboss.netty.util.TimerTask;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
-import com.navercorp.pinpoint.rpc.control.ProtocolException;
-import com.navercorp.pinpoint.rpc.packet.ControlHandshakePacket;
-import com.navercorp.pinpoint.rpc.packet.ControlHandshakeResponsePacket;
-import com.navercorp.pinpoint.rpc.packet.HandshakeResponseCode;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class PinpointClientHandshaker {
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
     private final ChannelFutureListener handShakeFailFutureListener = new WriteFailFutureListener(this.logger, "HandShakePacket write fail.", "HandShakePacket write success.");
     
     private static final int STATE_INIT = 0;
@@ -66,8 +60,8 @@ public class PinpointClientHandshaker {
     private final int maxHandshakeCount;
     
     private final Object lock = new Object();
-    private final AtomicReference<HandshakeResponseCode> handshakeResult = new AtomicReference<HandshakeResponseCode>(null);
-    private final AtomicReference<ClusterOption> clusterOption = new AtomicReference<ClusterOption>(null);
+    private final AtomicReference<HandshakeResponseCode> handshakeResult = new AtomicReference<>(null);
+    private final AtomicReference<ClusterOption> clusterOption = new AtomicReference<>(null);
 
     private final String id = ClassUtils.simpleClassNameAndHashCodeString(this);
 
@@ -189,7 +183,7 @@ public class PinpointClientHandshaker {
         try {
             Map result = (Map) ControlMessageEncodingUtils.decode(payload);
             return result;
-        } catch (ProtocolException ignore) {
+        } catch (ProtocolException ignored) {
             // ignore
         }
 

@@ -22,8 +22,8 @@ import java.util.Objects;
 import com.navercorp.pinpoint.profiler.util.JavaAssistUtils;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.tree.ClassNode;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import java.lang.instrument.Instrumentation;
 import java.security.ProtectionDomain;
@@ -33,7 +33,7 @@ import java.util.jar.JarFile;
  * @author jaehong.kim
  */
 public class ASMEngine implements InstrumentEngine {
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
     private final boolean isInfo = logger.isInfoEnabled();
 
     private final Instrumentation instrumentation;
@@ -47,9 +47,7 @@ public class ASMEngine implements InstrumentEngine {
 
     @Override
     public InstrumentClass getClass(InstrumentContext instrumentContext, ClassLoader classLoader, String className, ProtectionDomain protectionDomain, byte[] classFileBuffer) throws NotFoundInstrumentException {
-        if (className == null) {
-            throw new NullPointerException("className");
-        }
+        Objects.requireNonNull(className, "className");
 
         try {
             if (classFileBuffer == null) {
@@ -75,9 +73,8 @@ public class ASMEngine implements InstrumentEngine {
 
     @Override
     public void appendToBootstrapClassPath(JarFile jarFile) {
-        if (jarFile == null) {
-            throw new NullPointerException("jarFile");
-        }
+        Objects.requireNonNull(jarFile, "jarFile");
+
         if (isInfo) {
             logger.info("appendToBootstrapClassPath:{}", jarFile.getName());
         }

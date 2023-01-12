@@ -22,7 +22,7 @@ import com.navercorp.pinpoint.common.trace.ServiceType;
 /**
  * @author jaehong.kim
  */
-public abstract class BaseRecord implements Record{
+public abstract class BaseRecord implements Record {
     protected int tab;
     protected int id;
     protected int parentId;
@@ -32,7 +32,8 @@ public abstract class BaseRecord implements Record{
     protected long begin;
     protected long elapsed;
     protected long gap;
-    protected String agent;
+    protected String agentId;
+    protected String agentName;
     protected String applicationName;
     protected ServiceType serviceType;
     protected String destinationId;
@@ -48,6 +49,9 @@ public abstract class BaseRecord implements Record{
     protected boolean focused;
     protected String simpleClassName = "";
     protected String fullApiDescription = "";
+
+    protected int lineNumber = 0;
+    protected String location = "";
 
     public int getId() {
         return id;
@@ -95,8 +99,13 @@ public abstract class BaseRecord implements Record{
         return gap;
     }
 
-    public String getAgent() {
-        return agent;
+    public String getAgentId() {
+        return agentId;
+    }
+
+    @Override
+    public String getAgentName() {
+        return agentName;
     }
 
     public String getApplicationName() {
@@ -175,6 +184,14 @@ public abstract class BaseRecord implements Record{
         return this.isAuthorized;
     }
 
+    public int getLineNumber() {
+        return lineNumber;
+    }
+
+    public String getLocation() {
+        return location;
+    }
+
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
@@ -202,8 +219,10 @@ public abstract class BaseRecord implements Record{
         builder.append(gap);
         builder.append(", executionMilliseconds=");
         builder.append(executionMilliseconds);
-        builder.append(", agent=");
-        builder.append(agent);
+        builder.append(", agentId=");
+        builder.append(agentId);
+        builder.append(", agentName=");
+        builder.append(agentName);
         builder.append(", applicationName=");
         builder.append(applicationName);
         builder.append(", serviceType=");

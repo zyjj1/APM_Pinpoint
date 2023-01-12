@@ -42,7 +42,7 @@ public abstract class AbstractLoggerAdapter {
     private static final Map<Class<?>, Object> SIMPLE_TYPE = prepare();
 
     private static Map<Class<?>, Object> prepare() {
-        final Map<Class<?>, Object> map = new IdentityHashMap<Class<?>, Object>(64);
+        final Map<Class<?>, Object> map = new IdentityHashMap<>(64);
         put(map, String.class);
         put(map, Boolean.class);
         put(map, boolean.class);
@@ -138,15 +138,15 @@ public abstract class AbstractLoggerAdapter {
             sb.append("()");
             return;
         }
-        if (args.length > 0) {
-            sb.append('(');
-            sb.append(normalizedParameter(args[0]));
-            for (int i = 1; i < args.length; i++) {
-                sb.append(", ");
-                sb.append(normalizedParameter(args[i]));
-            }
-            sb.append(')');
+
+        sb.append('(');
+        sb.append(normalizedParameter(args[0]));
+        for (int i = 1; i < args.length; i++) {
+            sb.append(", ");
+            sb.append(normalizedParameter(args[i]));
         }
+        sb.append(')');
+
     }
 
     private static String normalizedParameter(Object arg) {

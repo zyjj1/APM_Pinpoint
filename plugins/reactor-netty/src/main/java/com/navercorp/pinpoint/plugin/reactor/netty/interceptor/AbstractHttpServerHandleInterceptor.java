@@ -20,8 +20,7 @@ import com.navercorp.pinpoint.bootstrap.async.AsyncContextAccessor;
 import com.navercorp.pinpoint.bootstrap.async.AsyncContextAccessorUtils;
 import com.navercorp.pinpoint.bootstrap.config.ProfilerConfig;
 import com.navercorp.pinpoint.bootstrap.context.AsyncContext;
-import com.navercorp.pinpoint.bootstrap.context.AsyncState;
-import com.navercorp.pinpoint.bootstrap.context.AsyncStateSupport;
+import com.navercorp.pinpoint.bootstrap.context.AsyncContextUtils;
 import com.navercorp.pinpoint.bootstrap.context.MethodDescriptor;
 import com.navercorp.pinpoint.bootstrap.context.SpanEventRecorder;
 import com.navercorp.pinpoint.bootstrap.context.Trace;
@@ -36,9 +35,11 @@ import com.navercorp.pinpoint.bootstrap.plugin.request.ServerHeaderRecorder;
 import com.navercorp.pinpoint.bootstrap.plugin.request.ServletRequestListener;
 import com.navercorp.pinpoint.bootstrap.plugin.request.ServletRequestListenerBuilder;
 import com.navercorp.pinpoint.bootstrap.plugin.request.util.ParameterRecorder;
+import com.navercorp.pinpoint.bootstrap.plugin.response.ServletResponseListener;
+import com.navercorp.pinpoint.bootstrap.plugin.response.ServletResponseListenerBuilder;
 import com.navercorp.pinpoint.plugin.reactor.netty.ReactorNettyConstants;
 import com.navercorp.pinpoint.plugin.reactor.netty.ReactorNettyPluginConfig;
-
+import io.netty.handler.codec.http.HttpResponseStatus;
 import reactor.netty.http.server.HttpServerRequest;
 import reactor.netty.http.server.HttpServerResponse;
 
@@ -53,6 +54,7 @@ public abstract class AbstractHttpServerHandleInterceptor implements AroundInter
     private final MethodDescriptor methodDescriptor;
     private final boolean enableAsyncEndPoint;
     private final ServletRequestListener<HttpServerRequest> servletRequestListener;
+    private final ServletResponseListener<HttpServerResponse> servletResponseListener;
 
     public AbstractHttpServerHandleInterceptor(TraceContext traceContext, MethodDescriptor descriptor, RequestRecorderFactory<HttpServerRequest> requestRecorderFactory) {
         this.traceContext = traceContext;
@@ -62,17 +64,21 @@ public abstract class AbstractHttpServerHandleInterceptor implements AroundInter
         RequestAdaptor<HttpServerRequest> requestAdaptor = new HttpRequestAdaptor();
         ParameterRecorder<HttpServerRequest> parameterRecorder = ParameterRecorderFactory.newParameterRecorderFactory(config.getExcludeProfileMethodFilter(), config.isTraceRequestParam());
 
-        ServletRequestListenerBuilder<HttpServerRequest> builder = new ServletRequestListenerBuilder<HttpServerRequest>(ReactorNettyConstants.REACTOR_NETTY, traceContext, requestAdaptor);
-        builder.setExcludeURLFilter(config.getExcludeUrlFilter());
-        builder.setParameterRecorder(parameterRecorder);
-        builder.setRequestRecorderFactory(requestRecorderFactory);
+        ServletRequestListenerBuilder<HttpServerRequest> reqBuilder = new ServletRequestListenerBuilder<>(ReactorNettyConstants.REACTOR_NETTY, traceContext, requestAdaptor);
+        reqBuilder.setExcludeURLFilter(config.getExcludeUrlFilter());
+        reqBuilder.setParameterRecorder(parameterRecorder);
+        reqBuilder.setRequestRecorderFactory(requestRecorderFactory);
 
         final ProfilerConfig profilerConfig = traceContext.getProfilerConfig();
-        builder.setRealIpSupport(config.getRealIpHeader(), config.getRealIpEmptyValue());
-        builder.setHttpStatusCodeRecorder(profilerConfig.getHttpStatusCodeErrors());
-        builder.setServerHeaderRecorder(profilerConfig.readList(ServerHeaderRecorder.CONFIG_KEY_RECORD_REQ_HEADERS));
-        builder.setServerCookieRecorder(profilerConfig.readList(ServerCookieRecorder.CONFIG_KEY_RECORD_REQ_COOKIES));
-        this.servletRequestListener = builder.build();
+        reqBuilder.setRealIpSupport(config.getRealIpHeader(), config.getRealIpEmptyValue());
+        reqBuilder.setHttpStatusCodeRecorder(profilerConfig.getHttpStatusCodeErrors());
+        reqBuilder.setServerHeaderRecorder(profilerConfig.readList(ServerHeaderRecorder.CONFIG_KEY_RECORD_REQ_HEADERS));
+        reqBuilder.setServerCookieRecorder(profilerConfig.readList(ServerCookieRecorder.CONFIG_KEY_RECORD_REQ_COOKIES));
+        reqBuilder.setRecordStatusCode(false);
+
+        this.servletRequestListener = reqBuilder.build();
+
+        this.servletResponseListener = new ServletResponseListenerBuilder<>(traceContext, new HttpResponseAdaptor()).build();
 
         this.enableAsyncEndPoint = config.isEnableAsyncEndPoint();
     }
@@ -85,12 +91,9 @@ public abstract class AbstractHttpServerHandleInterceptor implements AroundInter
 
         if (traceContext.currentRawTraceObject() != null) {
             if (isDisconnecting(args)) {
-                final AsyncContext asyncContext = AsyncContextAccessorUtils.getAsyncContext(args[0]);
+                final AsyncContext asyncContext = AsyncContextAccessorUtils.getAsyncContext(args, 0);
                 if (asyncContext != null) {
-                    if (asyncContext instanceof AsyncStateSupport) {
-                        final AsyncStateSupport asyncStateSupport = (AsyncStateSupport) asyncContext;
-                        AsyncState asyncState = asyncStateSupport.getAsyncState();
-                        asyncState.finish();
+                    if (AsyncContextUtils.asyncStateFinish(asyncContext)) {
                         if (isDebug) {
                             logger.debug("Finished asyncState. asyncTraceId={}", asyncContext);
                         }
@@ -108,7 +111,9 @@ public abstract class AbstractHttpServerHandleInterceptor implements AroundInter
             }
 
             final HttpServerRequest request = (HttpServerRequest) args[0];
+            final HttpServerResponse response = (HttpServerResponse) args[0];
             this.servletRequestListener.initialized(request, ReactorNettyConstants.REACTOR_NETTY_INTERNAL, this.methodDescriptor);
+            this.servletResponseListener.initialized(response, ReactorNettyConstants.REACTOR_NETTY_INTERNAL, this.methodDescriptor); //must after request listener due to trace block begin
 
             // Set end-point
             final Trace trace = this.traceContext.currentTraceObject();
@@ -123,11 +128,7 @@ public abstract class AbstractHttpServerHandleInterceptor implements AroundInter
                 final AsyncContext asyncContext = recorder.recordNextAsyncContext(asyncStateSupport);
                 ((AsyncContextAccessor) args[0])._$PINPOINT$_setAsyncContext(asyncContext);
                 if (isDebug) {
-                    if(enableAsyncEndPoint) {
-                        logger.debug("Set closeable-AsyncContext {}", asyncContext);
-                    } else {
-                        logger.debug("Set AsyncContext {}", asyncContext);
-                    }
+                    logger.debug("Set asyncContext to args[0]. asyncContext={}", asyncContext);
                 }
             }
         } catch (Throwable t) {
@@ -147,9 +148,11 @@ public abstract class AbstractHttpServerHandleInterceptor implements AroundInter
             if (Boolean.FALSE == isReceived(args)) {
                 return;
             }
+
             final HttpServerRequest request = (HttpServerRequest) args[0];
             final HttpServerResponse response = (HttpServerResponse) args[0];
             final int statusCode = getStatusCode(response);
+            this.servletResponseListener.destroyed(response, throwable, statusCode); //must before request listener due to trace block ending
             this.servletRequestListener.destroyed(request, throwable, statusCode);
         } catch (Throwable t) {
             if (isInfo) {
@@ -164,8 +167,9 @@ public abstract class AbstractHttpServerHandleInterceptor implements AroundInter
 
     private int getStatusCode(final HttpServerResponse response) {
         try {
-            if (response.status() != null) {
-                return response.status().code();
+            HttpResponseStatus status = response.status();
+            if (status != null) {
+                return status.code();
             }
         } catch (Exception ignored) {
         }

@@ -7,15 +7,12 @@
         </ng-container>
     </article>
     <div class="l-main-contents">
-        <div class="l-chart-option-area">
-            <p class="l-guide-text">{{guideMessage$ | async}}</p>
-            <pp-chart-layout-option-container></pp-chart-layout-option-container>
-        </div>
         <div class="l-chart-group-wrap" #chartGroupWrapper>
             <div class="l-chart-wrapper"><pp-inspector-chart-container [chartType]="chartType.APPLICATION_JVM_HEAP"></pp-inspector-chart-container></div>
             <div class="l-chart-wrapper"><pp-inspector-chart-container [chartType]="chartType.APPLICATION_JVM_NON_HEAP"></pp-inspector-chart-container></div>
             <div class="l-chart-wrapper"><pp-inspector-chart-container [chartType]="chartType.APPLICATION_JVM_CPU"></pp-inspector-chart-container></div>
             <div class="l-chart-wrapper"><pp-inspector-chart-container [chartType]="chartType.APPLICATION_SYSTEM_CPU"></pp-inspector-chart-container></div>
+            <div class="l-chart-wrapper"><pp-inspector-chart-container [chartType]="chartType.APPLICATION_APDEX_SCORE"></pp-inspector-chart-container></div>
             <div class="l-chart-wrapper"><pp-inspector-chart-container [chartType]="chartType.APPLICATION_TPS"></pp-inspector-chart-container></div>
             <div class="l-chart-wrapper"><pp-inspector-chart-container [chartType]="chartType.APPLICATION_ACTIVE_REQUEST"></pp-inspector-chart-container></div>
             <div class="l-chart-wrapper"><pp-inspector-chart-container [chartType]="chartType.APPLICATION_RESPONSE_TIME"></pp-inspector-chart-container></div>

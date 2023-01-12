@@ -16,12 +16,12 @@
 
 package com.navercorp.pinpoint.common.server.bo.stat.join;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * @author minwoo.jung
@@ -30,7 +30,7 @@ public class JoinTransactionBoTest {
 
     @Test
     public void joinTransactionBoListTest() {
-        List<JoinTransactionBo> joinTransactionBoList = new ArrayList<JoinTransactionBo>();
+        List<JoinTransactionBo> joinTransactionBoList = new ArrayList<>();
         JoinTransactionBo joinTransactionBo1 = new JoinTransactionBo("agent1", 5000, 150, 12, "agent1", 230, "agent1", 1496988667231L);
         JoinTransactionBo joinTransactionBo2 = new JoinTransactionBo("agent2", 5000, 110, 40, "agent2", 240, "agent2", 1496988667231L);
         JoinTransactionBo joinTransactionBo3 = new JoinTransactionBo("agent3", 5000, 120, 50, "agent3", 130, "agent3", 1496988667231L);
@@ -51,7 +51,7 @@ public class JoinTransactionBoTest {
 
     @Test
     public void joinTransactionBoList2Test() {
-        List<JoinTransactionBo> joinTransactionBoList = new ArrayList<JoinTransactionBo>();
+        List<JoinTransactionBo> joinTransactionBoList = new ArrayList<>();
         JoinTransactionBo joinTransactionBo = JoinTransactionBo.joinTransactionBoList(joinTransactionBoList, 1496988667231L);
         assertEquals(joinTransactionBo, JoinTransactionBo.EMPTY_JOIN_TRANSACTION_BO);
     }

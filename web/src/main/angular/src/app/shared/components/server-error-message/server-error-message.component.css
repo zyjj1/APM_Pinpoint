@@ -12,7 +12,9 @@
 }
 
 .l-message {
-    color: #ff8c00;
+    color: var(--status-fail);
+    font-size: 15px;
+    font-weight: bold;
     text-align: center;
 }
 

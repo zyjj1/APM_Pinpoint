@@ -27,8 +27,8 @@ import com.navercorp.pinpoint.rpc.packet.HandshakePropertyType;
 import com.navercorp.pinpoint.rpc.packet.RequestPacket;
 import com.navercorp.pinpoint.rpc.packet.SendPacket;
 import com.navercorp.pinpoint.rpc.server.PinpointServerAcceptor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -37,7 +37,7 @@ import java.util.Map;
 
 public final class PinpointRPCTestUtils {
     
-    private static final Logger logger = LoggerFactory.getLogger(PinpointRPCTestUtils.class);
+    private static final Logger logger = LogManager.getLogger(PinpointRPCTestUtils.class);
 
     private PinpointRPCTestUtils() {
     }
@@ -96,7 +96,7 @@ public final class PinpointRPCTestUtils {
     }
 
     public static Map<String, Object> getParams() {
-        Map<String, Object> properties = new HashMap<String, Object>();
+        Map<String, Object> properties = new HashMap<>();
         properties.put(HandshakePropertyType.AGENT_ID.getName(), "agent");
         properties.put(HandshakePropertyType.APPLICATION_NAME.getName(), "application");
         properties.put(HandshakePropertyType.HOSTNAME.getName(), "hostname");
@@ -110,8 +110,8 @@ public final class PinpointRPCTestUtils {
     }
 
     public static class EchoClientListener implements MessageListener {
-        private final List<SendPacket> sendPacketRepository = new ArrayList<SendPacket>();
-        private final List<RequestPacket> requestPacketRepository = new ArrayList<RequestPacket>();
+        private final List<SendPacket> sendPacketRepository = new ArrayList<>();
+        private final List<RequestPacket> requestPacketRepository = new ArrayList<>();
 
         @Override
         public void handleSend(SendPacket sendPacket, PinpointSocket pinpointSocket) {

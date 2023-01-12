@@ -21,7 +21,6 @@ import com.navercorp.pinpoint.common.profiler.util.TransactionId;
 import com.navercorp.pinpoint.common.server.bo.serializer.RowKeyEncoder;
 import com.navercorp.pinpoint.common.util.BytesUtils;
 import com.sematext.hbase.wd.AbstractRowKeyDistributor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
@@ -33,13 +32,11 @@ import java.util.Objects;
 @Component
 public class TraceRowKeyEncoderV2 implements RowKeyEncoder<TransactionId> {
 
-    public static final int AGENT_NAME_MAX_LEN = PinpointConstants.AGENT_NAME_MAX_LEN;
+    public static final int AGENT_ID_MAX_LEN = PinpointConstants.AGENT_ID_MAX_LEN;
     public static final int DISTRIBUTE_HASH_SIZE = 1;
 
     private final AbstractRowKeyDistributor rowKeyDistributor;
 
-
-    @Autowired
     public TraceRowKeyEncoderV2(@Qualifier("traceV2Distributor") AbstractRowKeyDistributor rowKeyDistributor) {
         this.rowKeyDistributor = Objects.requireNonNull(rowKeyDistributor, "rowKeyDistributor");
     }
@@ -47,7 +44,7 @@ public class TraceRowKeyEncoderV2 implements RowKeyEncoder<TransactionId> {
     public byte[] encodeRowKey(TransactionId transactionId) {
         Objects.requireNonNull(transactionId, "transactionId");
 
-        byte[] rowKey = BytesUtils.stringLongLongToBytes(transactionId.getAgentId(), AGENT_NAME_MAX_LEN, transactionId.getAgentStartTime(), transactionId.getTransactionSequence());
+        byte[] rowKey = BytesUtils.stringLongLongToBytes(transactionId.getAgentId(), AGENT_ID_MAX_LEN, transactionId.getAgentStartTime(), transactionId.getTransactionSequence());
         return wrapDistributedRowKey(rowKey);
     }
 

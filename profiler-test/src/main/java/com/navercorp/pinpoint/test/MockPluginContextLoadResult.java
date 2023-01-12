@@ -16,10 +16,8 @@
 
 package com.navercorp.pinpoint.test;
 
-import com.navercorp.pinpoint.bootstrap.plugin.ApplicationTypeDetector;
 import com.navercorp.pinpoint.bootstrap.plugin.ProfilerPlugin;
 import com.navercorp.pinpoint.bootstrap.plugin.jdbc.JdbcUrlParserV2;
-import com.navercorp.pinpoint.bootstrap.plugin.uri.UriExtractorProvider;
 import com.navercorp.pinpoint.common.trace.ServiceType;
 import com.navercorp.pinpoint.loader.plugins.profiler.ProfilerPluginLoader;
 import com.navercorp.pinpoint.profiler.plugin.PluginContextLoadResult;
@@ -29,7 +27,6 @@ import com.navercorp.pinpoint.profiler.plugin.ProfilerPluginContextLoader;
 
 import java.lang.instrument.ClassFileTransformer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -63,7 +60,7 @@ public class MockPluginContextLoadResult implements PluginContextLoadResult {
 
     @Override
     public List<ClassFileTransformer> getClassFileTransformer() {
-        List<ClassFileTransformer> classFileTransformerList = new ArrayList<ClassFileTransformer>();
+        List<ClassFileTransformer> classFileTransformerList = new ArrayList<>();
         PluginsSetupResult pluginsSetupResult = getPluginsSetupResult();
         for (PluginSetupResult pluginContext : pluginsSetupResult.getPluginSetupResults()) {
             List<ClassFileTransformer> classFileTransformer = pluginContext.getClassTransformerList();
@@ -74,11 +71,6 @@ public class MockPluginContextLoadResult implements PluginContextLoadResult {
     }
 
     @Override
-    public List<ApplicationTypeDetector> getApplicationTypeDetectorList() {
-        return Collections.emptyList();
-    }
-
-    @Override
     public ServiceType getApplicationType() {
         PluginsSetupResult pluginsSetupResult = getPluginsSetupResult();
         return pluginsSetupResult.getApplicationType();
@@ -86,7 +78,7 @@ public class MockPluginContextLoadResult implements PluginContextLoadResult {
 
     @Override
     public List<JdbcUrlParserV2> getJdbcUrlParserList() {
-        final List<JdbcUrlParserV2> result = new ArrayList<JdbcUrlParserV2>();
+        final List<JdbcUrlParserV2> result = new ArrayList<>();
         PluginsSetupResult pluginsSetupResult = getPluginsSetupResult();
         for (PluginSetupResult context : pluginsSetupResult.getPluginSetupResults()) {
             List<JdbcUrlParserV2> jdbcUrlParserList = context.getJdbcUrlParserList();
@@ -95,14 +87,4 @@ public class MockPluginContextLoadResult implements PluginContextLoadResult {
         return result;
     }
 
-    @Override
-    public List<UriExtractorProvider> getUriExtractorProviderList() {
-        final List<UriExtractorProvider> result = new ArrayList<UriExtractorProvider>();
-        PluginsSetupResult pluginsSetupResult = getPluginsSetupResult();
-        for (PluginSetupResult context : pluginsSetupResult.getPluginSetupResults()) {
-            List<UriExtractorProvider> uriExtractorProviderList = context.getUriExtractorProviderList();
-            result.addAll(uriExtractorProviderList);
-        }
-        return result;
-    }
 }

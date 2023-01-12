@@ -23,7 +23,7 @@ import java.lang.reflect.Member;
  */
 public final class Expectations {
 
-    private static final Object ANY_ANNOTATION_VALUE = new Object();
+    private static final AnyAnnotationValue ANY_ANNOTATION_VALUE = new AnyAnnotationValue();
 
     private Expectations() {
     }
@@ -113,6 +113,12 @@ public final class Expectations {
     public static ExpectedTrace event(String serviceType, String methodDescriptor, ExpectedAnnotation... annotations) {
         ExpectedTrace.Builder eventBuilder = ExpectedTrace.createEventBuilder(serviceType);
         eventBuilder.setMethodSignature(methodDescriptor);
+        eventBuilder.setAnnotations(annotations);
+        return eventBuilder.build();
+    }
+
+    public static ExpectedTrace event(String serviceType, ExpectedAnnotation... annotations) {
+        ExpectedTrace.Builder eventBuilder = ExpectedTrace.createEventBuilder(serviceType);
         eventBuilder.setAnnotations(annotations);
         return eventBuilder.build();
     }

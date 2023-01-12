@@ -16,9 +16,7 @@
 
 package com.navercorp.pinpoint.profiler.plugin;
 
-import com.navercorp.pinpoint.bootstrap.plugin.ApplicationTypeDetector;
 import com.navercorp.pinpoint.bootstrap.plugin.ProfilerPlugin;
-import com.navercorp.pinpoint.bootstrap.plugin.uri.UriExtractorProvider;
 import com.navercorp.pinpoint.common.trace.ServiceType;
 import java.util.Objects;
 import com.navercorp.pinpoint.loader.plugins.profiler.ProfilerPluginLoader;
@@ -46,25 +44,12 @@ public class DefaultPluginContextLoadResult implements PluginContextLoadResult {
     @Override
     public List<ClassFileTransformer> getClassFileTransformer() {
         // TODO Need plugin context level grouping
-        final List<ClassFileTransformer> transformerList = new ArrayList<ClassFileTransformer>();
+        final List<ClassFileTransformer> transformerList = new ArrayList<>();
         for (PluginSetupResult pluginContext : pluginsSetupResult.getPluginSetupResults()) {
             List<ClassFileTransformer> classTransformerList = pluginContext.getClassTransformerList();
             transformerList.addAll(classTransformerList);
         }
         return transformerList;
-    }
-
-    @Override
-    public List<ApplicationTypeDetector> getApplicationTypeDetectorList() {
-
-        final List<ApplicationTypeDetector> registeredDetectors = new ArrayList<ApplicationTypeDetector>();
-
-        for (PluginSetupResult context : pluginsSetupResult.getPluginSetupResults()) {
-            List<ApplicationTypeDetector> applicationTypeDetectors = context.getApplicationTypeDetectors();
-            registeredDetectors.addAll(applicationTypeDetectors);
-        }
-
-        return registeredDetectors;
     }
 
     @Override
@@ -74,7 +59,7 @@ public class DefaultPluginContextLoadResult implements PluginContextLoadResult {
 
     @Override
     public List<JdbcUrlParserV2> getJdbcUrlParserList() {
-        final List<JdbcUrlParserV2> result = new ArrayList<JdbcUrlParserV2>();
+        final List<JdbcUrlParserV2> result = new ArrayList<>();
 
         for (PluginSetupResult context : pluginsSetupResult.getPluginSetupResults()) {
             List<JdbcUrlParserV2> jdbcUrlParserList = context.getJdbcUrlParserList();
@@ -83,18 +68,5 @@ public class DefaultPluginContextLoadResult implements PluginContextLoadResult {
 
         return result;
     }
-
-    @Override
-    public List<UriExtractorProvider> getUriExtractorProviderList() {
-        final List<UriExtractorProvider> result = new ArrayList<UriExtractorProvider>();
-
-        for (PluginSetupResult context : pluginsSetupResult.getPluginSetupResults()) {
-            List<UriExtractorProvider> uriExtractorProviderList= context.getUriExtractorProviderList();
-            result.addAll(uriExtractorProviderList);
-        }
-
-        return result;
-    }
-
 
 }

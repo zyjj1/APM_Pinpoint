@@ -26,8 +26,8 @@ import com.navercorp.pinpoint.rpc.stream.ClientStreamChannel;
 import com.navercorp.pinpoint.rpc.stream.ClientStreamChannelEventHandler;
 import com.navercorp.pinpoint.rpc.stream.StreamException;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import java.net.SocketAddress;
 import java.util.List;
@@ -37,13 +37,13 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * @author Woonduk Kang(emeroad)
  */
 public class DefaultPinpointClient implements PinpointClient {
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
 
     private volatile PinpointClientHandler pinpointClientHandler;
 
     private volatile boolean closed;
 
-    private final List<PinpointClientReconnectEventListener> reconnectEventListeners = new CopyOnWriteArrayList<PinpointClientReconnectEventListener>();
+    private final List<PinpointClientReconnectEventListener> reconnectEventListeners = new CopyOnWriteArrayList<>();
 
      public DefaultPinpointClient(PinpointClientHandler pinpointClientHandler) {
         this.pinpointClientHandler = Objects.requireNonNull(pinpointClientHandler, "pinpointClientHandler");
@@ -102,7 +102,7 @@ public class DefaultPinpointClient implements PinpointClient {
     }
 
     @Override
-    public Future sendAsync(byte[] bytes) {
+    public Future<?> sendAsync(byte[] bytes) {
         ensureOpen();
         return pinpointClientHandler.sendAsync(bytes);
     }
@@ -137,6 +137,14 @@ public class DefaultPinpointClient implements PinpointClient {
     }
 
     @Override
+    public ClientStreamChannel openStreamAndAwait(byte[] payload, ClientStreamChannelEventHandler streamChannelEventHandler, long timeout) throws StreamException {
+        // StreamChannel must be changed into interface in order to throw the StreamChannel that returns failure.
+        // fow now throw just exception
+        ensureOpen();
+        return pinpointClientHandler.openStreamAndAwait(payload, streamChannelEventHandler, timeout);
+    }
+
+    @Override
     public SocketAddress getRemoteAddress() {
         return pinpointClientHandler.getRemoteAddress();
     }
@@ -152,7 +160,7 @@ public class DefaultPinpointClient implements PinpointClient {
     }
 
     private Future<ResponseMessage> returnFailureFuture() {
-        DefaultFuture<ResponseMessage> future = new DefaultFuture<ResponseMessage>();
+        DefaultFuture<ResponseMessage> future = new DefaultFuture<>();
         future.setFailure(new PinpointSocketException("pinpointClientHandler is null"));
         return future;
     }

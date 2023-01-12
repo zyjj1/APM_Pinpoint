@@ -23,10 +23,9 @@ import com.navercorp.pinpoint.web.applicationmap.appender.histogram.DefaultNodeH
 import com.navercorp.pinpoint.web.applicationmap.appender.histogram.NodeHistogramFactory;
 import com.navercorp.pinpoint.web.applicationmap.appender.histogram.datasource.MapResponseNodeHistogramDataSource;
 import com.navercorp.pinpoint.web.applicationmap.appender.histogram.datasource.WasNodeHistogramDataSource;
-import com.navercorp.pinpoint.web.applicationmap.appender.server.DefaultServerInstanceListFactory;
-import com.navercorp.pinpoint.web.applicationmap.appender.server.StatisticsServerInstanceListFactory;
-import com.navercorp.pinpoint.web.applicationmap.appender.server.datasource.AgentInfoServerInstanceListDataSource;
-import com.navercorp.pinpoint.web.applicationmap.appender.server.datasource.ServerInstanceListDataSource;
+import com.navercorp.pinpoint.web.applicationmap.appender.server.DefaultServerGroupListFactory;
+import com.navercorp.pinpoint.web.applicationmap.appender.server.StatisticsServerGroupListFactory;
+import com.navercorp.pinpoint.web.applicationmap.appender.server.datasource.ServerGroupListDataSource;
 import com.navercorp.pinpoint.web.applicationmap.rawdata.LinkDataDuplexMap;
 import com.navercorp.pinpoint.web.dao.MapResponseDao;
 import com.navercorp.pinpoint.web.security.ServerMapDataFilter;
@@ -36,8 +35,8 @@ import com.navercorp.pinpoint.web.service.map.LinkSelectorFactory;
 import com.navercorp.pinpoint.web.service.map.LinkSelectorType;
 import com.navercorp.pinpoint.web.service.map.processor.WasOnlyProcessor;
 import com.navercorp.pinpoint.web.vo.SearchOption;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StopWatch;
@@ -54,11 +53,9 @@ import java.util.Optional;
  */
 @Service
 public class MapServiceImpl implements MapService {
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
 
     private final LinkSelectorFactory linkSelectorFactory;
-
-    private final AgentInfoService agentInfoService;
 
     private final MapResponseDao mapResponseDao;
 
@@ -68,18 +65,23 @@ public class MapServiceImpl implements MapService {
 
     private final LinkDataLimiter linkDataLimiter;
 
+    private final ServerInstanceDatasourceService serverInstanceDatasourceService;
+
     @Value("${web.servermap.build.timeout:600000}")
     private long buildTimeoutMillis;
 
-    public MapServiceImpl(LinkSelectorFactory linkSelectorFactory, AgentInfoService agentInfoService,
+    public MapServiceImpl(LinkSelectorFactory linkSelectorFactory,
                           MapResponseDao mapResponseDao,
-                          Optional<ServerMapDataFilter> serverMapDataFilter, ApplicationMapBuilderFactory applicationMapBuilderFactory, LinkDataLimiter linkDataLimiter) {
+                          Optional<ServerMapDataFilter> serverMapDataFilter,
+                          ApplicationMapBuilderFactory applicationMapBuilderFactory,
+                          LinkDataLimiter linkDataLimiter,
+                          ServerInstanceDatasourceService serverInstanceDatasourceService) {
         this.linkSelectorFactory = Objects.requireNonNull(linkSelectorFactory, "linkSelectorFactory");
-        this.agentInfoService = Objects.requireNonNull(agentInfoService, "agentInfoService");
         this.mapResponseDao = Objects.requireNonNull(mapResponseDao, "mapResponseDao");
         this.serverMapDataFilter = Objects.requireNonNull(serverMapDataFilter, "serverMapDataFilter").orElse(null);
         this.applicationMapBuilderFactory = Objects.requireNonNull(applicationMapBuilderFactory, "applicationMapBuilderFactory");
         this.linkDataLimiter = linkDataLimiter;
+        this.serverInstanceDatasourceService = Objects.requireNonNull(serverInstanceDatasourceService, "serverInstanceDatasourceService");
     }
 
     /**
@@ -136,11 +138,11 @@ public class MapServiceImpl implements MapService {
         NodeHistogramFactory nodeHistogramFactory = new DefaultNodeHistogramFactory(wasNodeHistogramDataSource);
         builder.includeNodeHistogram(nodeHistogramFactory);
 
-        if (option.isUseStatisticsServerInstanceList()) {
-            builder.includeServerInfo(new StatisticsServerInstanceListFactory());
+        ServerGroupListDataSource serverGroupListDataSource = serverInstanceDatasourceService.getServerGroupListDataSource();
+        if (option.isUseStatisticsAgentState()) {
+            builder.includeServerInfo(new StatisticsServerGroupListFactory(serverGroupListDataSource));
         } else {
-            ServerInstanceListDataSource serverInstanceListDataSource = new AgentInfoServerInstanceListDataSource(agentInfoService);
-            builder.includeServerInfo(new DefaultServerInstanceListFactory(serverInstanceListDataSource));
+            builder.includeServerInfo(new DefaultServerGroupListFactory(serverGroupListDataSource));
         }
 
         return builder;

@@ -32,15 +32,15 @@ import com.navercorp.pinpoint.profiler.interceptor.factory.AnnotatedInterceptorF
 import com.navercorp.pinpoint.profiler.objectfactory.ObjectBinderFactory;
 import com.navercorp.pinpoint.profiler.util.JavaAssistUtils;
 import org.objectweb.asm.tree.MethodNode;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 /**
  * @author jaehong.kim
  */
 public class ASMMethod implements InstrumentMethod {
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
     private final boolean isDebug = logger.isDebugEnabled();
 
     private final EngineComponent engineComponent;
@@ -63,10 +63,8 @@ public class ASMMethod implements InstrumentMethod {
         final String[] parameterVariableNames = this.methodNode.getParameterNames();
         final int lineNumber = this.methodNode.getLineNumber();
 
-        final DefaultMethodDescriptor descriptor = new DefaultMethodDescriptor(declaringClass.getName(), methodNode.getName(), getParameterTypes(), parameterVariableNames);
-        descriptor.setLineNumber(lineNumber);
-
-        this.descriptor = descriptor;
+        this.descriptor = new DefaultMethodDescriptor(declaringClass.getName(), methodNode.getName(),
+                getParameterTypes(), parameterVariableNames, lineNumber);
     }
 
     @Override
@@ -120,9 +118,8 @@ public class ASMMethod implements InstrumentMethod {
 
     // for internal api
     int addInterceptorInternal(Class<? extends Interceptor> interceptorClass, Object[] constructorArgs, InterceptorScope interceptorScope, ExecutionPolicy executionPolicy) throws InstrumentException {
-        if (interceptorClass == null) {
-            throw new NullPointerException("interceptorClass");
-        }
+        Objects.requireNonNull(interceptorClass, "interceptorClass");
+
         final Interceptor interceptor = newInterceptor(interceptorClass, constructorArgs, interceptorScope, executionPolicy);
         return addInterceptor0(interceptor);
     }
@@ -151,9 +148,7 @@ public class ASMMethod implements InstrumentMethod {
     }
 
     private void addInterceptor0(Interceptor interceptor, int interceptorId) {
-        if (interceptor == null) {
-            throw new NullPointerException("interceptor");
-        }
+        Objects.requireNonNull(interceptor, "interceptor");
 
         final InterceptorDefinition interceptorDefinition = this.engineComponent.createInterceptorDefinition(interceptor.getClass());
         final Class<?> interceptorClass = interceptorDefinition.getInterceptorClass();
@@ -164,7 +159,7 @@ public class ASMMethod implements InstrumentMethod {
         }
 
         if (this.methodNode.isAbstract() || this.methodNode.isNative()) {
-            logger.warn("Skip adding interceptor. 'abstract or native method' class={}, interceptor={}", this.declaringClass.getName(), interceptorClass.getName());
+            logger.info("Skip adding interceptor. 'abstract or native method' class={}, interceptor={}", this.declaringClass.getName(), interceptorClass.getName());
             return;
         }
 

@@ -17,10 +17,10 @@ package com.navercorp.pinpoint.batch.common;
 
 import com.navercorp.pinpoint.common.server.config.AnnotationVisitor;
 import com.navercorp.pinpoint.common.server.config.LoggingEvent;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import java.util.Arrays;
@@ -29,10 +29,10 @@ import java.util.List;
 /**
  * @author minwoo.jung<minwoo.jung@navercorp.com>
  */
-@Configuration
+@Component
 public class BatchConfiguration {
 
-    private final Logger logger = LoggerFactory.getLogger(BatchConfiguration.class);
+    private final Logger logger = LogManager.getLogger(BatchConfiguration.class);
 
     @Value("${alarm.mail.server.url}")
     private String emailServerUrl;
@@ -46,15 +46,14 @@ public class BatchConfiguration {
     @Value("${webhook.enable}")
     private boolean webhookEnable;
     
-    @Value("${webhook.receiver.url}")
-    private String webhookReceiverUrl;
-    
     @Value("${batch.server.env}")
     private String batchEnv;
 
     @Value("${batch.flink.server}")
     private String[] flinkServerList = new String[0];
 
+    @Value("${batch.flink.rest.port:8081}")
+    private int flinkRestPort;
 
     @Value("${job.cleanup.inactive.agents:false}")
     private boolean enableCleanupInactiveAgents;
@@ -78,7 +77,7 @@ public class BatchConfiguration {
     public void setup() {
         beforeLog();
 
-        if (enableCleanupInactiveAgents == false) {
+        if (!enableCleanupInactiveAgents) {
             cleanupInactiveAgentsDurationDays = DEFAULT_CLEANUP_INACTIVE_AGENTS_DURATION_DAYS;
             cleanupInactiveAgentsCron = DISABLED_CLEANUP_INACTIVE_AGENTS_CRON;
         } else {
@@ -111,6 +110,10 @@ public class BatchConfiguration {
         return Arrays.asList(flinkServerList);
     }
 
+    public int getFlinkRestPort() {
+        return flinkRestPort;
+    }
+
     public String getEmailServerUrl() {
         return emailServerUrl;
     }
@@ -134,28 +137,24 @@ public class BatchConfiguration {
     public String getCleanupInactiveAgentsCron() {
         return cleanupInactiveAgentsCron;
     }
-    
-    public String getWebhookReceiverUrl() { return webhookReceiverUrl; }
-    
+
     public boolean isWebhookEnable() {
         return webhookEnable;
     }
-    
+
     @Override
     public String toString() {
-        final StringBuilder sb = new StringBuilder("BatchConfiguration{");
-        sb.append("emailServerUrl='").append(emailServerUrl).append('\'');
-        sb.append(", senderEmailAddress='").append(senderEmailAddress).append('\'');
-        sb.append(", enableWebhook='").append(webhookEnable).append('\'');
-        sb.append(", webhookReceiverUrl='").append(webhookReceiverUrl).append('\'');
-        sb.append(", pinpointUrl='").append(pinpointUrl).append('\'');
-        sb.append(", batchEnv='").append(batchEnv).append('\'');
-        sb.append(", flinkServerList=").append(Arrays.toString(flinkServerList));
-        sb.append(", enableCleanupInactiveAgents=").append(enableCleanupInactiveAgents);
-        sb.append(", cleanupInactiveAgentsDurationDays=").append(cleanupInactiveAgentsDurationDays);
-        sb.append(", cleanupInactiveAgentsCron='").append(cleanupInactiveAgentsCron).append('\'');
-        sb.append('}');
-        return sb.toString();
+        return "BatchConfiguration{" +
+                "emailServerUrl='" + emailServerUrl + '\'' +
+                ", senderEmailAddress='" + senderEmailAddress + '\'' +
+                ", pinpointUrl='" + pinpointUrl + '\'' +
+                ", webhookEnable=" + webhookEnable +
+                ", batchEnv='" + batchEnv + '\'' +
+                ", flinkServerList=" + Arrays.toString(flinkServerList) +
+                ", flinkRestPort=" + flinkRestPort +
+                ", enableCleanupInactiveAgents=" + enableCleanupInactiveAgents +
+                ", cleanupInactiveAgentsDurationDays=" + cleanupInactiveAgentsDurationDays +
+                ", cleanupInactiveAgentsCron='" + cleanupInactiveAgentsCron + '\'' +
+                '}';
     }
-
 }

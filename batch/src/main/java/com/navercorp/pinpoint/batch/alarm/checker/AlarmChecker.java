@@ -20,10 +20,10 @@ import com.navercorp.pinpoint.batch.alarm.collector.DataCollector;
 import com.navercorp.pinpoint.batch.alarm.vo.sender.payload.AlarmCheckerDetectedValue;
 import com.navercorp.pinpoint.batch.alarm.vo.sender.payload.CheckerDetectedValue;
 import com.navercorp.pinpoint.web.alarm.vo.Rule;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -34,7 +34,7 @@ import java.util.Objects;
  */
 public abstract class AlarmChecker<T> {
 
-    protected final Logger logger = LoggerFactory.getLogger(this.getClass());
+    protected final Logger logger = LogManager.getLogger(this.getClass());
 
     protected final Rule rule;
     protected final String unit;
@@ -85,7 +85,7 @@ public abstract class AlarmChecker<T> {
     }
     
     public List<String> getSmsMessage() {
-        List<String> messages = new LinkedList<>();
+        List<String> messages = new ArrayList<>();
         messages.add(String.format("[PINPOINT Alarm - %s] %s is %s%s (Threshold : %s%s)", rule.getApplicationId(), rule.getCheckerName(), getDetectedValue(), unit, rule.getThreshold(), unit));
         return messages;
     }

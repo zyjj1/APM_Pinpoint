@@ -15,6 +15,7 @@ import { IGridData } from './call-tree.component';
 import { CallTreeComponent } from './call-tree.component';
 import { MessagePopupContainerComponent } from 'app/core/components/message-popup/message-popup-container.component';
 import { SyntaxHighlightPopupContainerComponent } from 'app/core/components/syntax-highlight-popup/syntax-highlight-popup-container.component';
+import { isEmpty } from 'app/core/utils/util';
 
 @Component({
     selector: 'pp-call-tree-container',
@@ -52,8 +53,16 @@ export class CallTreeContainerComponent implements OnInit, OnDestroy {
             withLatestFrom(this.storeHelperService.getTransactionViewType(this.unsubscribe)),
             filter(([_, viewType]: [ISearchParam, string]) => viewType === 'callTree'),
             map(([params]) => params)
-        ).subscribe((params: ISearchParam) => {
-            this.transactionSearchInteractionService.setSearchResultCount(this.callTreeComponent.getQueryedRowCount(params));
+        ).subscribe(({type, query, resultIndex}: ISearchParam) => {
+            const resultRowList = this.callTreeComponent.getQueryedRowList({type, query});
+            const resultCount = resultRowList.length;
+
+            if (!isEmpty(resultRowList)) {
+                const targetRow = resultRowList[resultIndex];
+    
+                this.callTreeComponent.moveRow(targetRow);
+            }
+            this.transactionSearchInteractionService.setSearchResultCount(resultCount);
         });
 
         this.selectedRowId$ = this.messageQueueService.receiveMessage(this.unsubscribe, MESSAGE_TO.TRANSACTION_TIMELINE_SELECT_TRANSACTION);
@@ -100,11 +109,12 @@ export class CallTreeContainerComponent implements OnInit, OnDestroy {
         });
     }
 
-    onCellDoubleClicked(contents: string): void {
+    onCellDoubleClicked({type, contents}: {type: string, contents: string}): void {
         this.dynamicPopupService.openPopup({
             data: {
                 title: 'Contents',
-                contents
+                contents,
+                type
             },
             component: MessagePopupContainerComponent
         }, {

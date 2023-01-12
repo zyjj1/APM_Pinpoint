@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, HostBinding, ChangeDetectionStrategy, Cha
 import { Subject } from 'rxjs';
 import { filter } from 'rxjs/operators';
 
-import { Actions } from 'app/shared/store';
+import { Actions } from 'app/shared/store/reducers';
 import { WebAppSettingDataService, StoreHelperService, AnalyticsService, TRACKED_EVENT_LIST, MessageQueueService, MESSAGE_TO } from 'app/shared/services';
 import { ServerMapData } from 'app/core/components/server-map/class/server-map-data.class';
 
@@ -10,6 +10,7 @@ interface IAppData {
     applicationName: string;
     serviceType: string;
     agentList?: string[];
+    agentIdNameMap?: { [key: string]: string };
 }
 
 @Component({
@@ -54,8 +55,8 @@ export class SideBarTitleContainerComponent implements OnInit, OnDestroy {
     }
 
     private listenToEmitter(): void {
-        this.messageQueueService.receiveMessage(this.unsubscribe, MESSAGE_TO.SERVER_MAP_DATA_UPDATE).subscribe((data: ServerMapData) => {
-            this.serverMapData = data;
+        this.messageQueueService.receiveMessage(this.unsubscribe, MESSAGE_TO.SERVER_MAP_DATA_UPDATE).subscribe(({serverMapData}: {serverMapData: ServerMapData}) => {
+            this.serverMapData = serverMapData;
         });
 
         this.messageQueueService.receiveMessage(this.unsubscribe, MESSAGE_TO.SERVER_MAP_TARGET_SELECT).subscribe((target: ISelectedTarget) => {
@@ -108,19 +109,21 @@ export class SideBarTitleContainerComponent implements OnInit, OnDestroy {
         }
     }
 
-    private formatToAppData({ node, link }: { node?: any, link?: any }): IAppData {
+    private formatToAppData({node, link}: {node?: any, link?: any}): IAppData {
         if (this.isNode) {
             if (this.selectedTarget.isMerged) {
                 return {
                     applicationName: `[ ${this.selectedTarget.node.length} ] ${node.serviceType} GROUP`,
                     serviceType: node.serviceType,
-                    agentList: []
+                    agentList: [],
+                    agentIdNameMap: node.agentIdNameMap
                 };
             } else {
                 return {
                     applicationName: node.applicationName,
                     serviceType: node.serviceType,
-                    agentList: [SideBarTitleContainerComponent.AGENT_ALL].concat(node.agentIds.sort())
+                    agentList: [SideBarTitleContainerComponent.AGENT_ALL].concat(node.agentIds.sort()),
+                    agentIdNameMap: node.agentIdNameMap
                 };
             }
         } else {

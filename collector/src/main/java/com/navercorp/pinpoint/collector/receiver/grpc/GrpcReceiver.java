@@ -16,10 +16,13 @@
 
 package com.navercorp.pinpoint.collector.receiver.grpc;
 
+import com.navercorp.pinpoint.collector.grpc.config.GrpcSslConfiguration;
+import com.navercorp.pinpoint.collector.receiver.BindAddress;
 import com.navercorp.pinpoint.common.server.util.AddressFilter;
 import com.navercorp.pinpoint.common.util.Assert;
 import com.navercorp.pinpoint.common.util.CollectionUtils;
 import com.navercorp.pinpoint.grpc.channelz.ChannelzRegistry;
+import com.navercorp.pinpoint.grpc.security.SslServerConfig;
 import com.navercorp.pinpoint.grpc.server.MetadataServerTransportFilter;
 import com.navercorp.pinpoint.grpc.server.ServerFactory;
 import com.navercorp.pinpoint.grpc.server.ServerOption;
@@ -27,38 +30,41 @@ import com.navercorp.pinpoint.grpc.server.TransportMetadataFactory;
 import com.navercorp.pinpoint.grpc.server.TransportMetadataServerInterceptor;
 import io.grpc.BindableService;
 import io.grpc.Server;
+import io.grpc.ServerCallExecutorSupplier;
 import io.grpc.ServerInterceptor;
 import io.grpc.ServerServiceDefinition;
 import io.grpc.ServerTransportFilter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.BeanNameAware;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.NestedExceptionUtils;
 
+import javax.annotation.Nonnull;
 import java.io.Closeable;
 import java.net.BindException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author Taejin Koo
  */
 public class GrpcReceiver implements InitializingBean, DisposableBean, BeanNameAware {
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
 
     private String beanName;
     private boolean enable;
 
-    private String bindIp;
-    private int bindPort;
+    private BindAddress bindAddress;
 
     private ServerFactory serverFactory;
     private Executor executor;
+    private ServerCallExecutorSupplier serverCallExecutorSupplier;
 
     private List<Object> serviceList = new ArrayList<>();
 
@@ -68,6 +74,7 @@ public class GrpcReceiver implements InitializingBean, DisposableBean, BeanNameA
     private List<ServerTransportFilter> transportFilterList;
 
     private ServerOption serverOption;
+    private GrpcSslConfiguration grpcSslConfiguration;
 
     private Server server;
     private ChannelzRegistry channelzRegistry;
@@ -81,12 +88,18 @@ public class GrpcReceiver implements InitializingBean, DisposableBean, BeanNameA
         }
 
         Objects.requireNonNull(this.beanName, "beanName");
-        Objects.requireNonNull(this.bindIp, "bindIp");
+        Objects.requireNonNull(this.bindAddress, "bindAddress");
         Objects.requireNonNull(this.addressFilter, "addressFilter");
         Assert.isTrue(CollectionUtils.hasLength(this.serviceList), "serviceList must not be empty");
         Objects.requireNonNull(this.serverOption, "serverOption");
 
-        this.serverFactory = new ServerFactory(beanName, this.bindIp, this.bindPort, this.executor, serverOption);
+        if (grpcSslConfiguration != null) {
+            final SslServerConfig sslServerConfig = grpcSslConfiguration.toSslServerConfig();
+            this.serverFactory = new ServerFactory(beanName, this.bindAddress.getIp(), this.bindAddress.getPort(), this.executor, this.serverCallExecutorSupplier, serverOption, sslServerConfig);
+        } else {
+            this.serverFactory = new ServerFactory(beanName, this.bindAddress.getIp(), this.bindAddress.getPort(), this.executor, this.serverCallExecutorSupplier, serverOption);
+        }
+
         ServerTransportFilter permissionServerTransportFilter = new PermissionServerTransportFilter(this.beanName, addressFilter);
         this.serverFactory.addTransportFilter(permissionServerTransportFilter);
 
@@ -126,9 +139,9 @@ public class GrpcReceiver implements InitializingBean, DisposableBean, BeanNameA
         } catch (Throwable th) {
             final Throwable rootCause = NestedExceptionUtils.getRootCause(th);
             if (rootCause instanceof BindException) {
-                logger.error("Server bind failed. {} address:{}/{}", this.beanName, this.bindIp, this.bindPort, rootCause);
+                logger.error("Server bind failed. {} address:{}", this.beanName, this.bindAddress, rootCause);
             } else {
-                logger.error("Server start failed. {} address:{}/{}", this.beanName, this.bindIp, this.bindPort);
+                logger.error("Server start failed. {} address:{}", this.beanName, this.bindAddress);
             }
             throw th;
         }
@@ -147,15 +160,40 @@ public class GrpcReceiver implements InitializingBean, DisposableBean, BeanNameA
         }
     }
 
+    private void shutdownServer() {
+        if (server == null || server.isTerminated()) {
+            return;
+        }
+
+        final long maxWaitTime = serverOption.getGrpcMaxTermWaitTimeMillis();
+
+        server.shutdown();
+        if (awaitServerTermination(maxWaitTime)) {
+            return;
+        }
+
+        server.shutdownNow();
+        awaitServerTermination(1000);
+    }
+
+    private boolean awaitServerTermination(long maxWaitTimeMillis) {
+        try {
+            return server.awaitTermination(maxWaitTimeMillis, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            logger.warn("awaitServerTermination({}ms) was interrupted", maxWaitTimeMillis, e);
+            Thread.currentThread().interrupt();
+        }
+
+        return false;
+    }
+
     @Override
     public void destroy() throws Exception {
         if (logger.isInfoEnabled()) {
             logger.info("Destroy {} server {}", this.beanName, this.server);
         }
 
-        if (this.server != null) {
-            this.server.shutdown();
-        }
+        shutdownServer();
 
         for (Object bindableService : serviceList) {
             if (bindableService instanceof Closeable) {
@@ -176,7 +214,7 @@ public class GrpcReceiver implements InitializingBean, DisposableBean, BeanNameA
     }
 
     @Override
-    public void setBeanName(final String beanName) {
+    public void setBeanName(@Nonnull final String beanName) {
         this.beanName = beanName;
     }
 
@@ -184,12 +222,8 @@ public class GrpcReceiver implements InitializingBean, DisposableBean, BeanNameA
         this.enable = enable;
     }
 
-    public void setBindIp(String bindIp) {
-        this.bindIp = bindIp;
-    }
-
-    public void setBindPort(int bindPort) {
-        this.bindPort = bindPort;
+    public void setBindAddress(BindAddress bindAddress) {
+        this.bindAddress = Objects.requireNonNull(bindAddress, "bindAddress");
     }
 
     public void setAddressFilter(AddressFilter addressFilter) {
@@ -200,8 +234,16 @@ public class GrpcReceiver implements InitializingBean, DisposableBean, BeanNameA
         this.executor = executor;
     }
 
+    public void setServerCallExecutorSupplier(ServerCallExecutorSupplier serverCallExecutorSupplier) {
+        this.serverCallExecutorSupplier = serverCallExecutorSupplier;
+    }
+
     public void setServerOption(ServerOption serverOption) {
         this.serverOption = serverOption;
+    }
+
+    public void setGrpcSslConfiguration(GrpcSslConfiguration grpcSslConfiguration) {
+        this.grpcSslConfiguration = grpcSslConfiguration;
     }
 
     private static final Class<?>[] BINDABLESERVICE_TYPE = {BindableService.class, ServerServiceDefinition.class};

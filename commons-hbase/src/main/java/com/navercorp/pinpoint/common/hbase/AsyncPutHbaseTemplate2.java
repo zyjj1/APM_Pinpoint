@@ -30,6 +30,7 @@ import org.apache.hadoop.hbase.filter.CompareFilter;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * @author Taejin Koo
@@ -38,7 +39,7 @@ public class AsyncPutHbaseTemplate2 implements HbaseOperations2 {
     private final HbaseOperations2 delegate;
 
     public AsyncPutHbaseTemplate2(HbaseOperations2 delegate) {
-        this.delegate = delegate;
+        this.delegate = Objects.requireNonNull(delegate, "delegate");
     }
 
     @Override
@@ -164,7 +165,7 @@ public class AsyncPutHbaseTemplate2 implements HbaseOperations2 {
     /**
      * Atomically checks if a row/family/qualifier value matches the expected
      * value. If it does, it adds the put.  If the passed value is null, the check
-     * is for the lack of column (ie: non-existance)
+     * is for the lack of column (ie: non-existence)
      *
      * @param tableName  target table
      * @param rowName    to check

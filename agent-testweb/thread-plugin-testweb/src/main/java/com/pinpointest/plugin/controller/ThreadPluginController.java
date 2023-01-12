@@ -1,7 +1,7 @@
 package com.pinpointest.plugin.controller;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -17,13 +17,13 @@ import java.util.function.Supplier;
 
 @RestController
 public class ThreadPluginController {
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
 
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
 
     @GetMapping(value = "/thread-plugin/supplyAsync")
-    public String completableFutureSupplyAsync() throws InterruptedException, ExecutionException, TimeoutException {
-        Supplier<String> supplier =() -> threadPool();
+    public String completableFutureSupplyAsync() throws InterruptedException, ExecutionException {
+        Supplier<String> supplier = this::threadPool;
 
         CompletableFuture<String> future = CompletableFuture.supplyAsync(supplier, executorService);
 
@@ -33,8 +33,8 @@ public class ThreadPluginController {
     }
 
     @GetMapping(value = "/thread-plugin/complete")
-    public String completableFutureSupplyAsync2() throws InterruptedException, ExecutionException, TimeoutException {
-        CompletableFuture<String> future = new CompletableFuture();
+    public String completableFutureSupplyAsync2() throws InterruptedException, ExecutionException {
+        CompletableFuture<String> future = new CompletableFuture<>();
 
         executorService.execute(new Runnable() {
             @Override
@@ -55,7 +55,7 @@ public class ThreadPluginController {
 
 
     @Async
-    public CompletableFuture<String> springAsyncMethod() throws InterruptedException {
+    public CompletableFuture<String> springAsyncMethod() {
         CompletableFuture<String> future = new CompletableFuture<>();
 
         sleep(1000);
@@ -74,7 +74,7 @@ public class ThreadPluginController {
             }
         };
         CompletableFuture<Void> future = CompletableFuture.runAsync(runnable);
-        Void aVoid = future.get(2000, TimeUnit.MICROSECONDS);
+        future.get(2000, TimeUnit.MICROSECONDS);
 
         return "void";
     }
@@ -85,16 +85,17 @@ public class ThreadPluginController {
         return "test";
     }
 
-    private void sleep(long millis) throws InterruptedException {
+    private void sleep(long millis) {
         try {
             Thread.sleep(millis);
         } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             e.printStackTrace();
         }
     }
 
     @PreDestroy
-    private void shutdown() {
+    public void shutdown() {
         this.executorService.shutdown();
     }
 }

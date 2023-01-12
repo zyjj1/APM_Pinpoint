@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { IInspectorChartContainer } from './inspector-chart-container-factory';
 import { makeYData, makeXData, getMaxTickValue } from 'app/core/utils/chart-util';
 import { IInspectorChartData, InspectorChartDataService } from './inspector-chart-data.service';
+import { InspectorChartThemeService } from './inspector-chart-theme.service';
 
 export class AgentUnloadedCLassCountChartContainer implements IInspectorChartContainer {
     private apiUrl = 'getAgentStat/loadedClass/chart.pinpoint';
@@ -12,10 +13,11 @@ export class AgentUnloadedCLassCountChartContainer implements IInspectorChartCon
     title = 'Unloaded Class Count';
 
     constructor(
-        private inspectorChartDataService: InspectorChartDataService
+        private inspectorChartDataService: InspectorChartDataService,
+        private inspectorChartThemeService: InspectorChartThemeService,
     ) {}
 
-    getData(range: number[]): Observable<IInspectorChartData | AjaxException> {
+    getData(range: number[]): Observable<IInspectorChartData> {
         return this.inspectorChartDataService.getData(this.apiUrl, range);
     }
 
@@ -27,13 +29,15 @@ export class AgentUnloadedCLassCountChartContainer implements IInspectorChartCon
     }
 
     makeDataOption(): Data {
+        const alpha = this.inspectorChartThemeService.getAlpha(0.4);
+
         return {
             type: spline(),
             names: {
-                loadedClassCount: 'Unloaded Class Count'
+                unloadedClassCount: 'Unloaded Class Count'
             },
             colors: {
-                loadedClassCount: 'rgb(31, 119, 180, 0.4)'
+                unloadedClassCount: `rgba(31, 119, 180, ${alpha})`
             }
         };
     }
@@ -66,6 +70,10 @@ export class AgentUnloadedCLassCountChartContainer implements IInspectorChartCon
                 default: [0, this.defaultYMax]
             }
         };
+    }
+
+    makeTooltipOptions(): {[key: string]: any} {
+        return {};
     }
 
     convertWithUnit(value: number): string {

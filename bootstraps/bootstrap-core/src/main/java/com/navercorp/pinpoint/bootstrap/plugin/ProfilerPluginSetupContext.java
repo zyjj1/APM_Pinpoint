@@ -16,7 +16,6 @@ package com.navercorp.pinpoint.bootstrap.plugin;
 
 import com.navercorp.pinpoint.bootstrap.config.ProfilerConfig;
 import com.navercorp.pinpoint.bootstrap.plugin.jdbc.JdbcUrlParserV2;
-import com.navercorp.pinpoint.bootstrap.plugin.uri.UriExtractorProvider;
 import com.navercorp.pinpoint.common.trace.ServiceType;
 
 /**
@@ -35,16 +34,6 @@ public interface ProfilerPluginSetupContext {
      */
     ProfilerConfig getConfig();
 
-    /**
-     * Add a {@link ApplicationTypeDetector} to Pinpoint agent.
-     *
-     * @param detectors application type detectors to add
-     *
-     * @deprecated As of 1.9.0, {@code ApplicationTypeDetector} has been deprecated.
-     *             Use {@link #registerApplicationType(ServiceType)} instead.
-     */
-    @Deprecated
-    void addApplicationTypeDetector(ApplicationTypeDetector... detectors);
 
     /**
      * Returns the {@link ServiceType} configured by <tt>profiler.applicationservertype</tt>
@@ -75,7 +64,5 @@ public interface ProfilerPluginSetupContext {
     boolean registerApplicationType(ServiceType applicationType);
 
     void addJdbcUrlParser(JdbcUrlParserV2 jdbcUrlParserV2);
-
-    void addUriExtractor(UriExtractorProvider uriExtractorProvider);
 
 }

@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, OnChanges, Input, Output, EventEmitter, V
 import { Subject } from 'rxjs';
 import { takeUntil, filter } from 'rxjs/operators';
 
-import { WindowRefService } from 'app/shared/services';
+import { WebAppSettingDataService, WindowRefService } from 'app/shared/services';
 import { ScatterChart } from './class/scatter-chart.class';
 import { ScatterChartDataBlock } from './class/scatter-chart-data-block.class';
 import { ScatterChartInteractionService, IChangedViewTypeParam, IRangeParam, IResetParam, IChangedAgentParam } from './scatter-chart-interaction.service';
@@ -28,19 +28,32 @@ export class ScatterChartComponent implements OnInit, OnDestroy, OnChanges {
     @Input() i18nText: { [key: string]: string };
     @Input() timezone: string;
     @Input() dateFormat: string[];
+    @Input() enableServerSideScan: boolean;
     @Output() outTransactionCount: EventEmitter<object> = new EventEmitter();
     @Output() outSelectArea: EventEmitter<any> = new EventEmitter();
     @Output() outChangeRangeX: EventEmitter<any> = new EventEmitter();
-    private readonly BLOCK_MAX_SIZE = 500;
-    private unsubscribe: Subject<void> = new Subject();
+
+    private unsubscribe = new Subject<void>();
     private hasError = false;
+
+    private sampleScatter: boolean;
+
     dataLoaded = false;
     scatterChartInstance: ScatterChart = null;
+
     constructor(
         private windowRefService: WindowRefService,
-        private scatterChartInteractionService: ScatterChartInteractionService
+        private scatterChartInteractionService: ScatterChartInteractionService,
+        private webAppSettingDataService: WebAppSettingDataService
     ) {}
-    ngOnInit() {}
+
+    ngOnInit() {
+        this.webAppSettingDataService.getExperimentalConfiguration().subscribe(configuration => {
+            const sampleScatter = this.webAppSettingDataService.getExperimentalOption('scatterSampling');
+            this.sampleScatter = sampleScatter === null ? configuration.sampleScatter.value : sampleScatter;            
+        });
+    }
+
     ngOnChanges(changes: SimpleChanges) {
         if (this.mode && (this.fromX >= 0) && (this.toX >= 0) && (this.fromY >= 0) && (this.toY >= 0) && this.application && this.timezone && this.dateFormat) {
             if (this.scatterChartInstance === null) {
@@ -56,7 +69,9 @@ export class ScatterChartComponent implements OnInit, OnDestroy, OnChanges {
                     this.width,
                     this.height,
                     this.timezone,
-                    this.dateFormat
+                    this.dateFormat,
+                    this.enableServerSideScan,
+                    this.sampleScatter
                 );
                 this.addSubscribeForInstance();
                 this.addSubscribeForService();
@@ -64,17 +79,15 @@ export class ScatterChartComponent implements OnInit, OnDestroy, OnChanges {
             } else {
                 if (changes['timezone'] && changes['timezone'].currentValue) {
                     this.scatterChartInstance.setTimezone(this.timezone);
-                    this.scatterChartInstance.redraw();
                 }
                 if (changes['dateFormat'] && changes['dateFormat'].currentValue) {
                     this.scatterChartInstance.setDateFormat(this.dateFormat);
-                    this.scatterChartInstance.redraw();
                 }
             }
         }
     }
     private addToWindow(): void {
-        if (this.addWindow) {
+        if (this.addWindow && !this.enableServerSideScan) {
             if ('scatterChartInstance' in this.windowRefService.nativeWindow === false) {
                 this.windowRefService.nativeWindow['scatterChartInstance'] = {};
             }
@@ -106,8 +119,15 @@ export class ScatterChartComponent implements OnInit, OnDestroy, OnChanges {
             })
         ).subscribe((dataWrapper: {instanceKey: string, data: IScatterData}) => {
             const typeManager = this.scatterChartInstance.getTypeManager();
+            const virtualGridManager = this.scatterChartInstance.getVirtualGridManager();
+            const coordManager = this.scatterChartInstance.getCoordManager();
 
-            this.scatterChartInstance.addData(new ScatterChartDataBlock(dataWrapper.data, typeManager));
+            this.scatterChartInstance.addData(new ScatterChartDataBlock(
+                dataWrapper.data,
+                typeManager,
+                virtualGridManager,
+                coordManager
+            ));
             this.dataLoaded = true;
             this.hasError = false;
         });
@@ -161,7 +181,7 @@ export class ScatterChartComponent implements OnInit, OnDestroy, OnChanges {
         });
         this.scatterChartInteractionService.onError$.pipe(
             takeUntil(this.unsubscribe)
-        ).subscribe((error: IServerErrorFormat) => {
+        ).subscribe((error: IServerError) => {
             this.hasError = true;
             this.dataLoaded = true;
             this.scatterChartInstance.reset(this.application, this.agent, this.fromX, this.toX, this.mode);

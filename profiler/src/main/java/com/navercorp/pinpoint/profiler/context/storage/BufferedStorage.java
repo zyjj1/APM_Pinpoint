@@ -21,8 +21,8 @@ import com.navercorp.pinpoint.common.util.CollectionUtils;
 import com.navercorp.pinpoint.profiler.context.*;
 import com.navercorp.pinpoint.profiler.sender.DataSender;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,7 +32,7 @@ import java.util.List;
  * @author jaehong.kim
  */
 public class BufferedStorage implements Storage {
-    private static final Logger logger = LoggerFactory.getLogger(BufferedStorage.class);
+    private static final Logger logger = LogManager.getLogger(BufferedStorage.class);
     private static final boolean isDebug = logger.isDebugEnabled();
 
     private static final int DEFAULT_BUFFER_SIZE = 20;
@@ -41,11 +41,11 @@ public class BufferedStorage implements Storage {
 
     private final SpanChunkFactory spanChunkFactory;
     private List<SpanEvent> storage;
-    private final DataSender<Object> dataSender;
+    private final DataSender<SpanType> dataSender;
 
 
 
-    public BufferedStorage(SpanChunkFactory spanChunkFactory, DataSender<Object> dataSender, int bufferSize) {
+    public BufferedStorage(SpanChunkFactory spanChunkFactory, DataSender<SpanType> dataSender, int bufferSize) {
         this.spanChunkFactory = Objects.requireNonNull(spanChunkFactory, "spanChunkFactory");
         this.dataSender = Objects.requireNonNull(dataSender, "dataSender");
         this.bufferSize = bufferSize;
@@ -69,7 +69,7 @@ public class BufferedStorage implements Storage {
 
 
     private List<SpanEvent> allocateBuffer() {
-        return new ArrayList<SpanEvent>(this.bufferSize);
+        return new ArrayList<>(this.bufferSize);
     }
 
     private List<SpanEvent> getBuffer() {

@@ -27,8 +27,8 @@ import com.navercorp.pinpoint.profiler.util.ExtensionFilter;
 import com.navercorp.pinpoint.profiler.util.FileBinary;
 import com.navercorp.pinpoint.profiler.util.JarReader;
 import com.navercorp.pinpoint.profiler.util.JavaAssistUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -43,13 +43,13 @@ import java.util.concurrent.ConcurrentMap;
  * @author jaehong.kim
  */
 public class PlainClassLoaderHandler implements ClassInjector {
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
     private final boolean isDebug = logger.isDebugEnabled();
 
     private final JarReader pluginJarReader;
 
     // TODO remove static field
-    private static final ConcurrentMap<ClassLoader, ClassLoaderAttachment> classLoaderAttachment = new ConcurrentWeakHashMap<ClassLoader, ClassLoaderAttachment>();
+    private static final ConcurrentMap<ClassLoader, ClassLoaderAttachment> classLoaderAttachment = new ConcurrentWeakHashMap<>();
 
 
     private final PluginConfig pluginConfig;
@@ -199,7 +199,7 @@ public class PlainClassLoaderHandler implements ClassInjector {
 
     private void defineJarClass(ClassLoader classLoader, ClassLoaderAttachment attachment) {
         if (isDebug) {
-            logger.debug("define Jar:{}", pluginConfig.getPluginUrl());
+            logger.debug("define Jar:{}", pluginConfig.getPluginJarURLExternalForm());
         }
 
         List<FileBinary> fileBinaryList = readJar();
@@ -224,7 +224,7 @@ public class PlainClassLoaderHandler implements ClassInjector {
     }
 
     private Map<String, SimpleClassMetadata> parse(List<FileBinary> fileBinaryList) {
-        Map<String, SimpleClassMetadata> parseMap = new HashMap<String, SimpleClassMetadata>();
+        Map<String, SimpleClassMetadata> parseMap = new HashMap<>();
         for (FileBinary fileBinary : fileBinaryList) {
             SimpleClassMetadata classNode = parseClass(fileBinary);
             parseMap.put(classNode.getClassName(), classNode);
@@ -266,6 +266,9 @@ public class PlainClassLoaderHandler implements ClassInjector {
         for (String interfaceName : interfaceList) {
             if (!isSkipClass(interfaceName, classLoadingChecker)) {
                 SimpleClassMetadata interfaceClassBinary = classMetaMap.get(interfaceName);
+                if (interfaceClassBinary == null) {
+                    throw new PinpointException(interfaceName + " not found");
+                }
                 if (isDebug) {
                     logger.debug("interface dependency define interface:{} ori:{}", interfaceClassBinary.getClassName(), interfaceClassBinary.getClassName());
                 }
@@ -308,9 +311,9 @@ public class PlainClassLoaderHandler implements ClassInjector {
 
     private class ClassLoaderAttachment {
 
-        private final ConcurrentMap<String, PluginLock> pluginLock = new ConcurrentHashMap<String, PluginLock>();
+        private final ConcurrentMap<String, PluginLock> pluginLock = new ConcurrentHashMap<>();
 
-        private final ConcurrentMap<String, Class<?>> classCache = new ConcurrentHashMap<String, Class<?>>();
+        private final ConcurrentMap<String, Class<?>> classCache = new ConcurrentHashMap<>();
 
         public PluginLock getPluginLock(String jarFile) {
             final PluginLock exist = this.pluginLock.get(jarFile);

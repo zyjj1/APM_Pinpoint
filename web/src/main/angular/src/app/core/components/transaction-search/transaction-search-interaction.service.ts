@@ -3,7 +3,8 @@ import { Subject, Observable } from 'rxjs';
 
 export interface ISearchParam {
     type: string;
-    query: string | number;
+    query: string;
+    resultIndex: number;
 }
 
 @Injectable()

@@ -34,19 +34,25 @@ public interface CallStack<T> {
 
     int getMaxDepth();
 
+    int getMaxSequence();
+
+    T newInstance();
+
     Factory<T> getFactory();
+
+    void setOverflowListener(CallStackOverflowListener overflowListener);
 
     interface Factory<T> {
         Class<T> getType();
 
         T newInstance();
 
-        T dummyInstance();
+        T disableInstance();
 
-        boolean isDummy(T element);
+        boolean isDisable(T element);
 
         void markDepth(T element, int index);
 
-        void setSequence(T element, short sequence);
+        void setSequence(T element, int sequence);
     }
 }

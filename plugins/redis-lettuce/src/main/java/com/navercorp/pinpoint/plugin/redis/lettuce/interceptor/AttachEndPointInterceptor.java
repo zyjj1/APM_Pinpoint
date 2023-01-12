@@ -22,6 +22,9 @@ import com.navercorp.pinpoint.bootstrap.interceptor.AroundInterceptor;
 import com.navercorp.pinpoint.bootstrap.logging.PLogger;
 import com.navercorp.pinpoint.bootstrap.logging.PLoggerFactory;
 import com.navercorp.pinpoint.plugin.redis.lettuce.EndPointAccessor;
+import io.lettuce.core.cluster.StatefulRedisClusterConnectionImpl;
+
+import java.util.concurrent.CompletableFuture;
 
 /**
  * @author jaehong.kim
@@ -58,6 +61,11 @@ public class AttachEndPointInterceptor implements AroundInterceptor {
             }
 
             final String endPoint = ((EndPointAccessor) target)._$PINPOINT$_getEndPoint();
+            if (result instanceof CompletableFuture) {
+                StatefulRedisClusterConnectionImpl statefulRedisClusterConnection = (StatefulRedisClusterConnectionImpl) ((CompletableFuture) result).get();
+                ((EndPointAccessor) statefulRedisClusterConnection)._$PINPOINT$_setEndPoint(endPoint);
+                return;
+            }
             ((EndPointAccessor) result)._$PINPOINT$_setEndPoint(endPoint);
         } catch (Throwable t) {
             if (logger.isWarnEnabled()) {
@@ -68,16 +76,10 @@ public class AttachEndPointInterceptor implements AroundInterceptor {
 
     private boolean validate(final Object target, final Object result) {
         if (!(target instanceof EndPointAccessor)) {
-            if (isDebug) {
-                logger.debug("Invalid target object. Need field accessor={}, target={}", EndPointAccessor.class.getName(), target);
-            }
             return false;
         }
 
         if (!(result instanceof EndPointAccessor)) {
-            if (isDebug) {
-                logger.debug("Invalid result object. Need field accessor={}, result={}", EndPointAccessor.class.getName(), result);
-            }
             return false;
         }
         return true;

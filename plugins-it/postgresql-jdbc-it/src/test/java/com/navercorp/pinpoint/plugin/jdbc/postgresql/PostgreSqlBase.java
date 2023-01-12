@@ -17,18 +17,37 @@
 package com.navercorp.pinpoint.plugin.jdbc.postgresql;
 
 import com.navercorp.pinpoint.pluginit.jdbc.DriverManagerUtils;
+import com.navercorp.pinpoint.pluginit.jdbc.DriverProperties;
 import com.navercorp.pinpoint.pluginit.jdbc.JDBCDriverClass;
+import com.navercorp.pinpoint.pluginit.jdbc.testcontainers.DatabaseContainers;
+import com.navercorp.pinpoint.test.plugin.shared.SharedTestBeforeAllResult;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.junit.After;
 import org.junit.Before;
 
 import java.sql.Driver;
 import java.sql.DriverManager;
+import java.util.Properties;
 
 /**
  * @author Woonduk Kang(emeroad)
  */
 public abstract class PostgreSqlBase {
     protected abstract JDBCDriverClass getJDBCDriverClass();
+
+    private final Logger logger = LogManager.getLogger(getClass());
+
+    protected static DriverProperties driverProperties;
+
+    @SharedTestBeforeAllResult
+    public static void setBeforeAllResult(Properties beforeAllResult) {
+        driverProperties = DatabaseContainers.readDriverProperties(beforeAllResult);
+    }
+
+    public static DriverProperties getDriverProperties() {
+        return driverProperties;
+    }
 
     @Before
     public void registerDriver() throws Exception {

@@ -31,27 +31,24 @@ import com.navercorp.pinpoint.common.server.bo.codec.strategy.EncodingStrategy;
 import com.navercorp.pinpoint.common.server.bo.serializer.stat.ApplicationStatDecodingContext;
 import com.navercorp.pinpoint.common.server.bo.stat.join.JoinActiveTraceBo;
 import com.navercorp.pinpoint.common.server.bo.stat.join.JoinIntFieldBo;
-import com.navercorp.pinpoint.common.server.bo.stat.join.JoinStatBo;
 import com.navercorp.pinpoint.common.util.CollectionUtils;
-
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * @author minwoo.jung
  */
-@Component("joinActiveTraceCodec")
-public class ActiveTraceCodec implements ApplicationStatCodec {
+@Component
+public class ActiveTraceCodec implements ApplicationStatCodec<JoinActiveTraceBo> {
     private static final byte VERSION = 1;
 
     private final AgentStatDataPointCodec codec;
 
-    @Autowired
     public ActiveTraceCodec(AgentStatDataPointCodec codec) {
-        this.codec = codec;
+        this.codec = Objects.requireNonNull(codec, "codec");
     }
 
     @Override
@@ -60,20 +57,19 @@ public class ActiveTraceCodec implements ApplicationStatCodec {
     }
 
     @Override
-    public void encodeValues(Buffer valueBuffer, List<JoinStatBo> joinActiveTraceBoList) {
+    public void encodeValues(Buffer valueBuffer, List<JoinActiveTraceBo> joinActiveTraceBoList) {
         if (CollectionUtils.isEmpty(joinActiveTraceBoList)) {
             throw new IllegalArgumentException("JoinActiveTraceBoList must not be empty");
         }
 
         final int numValues = joinActiveTraceBoList.size();
         valueBuffer.putVInt(numValues);
-        List<Long> timestamps = new ArrayList<Long>(numValues);
+        List<Long> timestamps = new ArrayList<>(numValues);
         UnsignedShortEncodingStrategy.Analyzer.Builder versionAnalyzerBuilder = new UnsignedShortEncodingStrategy.Analyzer.Builder();
         UnsignedIntegerEncodingStrategy.Analyzer.Builder schemaTypeAnalyzerBuilder = new UnsignedIntegerEncodingStrategy.Analyzer.Builder();
         JoinIntFieldStrategyAnalyzer.Builder totalCountAnalyzerBuilder = new JoinIntFieldStrategyAnalyzer.Builder();
 
-        for (JoinStatBo joinStatBo : joinActiveTraceBoList) {
-            JoinActiveTraceBo joinActiveTraceBo = (JoinActiveTraceBo) joinStatBo;
+        for (JoinActiveTraceBo joinActiveTraceBo : joinActiveTraceBoList) {
             timestamps.add(joinActiveTraceBo.getTimestamp());
             versionAnalyzerBuilder.addValue(joinActiveTraceBo.getVersion());
             schemaTypeAnalyzerBuilder.addValue(joinActiveTraceBo.getHistogramSchemaType());
@@ -104,7 +100,7 @@ public class ActiveTraceCodec implements ApplicationStatCodec {
     }
 
     @Override
-    public List<JoinStatBo> decodeValues(Buffer valueBuffer, ApplicationStatDecodingContext decodingContext) {
+    public List<JoinActiveTraceBo> decodeValues(Buffer valueBuffer, ApplicationStatDecodingContext decodingContext) {
         final String id = decodingContext.getApplicationId();
         final long baseTimestamp = decodingContext.getBaseTimestamp();
         final long timestampDelta = decodingContext.getTimestampDelta();
@@ -123,7 +119,7 @@ public class ActiveTraceCodec implements ApplicationStatCodec {
         List<Integer> schemaTypeList = this.codec.decodeValues(valueBuffer, schemaTypeEncodingStrategy, numValues);
         List<JoinIntFieldBo> totalCountJoinIntValueList = this.codec.decodeValues(valueBuffer, totalCountJoinIntValueEncodingStrategy, numValues);
 
-        List<JoinStatBo> joinActiveTraceBoList = new ArrayList<JoinStatBo>();
+        List<JoinActiveTraceBo> joinActiveTraceBoList = new ArrayList<>();
         for (int i = 0; i < numValues; i++) {
             JoinActiveTraceBo joinActiveTraceBo = new JoinActiveTraceBo();
             joinActiveTraceBo.setId(id);

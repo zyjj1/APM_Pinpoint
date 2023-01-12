@@ -7,8 +7,8 @@
         <Property name="rolling-date-format">%d{yyyy-MM-dd}</Property>
         <Property name="backupsize">1GB</Property>
 
-        <Property name="console_message_pattern">%d{MM-dd HH:mm:ss.sss} [%15.15t] %clr{%-5level} %clr{%-40.40logger{1.}}{cyan}:%3L -- %msg%n</Property>
-        <Property name="file_message_pattern">%d{MM-dd HH:mm:ss.sss} [%15.15t] %-5level %-40.40logger{1.}:%3L -- %msg%n</Property>
+        <Property name="console_message_pattern">%d{MM-dd HH:mm:ss.sss} [%15.15t] %clr{%-5level} %clr{%-40.40logger{1.}}{cyan}:%3L -- %msg{nolookups}%n</Property>
+        <Property name="file_message_pattern">%d{MM-dd HH:mm:ss.sss} [%15.15t] %-5level %-40.40logger{1.}:%3L -- %msg{nolookups}%n</Property>
     </Properties>
 
     <Appenders>
@@ -48,6 +48,12 @@
         <Logger name="com.navercorp.pinpoint.web.filter" level="DEBUG" additivity="false">
             <AppenderRef ref="console"/>
         </Logger>
+
+        <!-- zk cluster logger
+        <Logger name="com.navercorp.pinpoint.web.cluster" level="DEBUG" additivity="false">
+            <AppenderRef ref="console"/>
+        </Logger>
+        -->
 
         <Logger name="com.navercorp.pinpoint.web.controller" level="DEBUG" additivity="false">
             <AppenderRef ref="console"/>
@@ -94,7 +100,6 @@
         <Logger name="org.apache.hadoop" level="DEBUG" additivity="false">
             <AppenderRef ref="console"/>
         </Logger>
-
         <Root level="INFO">
             <AppenderRef ref="console"/>
             <AppenderRef ref="rollingFile"/>

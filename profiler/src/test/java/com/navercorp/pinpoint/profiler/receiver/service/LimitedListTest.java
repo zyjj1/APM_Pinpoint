@@ -18,10 +18,10 @@ package com.navercorp.pinpoint.profiler.receiver.service;
 
 import com.navercorp.pinpoint.profiler.context.active.ActiveTraceSnapshot;
 import com.navercorp.pinpoint.profiler.context.active.UnsampledActiveTraceSnapshot;
-import org.junit.Assert;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.lang.management.ThreadInfo;
 import java.util.ArrayList;
@@ -37,15 +37,15 @@ import static org.mockito.Mockito.mock;
  */
 public class LimitedListTest {
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
 
 
     @Test
     public void testMaxSize() {
-        Comparator<ThreadDump> threadDump =  Collections.reverseOrder(new ThreadDumpComparator());
+        Comparator<ThreadDump> threadDump = ThreadDumpComparator.INSTANCE.reversed();
 
         final int maxSize = 10;
-        Collection<ThreadDump> limitedList = new LimitedList<ThreadDump>(maxSize, threadDump);
+        Collection<ThreadDump> limitedList = new LimitedList<>(maxSize, threadDump);
 
         final int id = 100;
         final long startTime = System.currentTimeMillis();
@@ -64,16 +64,16 @@ public class LimitedListTest {
         }
 
         List<ThreadDump> sortedList = new ArrayList<>(limitedList);
-        Collections.sort(sortedList, threadDump);
+        sortedList.sort(threadDump);
         for (ThreadDump activeTraceSnapshot : sortedList) {
-            logger.debug("poll:{}", activeTraceSnapshot );
+            logger.debug("poll:{}", activeTraceSnapshot);
         }
 
         ThreadDump last = getLastObject(sortedList);
         logger.debug("last pool:{}", last);
         logger.debug("poll.startTime:{}", last.getActiveTraceSnapshot().getStartTime());
         logger.debug("startTime:{}", lastTime);
-        Assert.assertEquals(last.getActiveTraceSnapshot().getStartTime(), startTime);
+        Assertions.assertEquals(last.getActiveTraceSnapshot().getStartTime(), startTime);
 
     }
 
@@ -83,7 +83,7 @@ public class LimitedListTest {
     }
 
     private <T> int getLastIndex(List<T> testData) {
-        return testData.size() -1;
+        return testData.size() - 1;
     }
 
     private List<ThreadDump> newTestData(int localTransactionId, long startTime, long threadId, int size) {

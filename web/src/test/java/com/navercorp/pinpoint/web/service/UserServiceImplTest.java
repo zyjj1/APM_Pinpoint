@@ -2,24 +2,28 @@ package com.navercorp.pinpoint.web.service;
 
 import com.navercorp.pinpoint.common.util.CollectionUtils;
 import com.navercorp.pinpoint.web.dao.UserDao;
+import com.navercorp.pinpoint.web.dao.UserGroupDao;
 import com.navercorp.pinpoint.web.dao.memory.MemoryUserDao;
 import com.navercorp.pinpoint.web.util.UserInfoDecoder;
 import com.navercorp.pinpoint.web.util.UserInfoEncoder;
 import com.navercorp.pinpoint.web.vo.User;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class UserServiceImplTest {
 
     private final static String DECODED_PHONE_NUMBER = "0000000000";
@@ -36,14 +40,14 @@ public class UserServiceImplTest {
 
     private UserService userService;
 
-    @Before
+    @BeforeEach
     public void before() throws Exception {
         userService = new UserServiceImpl(userDao, Optional.of(userInfoDecoder), Optional.of(userInfoEncoder));
     }
 
     @Test
     public void insertUserTest() {
-        UserDao userDao = new MemoryUserDao();
+        UserDao userDao = new MemoryUserDao(mock(UserGroupDao.class));
         UserService userService = new UserServiceImpl(userDao, Optional.of(userInfoDecoder), Optional.of(userInfoEncoder));
 
         String userId = "userId01";
@@ -63,14 +67,14 @@ public class UserServiceImplTest {
 
     @Test
     public void insertUserList() {
-        UserDao userDao = new MemoryUserDao();
+        UserDao userDao = new MemoryUserDao(mock(UserGroupDao.class));
         UserService userService = new UserServiceImpl(userDao, Optional.of(userInfoDecoder), Optional.of(userInfoEncoder));
 
         List<User> userList = new ArrayList<>(5);
         userList.add(new User("1", "userId01", "name01", "departmentName01", 82, "01012341234", "name01@pinpoint.com"));
         userList.add(new User("2", "userId02", "name02", "departmentName01", 82, "01012341234", "name02@pinpoint.com"));
         userList.add(new User("3", "userId03", "name03", "departmentName01", 82, "01012341234", "name03@pinpoint.com"));
-        userList.add(new User("4","userId04", "name04", "departmentName01", 82, "01012341234", "name04@pinpoint.com"));
+        userList.add(new User("4", "userId04", "name04", "departmentName01", 82, "01012341234", "name04@pinpoint.com"));
         userList.add(new User("5", "userId05", "name05", "departmentName01", 82, "01012341234", "name05@pinpoint.com"));
 
         userService.insertUserList(userList);
@@ -82,14 +86,14 @@ public class UserServiceImplTest {
             assertTrue(user.getName().startsWith("name0"));
             assertTrue(user.getDepartment().startsWith("departmentName"));
             assertEquals(user.getPhoneCountryCode(), user.getPhoneCountryCode());
-            assertEquals(user.getPhoneNumber(),ENCODED_PHONE_NUMBER);
+            assertEquals(user.getPhoneNumber(), ENCODED_PHONE_NUMBER);
             assertEquals(user.getEmail(), ENCODED_EMAIL);
         }
     }
 
     @Test
     public void updateUserTest() {
-        UserDao userDao = new MemoryUserDao();
+        UserDao userDao = new MemoryUserDao(mock(UserGroupDao.class));
         UserService userService = new UserServiceImpl(userDao, Optional.of(userInfoDecoder), Optional.of(userInfoEncoder));
 
         String userId = "userId01";
@@ -115,7 +119,7 @@ public class UserServiceImplTest {
         userList.add(new User("1", "userId01", "name01", "departmentName01", 82, "01012341234", "name01@pinpoint.com"));
         userList.add(new User("2", "userId02", "name02", "departmentName01", 82, "01012341234", "name02@pinpoint.com"));
         userList.add(new User("3", "userId03", "name03", "departmentName01", 82, "01012341234", "name03@pinpoint.com"));
-        userList.add(new User("4","userId04", "name04", "departmentName01", 82, "01012341234", "name04@pinpoint.com"));
+        userList.add(new User("4", "userId04", "name04", "departmentName01", 82, "01012341234", "name04@pinpoint.com"));
         userList.add(new User("5", "userId05", "name05", "departmentName01", 82, "01012341234", "name05@pinpoint.com"));
 
         when(userDao.selectUser()).thenReturn(userList);
@@ -127,7 +131,7 @@ public class UserServiceImplTest {
             assertTrue(user.getName().startsWith("name0"));
             assertTrue(user.getDepartment().startsWith("departmentName"));
             assertEquals(user.getPhoneCountryCode(), user.getPhoneCountryCode());
-            assertEquals(user.getPhoneNumber(),DECODED_PHONE_NUMBER);
+            assertEquals(user.getPhoneNumber(), DECODED_PHONE_NUMBER);
             assertEquals(user.getEmail(), DECODED_EMAIL);
         }
     }
@@ -141,7 +145,7 @@ public class UserServiceImplTest {
         userList.add(new User("1", "userId01", name, "departmentName01", 82, "01012341234", "name01@pinpoint.com"));
         userList.add(new User("2", "userId02", name, "departmentName01", 82, "01012341234", "name02@pinpoint.com"));
         userList.add(new User("3", "userId03", name, "departmentName01", 82, "01012341234", "name03@pinpoint.com"));
-        userList.add(new User("4","userId04", name, "departmentName01", 82, "01012341234", "name04@pinpoint.com"));
+        userList.add(new User("4", "userId04", name, "departmentName01", 82, "01012341234", "name04@pinpoint.com"));
         userList.add(new User("5", "userId05", name, "departmentName01", 82, "01012341234", "name05@pinpoint.com"));
 
         when(userDao.selectUserByUserName(name)).thenReturn(userList);
@@ -183,7 +187,7 @@ public class UserServiceImplTest {
         userList.add(new User("1", "userId01", "name01", departmentName, 82, "01012341234", "name01@pinpoint.com"));
         userList.add(new User("2", "userId02", "name02", departmentName, 82, "01012341234", "name02@pinpoint.com"));
         userList.add(new User("3", "userId03", "name03", departmentName, 82, "01012341234", "name03@pinpoint.com"));
-        userList.add(new User("4","userId04", "name04", departmentName, 82, "01012341234", "name04@pinpoint.com"));
+        userList.add(new User("4", "userId04", "name04", departmentName, 82, "01012341234", "name04@pinpoint.com"));
         userList.add(new User("5", "userId05", "name05", departmentName, 82, "01012341234", "name05@pinpoint.com"));
 
         when(userDao.selectUserByDepartment(departmentName)).thenReturn(userList);
@@ -201,13 +205,13 @@ public class UserServiceImplTest {
 
     @Test
     public void searchUser() {
-        String condition  = "part";
+        String condition = "part";
 
         List<User> userList = new ArrayList<>(5);
         userList.add(new User("1", "userId01", "name01", "departmentName", 82, "01012341234", "name01@pinpoint.com"));
         userList.add(new User("2", "userId02", "name02", "departmentName", 82, "01012341234", "name02@pinpoint.com"));
         userList.add(new User("3", "userId03", "name03", "departmentName", 82, "01012341234", "name03@pinpoint.com"));
-        userList.add(new User("4","userId04", "name04", "departmentName", 82, "01012341234", "name04@pinpoint.com"));
+        userList.add(new User("4", "userId04", "name04", "departmentName", 82, "01012341234", "name04@pinpoint.com"));
         userList.add(new User("5", "userId05", "name05", "departmentName", 82, "01012341234", "name05@pinpoint.com"));
 
         when(userDao.searchUser(condition)).thenReturn(userList);
@@ -228,7 +232,7 @@ public class UserServiceImplTest {
         @Override
         public List<String> decodePhoneNumberList(List<String> phoneNumberList) {
             List<String> changedPhoneNumberList = new ArrayList<>(phoneNumberList.size());
-            for (int i = 0 ; i < phoneNumberList.size() ; i++) {
+            for (int i = 0; i < phoneNumberList.size(); i++) {
                 changedPhoneNumberList.add(DECODED_PHONE_NUMBER);
             }
 
@@ -269,7 +273,7 @@ public class UserServiceImplTest {
         @Override
         public List<String> decodeEmailList(List<String> emailList) {
             List<String> encodedEmailList = new ArrayList<>(emailList.size());
-            for (int i = 0 ; i < emailList.size() ; i++) {
+            for (int i = 0; i < emailList.size(); i++) {
                 encodedEmailList.add(DECODED_EMAIL);
             }
 

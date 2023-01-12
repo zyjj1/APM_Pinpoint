@@ -20,14 +20,15 @@ import com.navercorp.pinpoint.collector.handler.RequestResponseHandler;
 import com.navercorp.pinpoint.collector.service.ApiMetaDataService;
 import com.navercorp.pinpoint.common.server.bo.ApiMetaDataBo;
 import com.navercorp.pinpoint.common.server.bo.MethodTypeEnum;
+import com.navercorp.pinpoint.common.util.LineNumber;
 import com.navercorp.pinpoint.io.request.ServerRequest;
 import com.navercorp.pinpoint.io.request.ServerResponse;
 import com.navercorp.pinpoint.thrift.dto.TApiMetaData;
 import com.navercorp.pinpoint.thrift.dto.TResult;
 
 import org.apache.thrift.TBase;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.springframework.stereotype.Service;
 
 import java.util.Objects;
@@ -38,7 +39,7 @@ import java.util.Objects;
 @Service
 public class ThriftApiMetaDataHandler implements RequestResponseHandler<TBase<?, ?>, TBase<?, ?>> {
 
-    private final Logger logger = LoggerFactory.getLogger(getClass());
+    private final Logger logger = LogManager.getLogger(getClass());
 
     private final ApiMetaDataService apiMetaDataService;
 
@@ -63,15 +64,23 @@ public class ThriftApiMetaDataHandler implements RequestResponseHandler<TBase<?,
 
     private TResult handleApiMetaData(TApiMetaData apiMetaData) {
         try {
-            final ApiMetaDataBo apiMetaDataBo = new ApiMetaDataBo(apiMetaData.getAgentId(), apiMetaData.getAgentStartTime(), apiMetaData.getApiId());
-            apiMetaDataBo.setApiInfo(apiMetaData.getApiInfo());
+            final String agentId = apiMetaData.getAgentId();
+            final long agentStartTime = apiMetaData.getAgentStartTime();
+            final int apiId = apiMetaData.getApiId();
+
+            int lineNumber = LineNumber.NO_LINE_NUMBER;
             if (apiMetaData.isSetLine()) {
-                apiMetaDataBo.setLineNumber(apiMetaData.getLine());
+                lineNumber = apiMetaData.getLine();
             }
 
+            MethodTypeEnum methodType = MethodTypeEnum.DEFAULT;
             if (apiMetaData.isSetType()) {
-                apiMetaDataBo.setMethodTypeEnum(MethodTypeEnum.valueOf(apiMetaData.getType()));
+                methodType = MethodTypeEnum.valueOf(apiMetaData.getType());
             }
+
+            final String apiInfo = apiMetaData.getApiInfo();
+            final ApiMetaDataBo apiMetaDataBo = new ApiMetaDataBo(agentId, agentStartTime, apiId, lineNumber,
+                    methodType, apiInfo);
 
             this.apiMetaDataService.insert(apiMetaDataBo);
         } catch (Exception e) {

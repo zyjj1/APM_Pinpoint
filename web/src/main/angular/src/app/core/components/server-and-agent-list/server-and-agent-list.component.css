@@ -1,6 +1,8 @@
 :host {
     display: block;
-    height: 100%;
+    /* height: 100%; */
+    height: calc(100% - 48px);
+    overflow-y: auto;
     font-size: 13px;
 }
 .l-servers-list {
@@ -31,11 +33,11 @@
 }
 .l-name-wrapper:hover {
     cursor: pointer;
-    background-color: #eee;
-    color: var(--primary-color) !important;
+    background-color: var(--background-hover-default);
+    color: var(--primary) !important;
 }
 .l-name-wrapper.active {
-    color: var(--primary-color) !important;
+    color: var(--primary) !important;
 }
 .l-icon-alert > img {
     vertical-align: middle;

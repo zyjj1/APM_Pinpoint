@@ -5,6 +5,7 @@ import { IInspectorChartContainer } from './inspector-chart-container-factory';
 import { makeYData, makeXData, getMaxTickValue } from 'app/core/utils/chart-util';
 import { IInspectorChartData, InspectorChartDataService } from './inspector-chart-data.service';
 import { getAgentId } from './inspector-chart-util';
+import { InspectorChartThemeService } from './inspector-chart-theme.service';
 
 export class ApplicationOpenFileDescriptorChartContainer implements IInspectorChartContainer {
     private apiUrl = 'getApplicationStat/fileDescriptor/chart.pinpoint';
@@ -15,10 +16,11 @@ export class ApplicationOpenFileDescriptorChartContainer implements IInspectorCh
     title = 'Open File Descriptor';
 
     constructor(
-        private inspectorChartDataService: InspectorChartDataService
+        private inspectorChartDataService: InspectorChartDataService,
+        private inspectorChartThemeService: InspectorChartThemeService,
     ) {}
 
-    getData(range: number[]): Observable<IInspectorChartData | AjaxException> {
+    getData(range: number[]): Observable<IInspectorChartData> {
         return this.inspectorChartDataService.getData(this.apiUrl, range);
     }
 
@@ -43,9 +45,7 @@ export class ApplicationOpenFileDescriptorChartContainer implements IInspectorCh
                 max: 'Max',
             },
             colors: {
-                min: '#66B2FF',
-                avg: '#4C0099',
-                max: '#0000CC',
+                ...this.inspectorChartThemeService.getMinAvgMaxColors()
             }
         };
     }
@@ -82,6 +82,10 @@ export class ApplicationOpenFileDescriptorChartContainer implements IInspectorCh
                 default: [0, this.defaultYMax]
             }
         };
+    }
+
+    makeTooltipOptions(): {[key: string]: any} {
+        return {};
     }
 
     convertWithUnit(value: number): string {

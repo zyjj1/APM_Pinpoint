@@ -24,18 +24,18 @@ import com.navercorp.pinpoint.pluginit.utils.TestcontainersOption;
 import com.navercorp.pinpoint.test.plugin.Dependency;
 import com.navercorp.pinpoint.test.plugin.JvmVersion;
 import com.navercorp.pinpoint.test.plugin.PinpointAgent;
+import com.navercorp.pinpoint.test.plugin.PinpointConfig;
 import com.navercorp.pinpoint.test.plugin.PinpointPluginTestSuite;
+
+import com.navercorp.pinpoint.test.plugin.shared.SharedTestLifeCycleClass;
 import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.testcontainers.DockerClientFactory;
-import org.testcontainers.containers.JdbcDatabaseContainer;
-import org.testcontainers.containers.PostgreSQLContainer;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
-import java.util.Properties;
+import java.net.URL;
 
 /**
  * @author HyunGil Jeong
@@ -45,26 +45,25 @@ import java.util.Properties;
 @JvmVersion(8)
 //@Dependency({"org.postgresql:postgresql:[42.2.15.jre6]",
 //        JDBCTestConstants.VERSION, TestcontainersOption.TEST_CONTAINER, TestcontainersOption.POSTGRESQL})
+@PinpointConfig("pinpoint-postgresql.config")
 @Dependency({"org.postgresql:postgresql:[9.4.1208,)",
         JDBCTestConstants.VERSION, TestcontainersOption.TEST_CONTAINER, TestcontainersOption.POSTGRESQL})
+@SharedTestLifeCycleClass(PostgreSqlServer.class)
 public class PostgreSql_Post_9_4_1208_IT extends PostgreSqlBase {
 
-    private static final Logger logger = LoggerFactory.getLogger(PostgreSql_Post_9_4_1208_IT.class);
+    private final Logger logger = LogManager.getLogger(getClass());
     
     private static PostgreSqlItHelper HELPER;
     private static PostgreSqlJDBCDriverClass driverClass;
 
     private static PostgreSqlJDBCApi jdbcApi;
 
-    private static final JdbcDatabaseContainer container = PostgreSQLContainerFactory.newContainer(logger);
 
     @BeforeClass
     public static void beforeClass() throws Exception {
-        Assume.assumeTrue("Docker not enabled", DockerClientFactory.instance().isDockerAvailable());
+        invalidJarCheck();
 
-        container.start();
-        
-        DriverProperties driverProperties = new DriverProperties(container.getJdbcUrl(), container.getUsername(), container.getPassword(), new Properties());
+        DriverProperties driverProperties = getDriverProperties();
         driverClass = new PostgreSql_Post_9_4_1208_JDBCDriverClass();
         jdbcApi = new PostgreSqlJDBCApi(driverClass);
 
@@ -73,6 +72,12 @@ public class PostgreSql_Post_9_4_1208_IT extends PostgreSqlBase {
         HELPER = new PostgreSqlItHelper(driverProperties);
     }
 
+    private static void invalidJarCheck() {
+        ClassLoader classLoader = PostgreSql_Post_9_4_1208_IT.class.getClassLoader();
+        // invalid jar : postgresql-42.2.15.jre6
+        URL jar = classLoader.getResource("org.postgresql.Driver".replace('.', '/').concat(".class"));
+        Assume.assumeTrue("test skip : invalid jar ", jar != null);
+    }
 
     @Override
     protected JDBCDriverClass getJDBCDriverClass() {

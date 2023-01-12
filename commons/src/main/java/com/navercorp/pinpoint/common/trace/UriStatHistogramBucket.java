@@ -16,6 +16,8 @@
 
 package com.navercorp.pinpoint.common.trace;
 
+import java.util.EnumSet;
+
 /**
  * @author Taejin Koo
  */
@@ -34,6 +36,9 @@ public enum UriStatHistogramBucket {
     private final long to;
     private final int index;
     private final String description;
+
+    private static final EnumSet<UriStatHistogramBucket> BUCKETS = EnumSet.allOf(UriStatHistogramBucket.class);
+    private static final int SIZE = BUCKETS.size();
 
     UriStatHistogramBucket(long from, long to, int index) {
         this.from = from;
@@ -63,31 +68,39 @@ public enum UriStatHistogramBucket {
         return description;
     }
 
-    public static UriStatHistogramBucket getValue(long elapsed) {
-        for (UriStatHistogramBucket histogram : values()) {
-            if (elapsed < histogram.getTo()) {
-                return histogram;
+    public static Layout getLayout() {
+        return Layout.INSTANCE;
+    }
+
+    public static class Layout {
+        static final Layout INSTANCE = new Layout();
+
+        public UriStatHistogramBucket getBucket(long elapsed) {
+            for (UriStatHistogramBucket histogram : BUCKETS) {
+                if (elapsed < histogram.getTo()) {
+                    return histogram;
+                }
             }
+
+            return OVER_8000MS;
         }
 
-        return OVER_8000MS;
-    }
-
-    public static UriStatHistogramBucket getValueByIndex(int index) {
-        for (UriStatHistogramBucket histogram : values()) {
-            if (histogram.getIndex() == index) {
-                return histogram;
+        public UriStatHistogramBucket getBucketByIndex(int index) {
+            for (UriStatHistogramBucket histogram : BUCKETS) {
+                if (histogram.getIndex() == index) {
+                    return histogram;
+                }
             }
+
+            throw new IndexOutOfBoundsException("Can not find index. index:" + index);
         }
 
-        throw new IllegalArgumentException("Can not find index. index:" + index);
-    }
+        public int getBucketSize() {
+            return SIZE;
+        }
 
-    public static int[] createNewArrayValue() {
-        return new int[values().length];
-    }
-
-    public static byte getBucketVersion() {
-        return 0;
+        public byte getBucketVersion() {
+            return 0;
+        }
     }
 }

@@ -12,48 +12,24 @@
 
     <context:annotation-config/>
 
-    <context:component-scan
-            base-package="com.navercorp.pinpoint.collector.handler,
-                        com.navercorp.pinpoint.collector.manage,
-                        com.navercorp.pinpoint.collector.mapper,
-                        com.navercorp.pinpoint.collector.util,
-                        com.navercorp.pinpoint.collector.service,
-                        com.navercorp.pinpoint.common.server.bo.codec,
-                        com.navercorp.pinpoint.common.server.util,
-                        com.navercorp.pinpoint.common.server.bo"/>
-
-    <bean id="collectorPropertyConfigurer" class="org.springframework.context.support.PropertySourcesPlaceholderConfigurer">
-        <property name="locations">
-            <list>
-                <value>classpath:hbase-root.properties</value>
-                <value>classpath:pinpoint-collector-root.properties</value>
-                <value>classpath:pinpoint-collector-grpc-root.properties</value>
-                <value>classpath:jdbc-root.properties</value>
-                <!-- override configuration -->
-                <value>classpath:profiles/${pinpoint.profiles.active}/hbase.properties</value>
-                <value>classpath:profiles/${pinpoint.profiles.active}/pinpoint-collector.properties</value>
-                <value>classpath:profiles/${pinpoint.profiles.active}/pinpoint-collector-grpc.properties</value>
-                <value>classpath:profiles/${pinpoint.profiles.active}/jdbc.properties</value>
-                <!-- external property for override -->
-                <value>file:#{ systemProperties['pinpoint.collector.config.location'] ?: '-Dpinpoint.collector.config.location does not set' }</value>
-            </list>
-        </property>
-
-        <property name="fileEncoding" value="UTF-8"/>
-        <property name="ignoreUnresolvablePlaceholders" value="true"/>
-        <property name="ignoreResourceNotFound" value="true"/>
-    </bean>
-
-    <bean id="collectorConfiguration" class="com.navercorp.pinpoint.collector.config.CollectorConfiguration"/>
-
+    <context:component-scan base-package="com.navercorp.pinpoint.collector.config,
+                                          com.navercorp.pinpoint.collector.handler,
+                                          com.navercorp.pinpoint.collector.manage,
+                                          com.navercorp.pinpoint.collector.mapper,
+                                          com.navercorp.pinpoint.collector.util,
+                                          com.navercorp.pinpoint.collector.service,
+                                          com.navercorp.pinpoint.common.server.bo.codec,
+                                          com.navercorp.pinpoint.common.server.util,
+                                          com.navercorp.pinpoint.common.server.bo,
+                                          com.navercorp.pinpoint.common.server.dao.hbase.mapper" />
 
     <import resource="classpath:applicationContext-collector-profile.xml"/>
     <import resource="classpath:applicationContext-collector-grpc.xml"/>
     <import resource="classpath:applicationContext-collector-thrift.xml"/>
     <import resource="classpath:applicationContext-collector-hbase.xml"/>
     <import resource="classpath:applicationContext-collector-namespace.xml"/>
-    <import resource="classpath:applicationContext-collector-flink.xml"/>
 
+    <bean class="com.navercorp.pinpoint.common.server.cluster.zookeeper.config.ClusterConfigurationFactory"/>
 
     <bean id="metricRegistry" class="com.codahale.metrics.MetricRegistry">
     </bean>
@@ -72,7 +48,7 @@
     </bean>
 
     <bean id="clusterManager" class="com.navercorp.pinpoint.collector.manage.ClusterManager">
-        <constructor-arg ref="collectorConfiguration"/>
+        <constructor-arg ref="collectorClusterConfig"/>
         <constructor-arg ref="targetClusterPointRepository"/>
     </bean>
 
@@ -184,11 +160,13 @@
         <constructor-arg ref="targetClusterPointRepository"/>
         <constructor-arg ref="defaultRouteHandler"/>
         <constructor-arg ref="streamRouteHandler"/>
+        <constructor-arg ref="commandHeaderTBaseSerializerFactory"/>
+        <constructor-arg ref="commandHeaderTBaseDeserializerFactory"/>
     </bean>
 
-    <bean id="clusterService" class="com.navercorp.pinpoint.collector.cluster.zookeeper.ZookeeperClusterService">
-        <constructor-arg ref="collectorConfiguration"/>
-        <constructor-arg ref="clusterPointRouter"/>
+    <bean id="clusterService" class="com.navercorp.pinpoint.collector.cluster.ClusterServiceFactory">
+        <property name="clusterConfig" ref="collectorClusterConfig"/>
+        <property name="clusterPointRouter" ref="clusterPointRouter"/>
     </bean>
 
     <util:list id="channelStateChangeEventHandlers"
@@ -223,11 +201,10 @@
     <bean id="timeSlot" class="com.navercorp.pinpoint.common.server.util.DefaultTimeSlot">
     </bean>
 
-    <bean id="slf4jCommonLoggerFactory" class="com.navercorp.pinpoint.common.server.util.Slf4jCommonLoggerFactory">
-    </bean>
+    <bean id="commonLoggerFactory" class="com.navercorp.pinpoint.common.server.util.Log4j2CommonLoggerFactory"/>
 
     <bean id="typeLoaderService" class="com.navercorp.pinpoint.common.server.util.ServerTraceMetadataLoaderService">
-        <constructor-arg index="0" ref="slf4jCommonLoggerFactory"/>
+        <constructor-arg index="0" ref="commonLoggerFactory"/>
     </bean>
 
     <bean id="serviceTypeRegistryService"
@@ -236,7 +213,7 @@
     </bean>
 
     <bean id="sequenceSpanEventFilter" class="com.navercorp.pinpoint.common.server.bo.filter.SequenceSpanEventFilter">
-        <constructor-arg index="0" value="${collector.spanEvent.sequence.limit:10000}"/>
+        <constructor-arg index="0" value="${collector.spanEvent.sequence.limit:5000}"/>
     </bean>
 
 </beans>

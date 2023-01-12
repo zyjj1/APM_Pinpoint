@@ -16,19 +16,16 @@
 
 package com.navercorp.pinpoint.web.applicationmap.histogram;
 
-import com.navercorp.pinpoint.common.trace.ServiceType;
-import com.navercorp.pinpoint.web.applicationmap.histogram.ApplicationTimeHistogram;
-import com.navercorp.pinpoint.web.applicationmap.histogram.ApplicationTimeHistogramBuilder;
-import com.navercorp.pinpoint.web.view.ResponseTimeViewModel;
-import com.navercorp.pinpoint.web.vo.Application;
-import com.navercorp.pinpoint.web.vo.Range;
-import com.navercorp.pinpoint.web.vo.ResponseTime;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.navercorp.pinpoint.common.server.util.time.Range;
+import com.navercorp.pinpoint.common.trace.ServiceType;
+import com.navercorp.pinpoint.web.view.TimeViewModel;
+import com.navercorp.pinpoint.web.vo.Application;
+import com.navercorp.pinpoint.web.vo.ResponseTime;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -39,7 +36,7 @@ import java.util.List;
  */
 public class ApplicationTimeHistogramTest {
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
 
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -47,11 +44,11 @@ public class ApplicationTimeHistogramTest {
     public void testViewModel() throws IOException {
 
         Application app = new Application("test", ServiceType.STAND_ALONE);
-        ApplicationTimeHistogramBuilder builder = new ApplicationTimeHistogramBuilder(app, Range.newRange(0, 10*6000));
+        ApplicationTimeHistogramBuilder builder = new ApplicationTimeHistogramBuilder(app, Range.between(0, 10 * 6000));
         List<ResponseTime> responseHistogramList = createResponseTime(app);
         ApplicationTimeHistogram histogram = builder.build(responseHistogramList);
 
-        List<ResponseTimeViewModel> viewModel = histogram.createViewModel();
+        List<TimeViewModel> viewModel = histogram.createViewModel(TimeHistogramFormat.V1);
         logger.debug("{}", viewModel);
         ObjectWriter writer = mapper.writer();
         String s = writer.writeValueAsString(viewModel);
@@ -60,15 +57,34 @@ public class ApplicationTimeHistogramTest {
     }
 
     private List<ResponseTime> createResponseTime(Application app) {
-        List<ResponseTime> responseTimeList = new ArrayList<ResponseTime>();
+        List<ResponseTime> responseTimeList = new ArrayList<>();
 
         ResponseTime one = new ResponseTime(app.getName(), app.getServiceType(), 0);
         one.addResponseTime("test", (short) 1000, 1);
         responseTimeList.add(one);
 
-        ResponseTime two = new ResponseTime(app.getName(), app.getServiceType(), 1000*60);
-        two .addResponseTime("test", (short) 3000, 1);
+        ResponseTime two = new ResponseTime(app.getName(), app.getServiceType(), 1000 * 60);
+        two.addResponseTime("test", (short) 3000, 1);
         responseTimeList.add(two);
         return responseTimeList;
+    }
+
+    @Test
+    public void testLoadViewModel() {
+        Application app = new Application("test", ServiceType.STAND_ALONE);
+        final long timestamp = System.currentTimeMillis();
+        Range range = Range.between(timestamp, timestamp + 60000);
+
+        ApplicationTimeHistogramBuilder builder = new ApplicationTimeHistogramBuilder(app, range);
+
+        List<ResponseTime> responseHistogramList = new ArrayList<>();
+        ResponseTime responseTime = new ResponseTime(app.getName(), app.getServiceType(), timestamp);
+        responseTime.addResponseTime("test", (short) 1000, 1);
+        responseHistogramList.add(responseTime);
+
+        ApplicationTimeHistogram histogram = builder.build(responseHistogramList);
+
+        List<TimeViewModel> viewModelList = histogram.createViewModel(TimeHistogramFormat.V2);
+        logger.debug("{}", viewModelList);
     }
 }

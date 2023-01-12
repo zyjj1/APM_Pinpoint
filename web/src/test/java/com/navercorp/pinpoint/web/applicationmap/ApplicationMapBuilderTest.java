@@ -16,42 +16,45 @@
 
 package com.navercorp.pinpoint.web.applicationmap;
 
+import com.navercorp.pinpoint.common.server.bo.SimpleAgentKey;
 import com.navercorp.pinpoint.common.server.util.AgentLifeCycleState;
+import com.navercorp.pinpoint.common.server.util.time.Range;
 import com.navercorp.pinpoint.common.trace.ServiceType;
 import com.navercorp.pinpoint.web.applicationmap.appender.histogram.DefaultNodeHistogramFactory;
 import com.navercorp.pinpoint.web.applicationmap.appender.histogram.NodeHistogramFactory;
 import com.navercorp.pinpoint.web.applicationmap.appender.histogram.datasource.MapResponseNodeHistogramDataSource;
 import com.navercorp.pinpoint.web.applicationmap.appender.histogram.datasource.ResponseHistogramsNodeHistogramDataSource;
-import com.navercorp.pinpoint.web.applicationmap.appender.server.DefaultServerInstanceListFactory;
-import com.navercorp.pinpoint.web.applicationmap.appender.server.ServerInstanceListFactory;
-import com.navercorp.pinpoint.web.applicationmap.appender.server.datasource.AgentInfoServerInstanceListDataSource;
+import com.navercorp.pinpoint.web.applicationmap.appender.server.DefaultServerGroupListFactory;
+import com.navercorp.pinpoint.web.applicationmap.appender.server.ServerGroupListFactory;
+import com.navercorp.pinpoint.web.applicationmap.appender.server.datasource.AgentInfoServerGroupListDataSource;
 import com.navercorp.pinpoint.web.applicationmap.rawdata.LinkDataDuplexMap;
 import com.navercorp.pinpoint.web.dao.MapResponseDao;
+import com.navercorp.pinpoint.web.hyperlink.HyperLinkFactory;
 import com.navercorp.pinpoint.web.service.AgentInfoService;
-import com.navercorp.pinpoint.web.vo.AgentInfo;
-import com.navercorp.pinpoint.web.vo.AgentStatus;
 import com.navercorp.pinpoint.web.vo.Application;
-import com.navercorp.pinpoint.web.vo.Range;
 import com.navercorp.pinpoint.web.vo.ResponseHistograms;
 import com.navercorp.pinpoint.web.vo.ResponseTime;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import com.navercorp.pinpoint.web.vo.agent.AgentAndStatus;
+import com.navercorp.pinpoint.web.vo.agent.AgentInfo;
+import com.navercorp.pinpoint.web.vo.agent.AgentStatus;
+import com.navercorp.pinpoint.web.vo.agent.AgentStatusQuery;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
-import java.util.Collection;
+import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
@@ -71,11 +74,11 @@ public class ApplicationMapBuilderTest {
 
     private ResponseHistogramsNodeHistogramDataSource responseHistogramBuilderNodeHistogramDataSource;
 
-    private AgentInfoServerInstanceListDataSource agentInfoServerInstanceListDataSource;
+    private AgentInfoServerGroupListDataSource agentInfoServerGroupListDataSource;
 
     private long buildTimeoutMillis = 1000;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         MapResponseDao mapResponseDao = mock(MapResponseDao.class);
         mapResponseNodeHistogramDataSource = new MapResponseNodeHistogramDataSource(mapResponseDao);
@@ -84,12 +87,13 @@ public class ApplicationMapBuilderTest {
         responseHistogramBuilderNodeHistogramDataSource = new ResponseHistogramsNodeHistogramDataSource(responseHistograms);
 
         AgentInfoService agentInfoService = mock(AgentInfoService.class);
-        agentInfoServerInstanceListDataSource = new AgentInfoServerInstanceListDataSource(agentInfoService);
+        HyperLinkFactory hyperLinkFactory = mock(HyperLinkFactory.class);
+        agentInfoServerGroupListDataSource = new AgentInfoServerGroupListDataSource(agentInfoService, hyperLinkFactory);
 
-        Answer<List<ResponseTime>> responseTimeAnswer = new Answer<List<ResponseTime>>() {
+        Answer<List<ResponseTime>> responseTimeAnswer = new Answer<>() {
             final long timestamp = System.currentTimeMillis();
             @Override
-            public List<ResponseTime> answer(InvocationOnMock invocation) throws Throwable {
+            public List<ResponseTime> answer(InvocationOnMock invocation) {
                 Application application = invocation.getArgument(0);
                 String applicationName = application.getName();
                 ServiceType applicationServiceType = application.getServiceType();
@@ -102,16 +106,14 @@ public class ApplicationMapBuilderTest {
         when(mapResponseDao.selectResponseTime(any(Application.class), any(Range.class))).thenAnswer(responseTimeAnswer);
         when(responseHistograms.getResponseTimeList(any(Application.class))).thenAnswer(responseTimeAnswer);
 
-        when(agentInfoService.getAgentsByApplicationName(anyString(), anyLong())).thenAnswer(new Answer<Set<AgentInfo>>() {
+        when(agentInfoService.getAgentsByApplicationName(anyString(), anyLong())).thenAnswer(new Answer<Set<AgentAndStatus>>() {
             @Override
-            public Set<AgentInfo> answer(InvocationOnMock invocation) throws Throwable {
+            public Set<AgentAndStatus> answer(InvocationOnMock invocation) throws Throwable {
                 String applicationName = invocation.getArgument(0);
                 AgentInfo agentInfo = ApplicationMapBuilderTestHelper.createAgentInfoFromApplicationName(applicationName);
                 AgentStatus agentStatus = new AgentStatus(agentInfo.getAgentId(), AgentLifeCycleState.RUNNING, 0);
-                agentInfo.setStatus(agentStatus);
-                Set<AgentInfo> agentInfos = new HashSet<>();
-                agentInfos.add(agentInfo);
-                return agentInfos;
+
+                return Set.of(new AgentAndStatus(agentInfo, agentStatus));
             }
         });
         when(agentInfoService.getAgentsByApplicationNameWithoutStatus(anyString(), anyLong())).thenAnswer(new Answer<Set<AgentInfo>>() {
@@ -119,9 +121,7 @@ public class ApplicationMapBuilderTest {
             public Set<AgentInfo> answer(InvocationOnMock invocation) throws Throwable {
                 String applicationName = invocation.getArgument(0);
                 AgentInfo agentInfo = ApplicationMapBuilderTestHelper.createAgentInfoFromApplicationName(applicationName);
-                Set<AgentInfo> agentInfos = new HashSet<>();
-                agentInfos.add(agentInfo);
-                return agentInfos;
+                return Set.of(agentInfo);
             }
         });
         when(agentInfoService.getAgentStatus(anyString(), anyLong())).thenAnswer(new Answer<AgentStatus>()  {
@@ -132,20 +132,23 @@ public class ApplicationMapBuilderTest {
                 return agentStatus;
             }
         });
-        doAnswer(new Answer<Void>() {
+        doAnswer(new Answer<List<Optional<AgentStatus>>>() {
             @Override
-            public Void answer(InvocationOnMock invocation) throws Throwable {
-                Collection<AgentInfo> agentInfos = invocation.getArgument(0);
-                for (AgentInfo agentInfo : agentInfos) {
+            public List<Optional<AgentStatus>> answer(InvocationOnMock invocation) throws Throwable {
+
+                List<Optional<AgentStatus>> result = new ArrayList<>();
+
+                AgentStatusQuery query = invocation.getArgument(0);
+                for (SimpleAgentKey agentInfo : query.getAgentKeys()) {
                     AgentStatus agentStatus = new AgentStatus(agentInfo.getAgentId(), AgentLifeCycleState.RUNNING, System.currentTimeMillis());
-                    agentInfo.setStatus(agentStatus);
+                    result.add(Optional.of(agentStatus));
                 }
-                return null;
+                return result;
             }
-        }).when(agentInfoService).populateAgentStatuses(anyCollection(), anyLong());
+        }).when(agentInfoService).getAgentStatus(any());
     }
 
-    @After
+    @AfterEach
     public void cleanUp() {
         shutdownExecutor(serialExecutor);
         shutdownExecutor(parallelExecutor);
@@ -167,26 +170,26 @@ public class ApplicationMapBuilderTest {
 
     @Test
     public void testNoCallData() {
-        Range range = Range.newRange(0, 1000);
+        Range range = Range.between(0, 1000);
         Application application = ApplicationMapBuilderTestHelper.createApplicationFromDepth(0);
 
-        ServerInstanceListFactory serverInstanceListFactory = new DefaultServerInstanceListFactory(agentInfoServerInstanceListDataSource);
+        ServerGroupListFactory serverGroupListFactory = new DefaultServerGroupListFactory(agentInfoServerGroupListDataSource);
 
         ApplicationMapBuilder applicationMapBuilder = ApplicationMapBuilderTestHelper.createApplicationMapBuilder(range, serialExecutor);
         ApplicationMapBuilder applicationMapBuilder_parallelAppenders = ApplicationMapBuilderTestHelper.createApplicationMapBuilder(range, parallelExecutor);
         ApplicationMap applicationMap = applicationMapBuilder
-                .includeServerInfo(serverInstanceListFactory)
+                .includeServerInfo(serverGroupListFactory)
                 .build(application, buildTimeoutMillis);
         ApplicationMap applicationMap_parallelAppenders = applicationMapBuilder_parallelAppenders
-                .includeServerInfo(serverInstanceListFactory)
+                .includeServerInfo(serverGroupListFactory)
                 .build(application, buildTimeoutMillis);
 
-        Assert.assertEquals(1, applicationMap.getNodes().size());
-        Assert.assertEquals(1, applicationMap.getNodes().size());
-        Assert.assertEquals(1, applicationMap_parallelAppenders.getNodes().size());
-        Assert.assertEquals(0, applicationMap.getLinks().size());
-        Assert.assertEquals(0, applicationMap.getLinks().size());
-        Assert.assertEquals(0, applicationMap_parallelAppenders.getLinks().size());
+        Assertions.assertEquals(1, applicationMap.getNodes().size());
+        Assertions.assertEquals(1, applicationMap.getNodes().size());
+        Assertions.assertEquals(1, applicationMap_parallelAppenders.getNodes().size());
+        Assertions.assertEquals(0, applicationMap.getLinks().size());
+        Assertions.assertEquals(0, applicationMap.getLinks().size());
+        Assertions.assertEquals(0, applicationMap_parallelAppenders.getLinks().size());
 
         ApplicationMapVerifier verifier = new ApplicationMapVerifier(applicationMap);
         verifier.verify(applicationMap);
@@ -195,29 +198,29 @@ public class ApplicationMapBuilderTest {
 
     @Test
     public void testEmptyCallData() {
-        Range range = Range.newRange(0, 1000);
+        Range range = Range.between(0, 1000);
         LinkDataDuplexMap linkDataDuplexMap = new LinkDataDuplexMap();
 
         NodeHistogramFactory nodeHistogramFactory = new DefaultNodeHistogramFactory(mapResponseNodeHistogramDataSource);
-        ServerInstanceListFactory serverInstanceListFactory = new DefaultServerInstanceListFactory(agentInfoServerInstanceListDataSource);
+        ServerGroupListFactory serverGroupListFactory = new DefaultServerGroupListFactory(agentInfoServerGroupListDataSource);
 
         ApplicationMapBuilder applicationMapBuilder = ApplicationMapBuilderTestHelper.createApplicationMapBuilder(range, serialExecutor);
         ApplicationMapBuilder applicationMapBuilder_parallelAppenders = ApplicationMapBuilderTestHelper.createApplicationMapBuilder(range, parallelExecutor);
         ApplicationMap applicationMap = applicationMapBuilder
                 .includeNodeHistogram(nodeHistogramFactory)
-                .includeServerInfo(serverInstanceListFactory)
+                .includeServerInfo(serverGroupListFactory)
                 .build(linkDataDuplexMap, buildTimeoutMillis);
         ApplicationMap applicationMap_parallelAppenders = applicationMapBuilder_parallelAppenders
                 .includeNodeHistogram(nodeHistogramFactory)
-                .includeServerInfo(serverInstanceListFactory)
+                .includeServerInfo(serverGroupListFactory)
                 .build(linkDataDuplexMap, buildTimeoutMillis);
 
-        Assert.assertTrue(applicationMap.getNodes().isEmpty());
-        Assert.assertTrue(applicationMap.getNodes().isEmpty());
-        Assert.assertTrue(applicationMap_parallelAppenders.getNodes().isEmpty());
-        Assert.assertTrue(applicationMap.getLinks().isEmpty());
-        Assert.assertTrue(applicationMap.getLinks().isEmpty());
-        Assert.assertTrue(applicationMap_parallelAppenders.getLinks().isEmpty());
+        Assertions.assertTrue(applicationMap.getNodes().isEmpty());
+        Assertions.assertTrue(applicationMap.getNodes().isEmpty());
+        Assertions.assertTrue(applicationMap_parallelAppenders.getNodes().isEmpty());
+        Assertions.assertTrue(applicationMap.getLinks().isEmpty());
+        Assertions.assertTrue(applicationMap.getLinks().isEmpty());
+        Assertions.assertTrue(applicationMap_parallelAppenders.getLinks().isEmpty());
 
         ApplicationMapVerifier verifier = new ApplicationMapVerifier(applicationMap);
         verifier.verify(applicationMap);
@@ -292,13 +295,13 @@ public class ApplicationMapBuilderTest {
     }
 
     private void runTest(int callerDepth, int calleeDepth) {
-        Range range = Range.newRange(0, 1000);
+        Range range = Range.between(0, 1000);
         int expectedNumNodes = ApplicationMapBuilderTestHelper.getExpectedNumNodes(calleeDepth, callerDepth);
         int expectedNumLinks = ApplicationMapBuilderTestHelper.getExpectedNumLinks(calleeDepth, callerDepth);
 
         NodeHistogramFactory nodeHistogramFactory_MapResponseDao = new DefaultNodeHistogramFactory(mapResponseNodeHistogramDataSource);
         NodeHistogramFactory nodeHistogramFactory_ResponseHistogramBuilder = new DefaultNodeHistogramFactory(responseHistogramBuilderNodeHistogramDataSource);
-        ServerInstanceListFactory serverInstanceListFactory = new DefaultServerInstanceListFactory(agentInfoServerInstanceListDataSource);
+        ServerGroupListFactory serverGroupListFactory = new DefaultServerGroupListFactory(agentInfoServerGroupListDataSource);
 
         LinkDataDuplexMap linkDataDuplexMap = ApplicationMapBuilderTestHelper.createLinkDataDuplexMap(calleeDepth, callerDepth);
         ApplicationMapBuilder applicationMapBuilder = ApplicationMapBuilderTestHelper.createApplicationMapBuilder(range, serialExecutor);
@@ -307,16 +310,16 @@ public class ApplicationMapBuilderTest {
         // test builder using MapResponseDao
         ApplicationMap applicationMap_MapResponseDao = applicationMapBuilder
                 .includeNodeHistogram(nodeHistogramFactory_MapResponseDao)
-                .includeServerInfo(serverInstanceListFactory)
+                .includeServerInfo(serverGroupListFactory)
                 .build(linkDataDuplexMap, buildTimeoutMillis);
         ApplicationMap applicationMap_MapResponseDao_parallelAppenders = applicationMapBuilder_parallelAppenders
                 .includeNodeHistogram(nodeHistogramFactory_MapResponseDao)
-                .includeServerInfo(serverInstanceListFactory)
+                .includeServerInfo(serverGroupListFactory)
                 .build(linkDataDuplexMap, buildTimeoutMillis);
-        Assert.assertEquals(expectedNumNodes, applicationMap_MapResponseDao.getNodes().size());
-        Assert.assertEquals(expectedNumNodes, applicationMap_MapResponseDao_parallelAppenders.getNodes().size());
-        Assert.assertEquals(expectedNumLinks, applicationMap_MapResponseDao.getLinks().size());
-        Assert.assertEquals(expectedNumLinks, applicationMap_MapResponseDao_parallelAppenders.getLinks().size());
+        Assertions.assertEquals(expectedNumNodes, applicationMap_MapResponseDao.getNodes().size());
+        Assertions.assertEquals(expectedNumNodes, applicationMap_MapResponseDao_parallelAppenders.getNodes().size());
+        Assertions.assertEquals(expectedNumLinks, applicationMap_MapResponseDao.getLinks().size());
+        Assertions.assertEquals(expectedNumLinks, applicationMap_MapResponseDao_parallelAppenders.getLinks().size());
         ApplicationMapVerifier verifier_MapResponseDao = new ApplicationMapVerifier(applicationMap_MapResponseDao);
         verifier_MapResponseDao.verify(applicationMap_MapResponseDao);
         verifier_MapResponseDao.verify(applicationMap_MapResponseDao_parallelAppenders);
@@ -324,16 +327,16 @@ public class ApplicationMapBuilderTest {
         // test builder using ResponseHistogramBuilder
         ApplicationMap applicationMap_ResponseHistogramBuilder = applicationMapBuilder
                 .includeNodeHistogram(nodeHistogramFactory_ResponseHistogramBuilder)
-                .includeServerInfo(serverInstanceListFactory)
+                .includeServerInfo(serverGroupListFactory)
                 .build(linkDataDuplexMap, buildTimeoutMillis);
         ApplicationMap applicationMap_ResponseHistogramBuilder_parallelAppenders = applicationMapBuilder_parallelAppenders
                 .includeNodeHistogram(nodeHistogramFactory_ResponseHistogramBuilder)
-                .includeServerInfo(serverInstanceListFactory)
+                .includeServerInfo(serverGroupListFactory)
                 .build(linkDataDuplexMap, buildTimeoutMillis);
-        Assert.assertEquals(expectedNumNodes, applicationMap_ResponseHistogramBuilder.getNodes().size());
-        Assert.assertEquals(expectedNumNodes, applicationMap_ResponseHistogramBuilder_parallelAppenders.getNodes().size());
-        Assert.assertEquals(expectedNumLinks, applicationMap_ResponseHistogramBuilder.getLinks().size());
-        Assert.assertEquals(expectedNumLinks, applicationMap_ResponseHistogramBuilder_parallelAppenders.getLinks().size());
+        Assertions.assertEquals(expectedNumNodes, applicationMap_ResponseHistogramBuilder.getNodes().size());
+        Assertions.assertEquals(expectedNumNodes, applicationMap_ResponseHistogramBuilder_parallelAppenders.getNodes().size());
+        Assertions.assertEquals(expectedNumLinks, applicationMap_ResponseHistogramBuilder.getLinks().size());
+        Assertions.assertEquals(expectedNumLinks, applicationMap_ResponseHistogramBuilder_parallelAppenders.getLinks().size());
         ApplicationMapVerifier verifier_ResponseHistogramBuilder = new ApplicationMapVerifier(applicationMap_ResponseHistogramBuilder);
         verifier_ResponseHistogramBuilder.verify(applicationMap_ResponseHistogramBuilder);
         verifier_ResponseHistogramBuilder.verify(applicationMap_ResponseHistogramBuilder_parallelAppenders);

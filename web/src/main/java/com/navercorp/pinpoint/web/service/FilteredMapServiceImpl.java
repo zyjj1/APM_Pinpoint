@@ -27,10 +27,9 @@ import com.navercorp.pinpoint.web.applicationmap.ApplicationMapWithScatterData;
 import com.navercorp.pinpoint.web.applicationmap.appender.histogram.DefaultNodeHistogramFactory;
 import com.navercorp.pinpoint.web.applicationmap.appender.histogram.datasource.ResponseHistogramsNodeHistogramDataSource;
 import com.navercorp.pinpoint.web.applicationmap.appender.histogram.datasource.WasNodeHistogramDataSource;
-import com.navercorp.pinpoint.web.applicationmap.appender.server.DefaultServerInstanceListFactory;
-import com.navercorp.pinpoint.web.applicationmap.appender.server.StatisticsServerInstanceListFactory;
-import com.navercorp.pinpoint.web.applicationmap.appender.server.datasource.AgentInfoServerInstanceListDataSource;
-import com.navercorp.pinpoint.web.applicationmap.appender.server.datasource.ServerInstanceListDataSource;
+import com.navercorp.pinpoint.web.applicationmap.appender.server.DefaultServerGroupListFactory;
+import com.navercorp.pinpoint.web.applicationmap.appender.server.StatisticsServerGroupListFactory;
+import com.navercorp.pinpoint.web.applicationmap.appender.server.datasource.ServerGroupListDataSource;
 import com.navercorp.pinpoint.web.applicationmap.link.LinkType;
 import com.navercorp.pinpoint.web.dao.ApplicationTraceIndexDao;
 import com.navercorp.pinpoint.web.dao.TraceDao;
@@ -41,11 +40,10 @@ import com.navercorp.pinpoint.web.service.map.FilteredMap;
 import com.navercorp.pinpoint.web.service.map.FilteredMapBuilder;
 import com.navercorp.pinpoint.web.vo.Application;
 import com.navercorp.pinpoint.web.vo.LimitedScanResult;
-import com.navercorp.pinpoint.web.vo.Range;
+import com.navercorp.pinpoint.common.server.util.time.Range;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Qualifier;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StopWatch;
@@ -66,9 +64,7 @@ import java.util.Set;
 @Service
 public class FilteredMapServiceImpl implements FilteredMapService {
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
-
-    private final AgentInfoService agentInfoService;
+    private final Logger logger = LogManager.getLogger(this.getClass());
 
     private final TraceDao traceDao;
 
@@ -77,6 +73,8 @@ public class FilteredMapServiceImpl implements FilteredMapService {
     private final ServiceTypeRegistryService registry;
 
     private final ApplicationFactory applicationFactory;
+
+    private final ServerInstanceDatasourceService serverInstanceDatasourceService;
 
     private final ServerMapDataFilter serverMapDataFilter;
 
@@ -87,15 +85,18 @@ public class FilteredMapServiceImpl implements FilteredMapService {
     @Value("${web.servermap.build.timeout:600000}")
     private long buildTimeoutMillis;
 
-    public FilteredMapServiceImpl(AgentInfoService agentInfoService,
-                                  @Qualifier("hbaseTraceDaoFactory") TraceDao traceDao, ApplicationTraceIndexDao applicationTraceIndexDao,
-                                  ServiceTypeRegistryService registry, ApplicationFactory applicationFactory,
-                                  Optional<ServerMapDataFilter> serverMapDataFilter, ApplicationMapBuilderFactory applicationMapBuilderFactory) {
-        this.agentInfoService = Objects.requireNonNull(agentInfoService, "agentInfoService");
+    public FilteredMapServiceImpl(TraceDao traceDao,
+                                  ApplicationTraceIndexDao applicationTraceIndexDao,
+                                  ServiceTypeRegistryService registry,
+                                  ApplicationFactory applicationFactory,
+                                  ServerInstanceDatasourceService serverInstanceDatasourceService,
+                                  Optional<ServerMapDataFilter> serverMapDataFilter,
+                                  ApplicationMapBuilderFactory applicationMapBuilderFactory) {
         this.traceDao = Objects.requireNonNull(traceDao, "traceDao");
         this.applicationTraceIndexDao = Objects.requireNonNull(applicationTraceIndexDao, "applicationTraceIndexDao");
         this.registry = Objects.requireNonNull(registry, "registry");
         this.applicationFactory = Objects.requireNonNull(applicationFactory, "applicationFactory");
+        this.serverInstanceDatasourceService = Objects.requireNonNull(serverInstanceDatasourceService, "serverInstanceDatasourceService");
         this.serverMapDataFilter = Objects.requireNonNull(serverMapDataFilter, "serverMapDataFilter").orElse(null);
         this.applicationMapBuilderFactory = Objects.requireNonNull(applicationMapBuilderFactory, "applicationMapBuilderFactory");
     }
@@ -175,11 +176,11 @@ public class FilteredMapServiceImpl implements FilteredMapService {
         applicationMapBuilder.linkType(LinkType.DETAILED);
         final WasNodeHistogramDataSource wasNodeHistogramDataSource = new ResponseHistogramsNodeHistogramDataSource(filteredMap.getResponseHistograms());
         applicationMapBuilder.includeNodeHistogram(new DefaultNodeHistogramFactory(wasNodeHistogramDataSource));
-        if(option.isUseStatisticsServerInstanceList()) {
-            applicationMapBuilder.includeServerInfo(new StatisticsServerInstanceListFactory());
+        ServerGroupListDataSource serverGroupListDataSource = serverInstanceDatasourceService.getServerGroupListDataSource();;
+        if (option.isUseStatisticsAgentState()) {
+            applicationMapBuilder.includeServerInfo(new StatisticsServerGroupListFactory(serverGroupListDataSource));
         } else {
-            ServerInstanceListDataSource serverInstanceListDataSource = new AgentInfoServerInstanceListDataSource(agentInfoService);
-            applicationMapBuilder.includeServerInfo(new DefaultServerInstanceListFactory(serverInstanceListDataSource));
+            applicationMapBuilder.includeServerInfo(new DefaultServerGroupListFactory(serverGroupListDataSource));
         }
         ApplicationMap map = applicationMapBuilder.build(filteredMap.getLinkDataDuplexMap(), buildTimeoutMillis);
         if(serverMapDataFilter != null) {

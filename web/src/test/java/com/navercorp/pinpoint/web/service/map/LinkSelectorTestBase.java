@@ -17,6 +17,7 @@
 package com.navercorp.pinpoint.web.service.map;
 
 import com.google.common.collect.Sets;
+import com.navercorp.pinpoint.common.server.util.time.Range;
 import com.navercorp.pinpoint.common.trace.ServiceType;
 import com.navercorp.pinpoint.common.trace.ServiceTypeFactory;
 import com.navercorp.pinpoint.common.trace.ServiceTypeProperty;
@@ -28,11 +29,10 @@ import com.navercorp.pinpoint.web.dao.HostApplicationMapDao;
 import com.navercorp.pinpoint.web.service.LinkDataMapService;
 import com.navercorp.pinpoint.web.vo.Application;
 import com.navercorp.pinpoint.web.vo.LinkKey;
-import com.navercorp.pinpoint.web.vo.Range;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -63,7 +63,7 @@ public abstract class LinkSelectorTestBase {
 
     protected final ServiceType testRpcServiceType = ServiceTypeFactory.of(9000, "TEST_RPC_CLIENT", ServiceTypeProperty.RECORD_STATISTICS);
 
-    protected final Range range = Range.newRange(0, 100);
+    protected final Range range = Range.between(0, 100);
 
     protected LinkDataMapService linkDataMapService;
     protected HostApplicationMapDao hostApplicationMapDao;
@@ -71,14 +71,14 @@ public abstract class LinkSelectorTestBase {
 
     protected abstract LinkSelectorType getLinkSelectorType();
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         this.linkDataMapService = mock(LinkDataMapService.class);
         this.hostApplicationMapDao = mock(HostApplicationMapDao.class);
         this.linkSelectorFactory = new LinkSelectorFactory(linkDataMapService, applicationsMapCreatorFactory, hostApplicationMapDao);
     }
 
-    @After
+    @AfterEach
     public void cleanUp() {
         executor.shutdown();
         try {
@@ -96,7 +96,7 @@ public abstract class LinkSelectorTestBase {
     }
 
     @Test
-    public void testEmpty() throws Exception {
+    public void testEmpty() {
         Application APP_A = new Application("APP_A", ServiceType.TEST_STAND_ALONE);
         when(linkDataMapService.selectCallerLinkDataMap(any(Application.class), any(Range.class))).thenReturn(newEmptyLinkDataMap());
         when(linkDataMapService.selectCalleeLinkDataMap(any(Application.class), any(Range.class))).thenReturn(newEmptyLinkDataMap());
@@ -105,12 +105,12 @@ public abstract class LinkSelectorTestBase {
         LinkSelector linkSelector = linkSelectorFactory.createLinkSelector(getLinkSelectorType());
         LinkDataDuplexMap select = linkSelector.select(Collections.singletonList(APP_A), range, 1, 1);
 
-        Assert.assertEquals(select.size(), 0);
-        Assert.assertEquals(select.getTotalCount(), 0);
+        Assertions.assertEquals(select.size(), 0);
+        Assertions.assertEquals(select.getTotalCount(), 0);
     }
 
     @Test
-    public void testCaller() throws Exception {
+    public void testCaller() {
         // APP_A -> APP_B
         final Application APP_A = new Application("APP_A", ServiceType.TEST_STAND_ALONE);
         final Application APP_B = new Application("APP_B", ServiceType.TEST_STAND_ALONE);
@@ -128,17 +128,17 @@ public abstract class LinkSelectorTestBase {
         LinkSelector linkSelector = linkSelectorFactory.createLinkSelector(getLinkSelectorType());
         LinkDataDuplexMap linkData = linkSelector.select(Collections.singletonList(APP_A), range, 1, 1);
 
-        Assert.assertEquals(linkData.size(), 1);
-        Assert.assertEquals(linkData.getTotalCount(), callCount_A_B);
+        Assertions.assertEquals(linkData.size(), 1);
+        Assertions.assertEquals(linkData.getTotalCount(), callCount_A_B);
 
-        Assert.assertEquals(linkData.getSourceLinkDataList().size(), 1);
-        Assert.assertEquals(linkData.getSourceLinkDataMap().getTotalCount(), callCount_A_B);
+        Assertions.assertEquals(linkData.getSourceLinkDataList().size(), 1);
+        Assertions.assertEquals(linkData.getSourceLinkDataMap().getTotalCount(), callCount_A_B);
 
-        Assert.assertEquals(linkData.getTargetLinkDataList().size(), 0);
+        Assertions.assertEquals(linkData.getTargetLinkDataList().size(), 0);
     }
 
     @Test
-    public void testCaller_multiple() throws Exception {
+    public void testCaller_multiple() {
         // APP_A -> TARGET_1, TARGET_2, ...
         final Application APP_A = new Application("APP_A", ServiceType.TEST_STAND_ALONE);
         int numTargets = RANDOM.nextInt(100);
@@ -160,17 +160,17 @@ public abstract class LinkSelectorTestBase {
         LinkSelector linkSelector = linkSelectorFactory.createLinkSelector(getLinkSelectorType());
         LinkDataDuplexMap linkData = linkSelector.select(Collections.singletonList(APP_A), range, 1, 1);
 
-        Assert.assertEquals(linkData.size(), numTargets);
-        Assert.assertEquals(linkData.getTotalCount(), numTargets * callCount_A_APP);
+        Assertions.assertEquals(linkData.size(), numTargets);
+        Assertions.assertEquals(linkData.getTotalCount(), numTargets * callCount_A_APP);
 
-        Assert.assertEquals(linkData.getSourceLinkDataList().size(), numTargets);
-        Assert.assertEquals(linkData.getSourceLinkDataMap().getTotalCount(), numTargets * callCount_A_APP);
+        Assertions.assertEquals(linkData.getSourceLinkDataList().size(), numTargets);
+        Assertions.assertEquals(linkData.getSourceLinkDataMap().getTotalCount(), numTargets * callCount_A_APP);
 
-        Assert.assertEquals(linkData.getTargetLinkDataList().size(), 0);
+        Assertions.assertEquals(linkData.getTargetLinkDataList().size(), 0);
     }
 
     @Test
-    public void testCaller_3tier() throws Exception {
+    public void testCaller_3tier() {
         // APP_A -> APP_B -> APP_C
         final Application APP_A = new Application("APP_A", ServiceType.TEST_STAND_ALONE);
         final Application APP_B = new Application("APP_B", ServiceType.TEST_STAND_ALONE);
@@ -198,20 +198,20 @@ public abstract class LinkSelectorTestBase {
         LinkSelector linkSelector = linkSelectorFactory.createLinkSelector(getLinkSelectorType());
         LinkDataDuplexMap linkData = linkSelector.select(Collections.singletonList(APP_A), range, 1, 1);
 
-        Assert.assertEquals(linkData.size(), 1);
-        Assert.assertEquals(linkData.getTotalCount(), callCount_A_B);
+        Assertions.assertEquals(linkData.size(), 1);
+        Assertions.assertEquals(linkData.getTotalCount(), callCount_A_B);
 
-        Assert.assertEquals(linkData.getSourceLinkDataList().size(), 1);
-        Assert.assertEquals(linkData.getSourceLinkDataMap().getTotalCount(), callCount_A_B);
+        Assertions.assertEquals(linkData.getSourceLinkDataList().size(), 1);
+        Assertions.assertEquals(linkData.getSourceLinkDataMap().getTotalCount(), callCount_A_B);
         assertSource_Target_TotalCount("APP_A->APP_B", linkData, new LinkKey(APP_A, APP_B), callCount_A_B);
 
-        Assert.assertEquals(linkData.getTargetLinkDataList().size(), 0);
+        Assertions.assertEquals(linkData.getTargetLinkDataList().size(), 0);
 
         // depth 2
         LinkSelector linkSelector2 = linkSelectorFactory.createLinkSelector(getLinkSelectorType());
         LinkDataDuplexMap linkData_depth2 = linkSelector2.select(Collections.singletonList(APP_A), range, 2, 2);
-        Assert.assertEquals(linkData_depth2.size(), 2);
-        Assert.assertEquals(linkData_depth2.getTotalCount(), callCount_A_B + callCount_B_C);
+        Assertions.assertEquals(linkData_depth2.size(), 2);
+        Assertions.assertEquals(linkData_depth2.getTotalCount(), callCount_A_B + callCount_B_C);
 
         LinkKey linkKey_A_B = new LinkKey(APP_A, APP_B);
         assertSource_Target_TotalCount("APP_A->APP_B", linkData_depth2, linkKey_A_B, callCount_A_B);
@@ -221,7 +221,7 @@ public abstract class LinkSelectorTestBase {
     }
 
     @Test
-    public void testCaller_rpc() throws Exception {
+    public void testCaller_rpc() {
         // APP_A -> APP_B via "www.test.com/test"
         // Given
         final Application APP_A = new Application("APP_A", ServiceType.TEST_STAND_ALONE);
@@ -247,26 +247,26 @@ public abstract class LinkSelectorTestBase {
         LinkDataDuplexMap linkData = linkSelector.select(Collections.singletonList(APP_A), range, 1, 1);
 
         // Then
-        Assert.assertEquals(1, linkData.size());
-        Assert.assertEquals(callCount_A_B, linkData.getTotalCount());
+        Assertions.assertEquals(1, linkData.size());
+        Assertions.assertEquals(callCount_A_B, linkData.getTotalCount());
 
-        Assert.assertEquals(1, linkData.getSourceLinkDataList().size());
-        Assert.assertEquals(callCount_A_B, linkData.getSourceLinkDataMap().getTotalCount());
+        Assertions.assertEquals(1, linkData.getSourceLinkDataList().size());
+        Assertions.assertEquals(callCount_A_B, linkData.getSourceLinkDataMap().getTotalCount());
 
-        Assert.assertEquals(0, linkData.getTargetLinkDataList().size());
+        Assertions.assertEquals(0, linkData.getTargetLinkDataList().size());
 
         LinkData linkData_A_B = linkData.getSourceLinkData(new LinkKey(APP_A, APP_B));
-        Assert.assertEquals(callCount_A_B, linkData_A_B.getTotalCount());
+        Assertions.assertEquals(callCount_A_B, linkData_A_B.getTotalCount());
 
         List<LinkCallData> callDatas = new ArrayList<>(linkData_A_B.getLinkCallDataMap().getLinkDataList());
-        Assert.assertEquals(1, callDatas.size());
+        Assertions.assertEquals(1, callDatas.size());
         LinkCallData callData = callDatas.get(0);
-        Assert.assertEquals(rpcUri, callData.getTarget());
-        Assert.assertEquals(testRpcServiceType, callData.getTargetServiceType());
+        Assertions.assertEquals(rpcUri, callData.getTarget());
+        Assertions.assertEquals(testRpcServiceType, callData.getTargetServiceType());
     }
 
     @Test
-    public void testCallee() throws Exception {
+    public void testCallee() {
         // APP_A -> APP_B
         final Application APP_A = new Application("APP_A", ServiceType.TEST_STAND_ALONE);
         final Application APP_B = new Application("APP_B", ServiceType.TEST_STAND_ALONE);
@@ -284,17 +284,17 @@ public abstract class LinkSelectorTestBase {
         LinkSelector linkSelector = linkSelectorFactory.createLinkSelector(getLinkSelectorType());
         LinkDataDuplexMap linkData = linkSelector.select(Collections.singletonList(APP_B), range, 1, 1);
 
-        Assert.assertEquals(linkData.size(), 1);
-        Assert.assertEquals(linkData.getTotalCount(), callCount_A_B);
+        Assertions.assertEquals(linkData.size(), 1);
+        Assertions.assertEquals(linkData.getTotalCount(), callCount_A_B);
 
-        Assert.assertEquals(linkData.getSourceLinkDataList().size(), 0);
+        Assertions.assertEquals(linkData.getSourceLinkDataList().size(), 0);
 
-        Assert.assertEquals(linkData.getTargetLinkDataList().size(), 1);
-        Assert.assertEquals(linkData.getTargetLinkDataMap().getTotalCount(), callCount_A_B);
+        Assertions.assertEquals(linkData.getTargetLinkDataList().size(), 1);
+        Assertions.assertEquals(linkData.getTargetLinkDataMap().getTotalCount(), callCount_A_B);
     }
 
     @Test
-    public void testCallee_3tier() throws Exception {
+    public void testCallee_3tier() {
         // APP_A -> APP_B -> APP_C
         final Application APP_A = new Application("APP_A", ServiceType.TEST_STAND_ALONE);
         final Application APP_B = new Application("APP_B", ServiceType.TEST_STAND_ALONE);
@@ -323,18 +323,18 @@ public abstract class LinkSelectorTestBase {
         LinkSelector linkSelector = linkSelectorFactory.createLinkSelector(getLinkSelectorType());
         LinkDataDuplexMap linkData = linkSelector.select(Collections.singletonList(APP_C), range, 1, 1);
 
-        Assert.assertEquals(linkData.size(), 1);
-        Assert.assertEquals(linkData.getTotalCount(), callCount_B_C);
+        Assertions.assertEquals(linkData.size(), 1);
+        Assertions.assertEquals(linkData.getTotalCount(), callCount_B_C);
 
-        Assert.assertEquals(linkData.getSourceLinkDataList().size(), 0);
+        Assertions.assertEquals(linkData.getSourceLinkDataList().size(), 0);
 
-        Assert.assertEquals(linkData.getTargetLinkDataList().size(), 1);
-        Assert.assertEquals(linkData.getTotalCount(), callCount_B_C);
+        Assertions.assertEquals(linkData.getTargetLinkDataList().size(), 1);
+        Assertions.assertEquals(linkData.getTotalCount(), callCount_B_C);
 
         // depth 2
         LinkSelector linkSelector2 = linkSelectorFactory.createLinkSelector(getLinkSelectorType());
         LinkDataDuplexMap linkData_depth2 = linkSelector2.select(Collections.singletonList(APP_C), range, 2, 2);
-        Assert.assertEquals(linkData_depth2.size(), 2);
+        Assertions.assertEquals(linkData_depth2.size(), 2);
 
         LinkKey linkKey_A_B = new LinkKey(APP_A, APP_B);
         assertTarget_Source_TotalCount("APP_A->APP_B", linkData_depth2, linkKey_A_B, callCount_A_B);
@@ -344,7 +344,7 @@ public abstract class LinkSelectorTestBase {
     }
 
     @Test
-    public void testVirtual() throws Exception {
+    public void testVirtual() {
         // APP_A ---> APP_B via "www.test.com/test"
         //        |-> APP_C via "www.test.com/test"
         // Given
@@ -389,24 +389,24 @@ public abstract class LinkSelectorTestBase {
         // Then
         LinkData linkData_A_B = linkData.getSourceLinkData(new LinkKey(APP_A, APP_B));
         LinkData linkData_A_C = linkData.getSourceLinkData(new LinkKey(APP_A, APP_C));
-        Assert.assertEquals(callCount_A_B, linkData_A_B.getTotalCount());
-        Assert.assertEquals(callCount_A_C, linkData_A_C.getTotalCount());
+        Assertions.assertEquals(callCount_A_B, linkData_A_B.getTotalCount());
+        Assertions.assertEquals(callCount_A_C, linkData_A_C.getTotalCount());
 
         List<LinkCallData> callData_A_Bs = new ArrayList<>(linkData_A_B.getLinkCallDataMap().getLinkDataList());
-        Assert.assertEquals(1, callData_A_Bs.size());
+        Assertions.assertEquals(1, callData_A_Bs.size());
         LinkCallData callData_A_B = callData_A_Bs.get(0);
-        Assert.assertEquals(rpcUri, callData_A_B.getTarget());
-        Assert.assertEquals(testRpcServiceType, callData_A_B.getTargetServiceType());
+        Assertions.assertEquals(rpcUri, callData_A_B.getTarget());
+        Assertions.assertEquals(testRpcServiceType, callData_A_B.getTargetServiceType());
 
         List<LinkCallData> callData_A_Cs = new ArrayList<>(linkData_A_C.getLinkCallDataMap().getLinkDataList());
-        Assert.assertEquals(1, callData_A_Cs.size());
+        Assertions.assertEquals(1, callData_A_Cs.size());
         LinkCallData callData_A_C = callData_A_Cs.get(0);
-        Assert.assertEquals(rpcUri, callData_A_C.getTarget());
-        Assert.assertEquals(testRpcServiceType, callData_A_C.getTargetServiceType());
+        Assertions.assertEquals(rpcUri, callData_A_C.getTarget());
+        Assertions.assertEquals(testRpcServiceType, callData_A_C.getTargetServiceType());
     }
 
     @Test
-    public void testVirtual_mixed() throws Exception {
+    public void testVirtual_mixed() {
         // APP_A ---> APP_B via "api.test.com/test", "b.test.com/test"
         //        |-> APP_C via "api.test.com/test", "c.test.com/test"
         // Given
@@ -475,10 +475,9 @@ public abstract class LinkSelectorTestBase {
 
     /**
      * For situations where virtual nodes are visited, but their callee data are not fetched due to callee search limit.
-     * @throws Exception
      */
     @Test
-    public void testVirtual_3tier_callee_limited() throws Exception {
+    public void testVirtual_3tier_callee_limited() {
         // APP_A ---> APP_B via "gw.test.com/api" ---> APP_D via "api.test.com/test
         //        |-> APP_C via "gw.test.com/api" -|
         // Given
@@ -550,28 +549,28 @@ public abstract class LinkSelectorTestBase {
         // Then
         LinkData linkData_A_B = linkData.getSourceLinkData(new LinkKey(APP_A, APP_B));
         LinkData linkData_A_C = linkData.getSourceLinkData(new LinkKey(APP_A, APP_C));
-        Assert.assertEquals(callCount_A_B, linkData_A_B.getTotalCount());
-        Assert.assertEquals(callCount_A_C, linkData_A_C.getTotalCount());
+        Assertions.assertEquals(callCount_A_B, linkData_A_B.getTotalCount());
+        Assertions.assertEquals(callCount_A_C, linkData_A_C.getTotalCount());
         LinkData linkData_B_D = linkData.getSourceLinkData(new LinkKey(APP_B, APP_D));
-        Assert.assertEquals(callCount_B_D, linkData_B_D.getTotalCount());
+        Assertions.assertEquals(callCount_B_D, linkData_B_D.getTotalCount());
         LinkData linkData_C_D = linkData.getSourceLinkData(new LinkKey(APP_C, APP_D));
-        Assert.assertEquals(callCount_C_D, linkData_C_D.getTotalCount());
+        Assertions.assertEquals(callCount_C_D, linkData_C_D.getTotalCount());
 
         LinkData targetLinkData_A_B = linkData.getTargetLinkData(new LinkKey(APP_A, APP_B));
         LinkData targetLinkData_A_C = linkData.getTargetLinkData(new LinkKey(APP_A, APP_C));
-        Assert.assertEquals(callCount_A_B, targetLinkData_A_B.getTotalCount());
-        Assert.assertEquals(callCount_A_C, targetLinkData_A_C.getTotalCount());
+        Assertions.assertEquals(callCount_A_B, targetLinkData_A_B.getTotalCount());
+        Assertions.assertEquals(callCount_A_C, targetLinkData_A_C.getTotalCount());
     }
 
     private void assertTarget_Source_TotalCount(String message, LinkDataDuplexMap linkData, LinkKey linkKey, long count) {
         LinkData sourceLinkData = linkData.getTargetLinkData(linkKey);
         long totalCount = sourceLinkData.getTotalCount();
-        Assert.assertEquals(message, totalCount, count);
+        Assertions.assertEquals(totalCount, count, message);
     }
 
     private void assertSource_Target_TotalCount(String message, LinkDataDuplexMap linkData, LinkKey linkKey, long count) {
         LinkData sourceLinkData = linkData.getSourceLinkData(linkKey);
         long totalCount = sourceLinkData.getTotalCount();
-        Assert.assertEquals(message, totalCount, count);
+        Assertions.assertEquals(totalCount, count, message);
     }
 }

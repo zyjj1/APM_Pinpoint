@@ -1,9 +1,10 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, of, Subject, ReplaySubject, throwError } from 'rxjs';
-import { switchMap, delay, retry, filter, catchError } from 'rxjs/operators';
+import { Observable, of, Subject, ReplaySubject, throwError, EMPTY } from 'rxjs';
+import { switchMap, delay, filter, catchError } from 'rxjs/operators';
 
 import { isThatType } from 'app/core/utils/util';
+import { NewUrlStateNotificationService } from 'app/shared/services';
 
 interface IScatterRequest {
     application: string;
@@ -31,19 +32,20 @@ export class ScatterChartDataService {
     private outScatterData = new Subject<IScatterData>();
     private savedScatterData = new ReplaySubject<IScatterData>();
     private outRealTimeScatterData = new Subject<IScatterData>();
-    private outScatterErrorData = new Subject<IServerErrorFormat>();
-    private outRealTimeScatterErrorData = new Subject<IServerErrorFormat>();
+    private outScatterErrorData = new Subject<IServerError>();
+    private outRealTimeScatterErrorData = new Subject<IServerError>();
     private outReset = new Subject<void>();
 
     outScatterData$: Observable<IScatterData>;
-    outScatterErrorData$: Observable<IServerErrorFormat>;
+    outScatterErrorData$: Observable<IServerError>;
     outRealTimeScatterData$: Observable<IScatterData>;
-    outRealTimeScatterErrorData$: Observable<IServerErrorFormat>;
+    outRealTimeScatterErrorData$: Observable<IServerError>;
     savedScatterData$: Observable<IScatterData>;
     onReset$: Observable<void>;
 
     constructor(
-        private http: HttpClient
+        private http: HttpClient,
+        private newUrlStateNotificationService: NewUrlStateNotificationService,
     ) {
         this.outScatterData$ = this.outScatterData.asObservable();
         this.outScatterErrorData$ = this.outScatterErrorData.asObservable();
@@ -56,38 +58,39 @@ export class ScatterChartDataService {
 
     private connectDataRequest(): void {
         this.innerDataRequest.pipe(
-            filter(() => this.loadStart),
             switchMap((params: IScatterRequest) => {
                 return this.requestHttp(params).pipe(
-                    retry(3),
-                    switchMap((res: IScatterData | IServerErrorFormat) => isThatType(res, 'exception') ? throwError(res) : of(res))
+                    filter(() => this.loadStart),
+                    catchError((error: IServerError) => {
+                        this.outScatterErrorData.next(error);
+                        return EMPTY;
+                    })
                 );
             })
         ).subscribe((scatterData: IScatterData) => {
             this.subscribeStaticRequest(scatterData);
-        }, (error: IServerErrorFormat) => {
-            this.outScatterErrorData.next(error);
         });
+
         this.innerRealTimeDataRequest.pipe(
-            filter(() => this.loadStart),
             switchMap((params: IScatterRequest) => {
                 return this.requestHttp(params).pipe(
-                    retry(3),
-                    catchError((error: IServerErrorFormat) => of(error)),
-                    filter((res: IScatterData | IServerErrorFormat) => {
-                        if (isThatType(res, 'exception')) {
-                            this.outReset.next();
-                            return false;
-                        } else {
-                            return true;
-                        }
-                    })
+                    filter(() => this.loadStart && this.newUrlStateNotificationService.isRealTimeMode()),
+                    // catchError((error: IServerError) => of(error)),
+                    // filter((res: IScatterData | IServerError) => {
+                    //     if (isThatType(res, 'exception')) {
+                    //         this.outReset.next();
+                    //         return false;
+                    //     } else {
+                    //         return true;
+                    //     }
+                    // })
                 );
             }),
         ).subscribe((scatterData: IScatterData) => {
             this.subscribeRealTimeRequest(scatterData);
-        }, (error: IServerErrorFormat) => {
+        }, (error: IServerError) => {
             // this.outScatterErrorData.next(error);
+            this.outReset.next();
         });
     }
     private requestHttp(params: IScatterRequest): Observable<IScatterData> {
@@ -142,13 +145,6 @@ export class ScatterChartDataService {
     }
     getSavedData(): Observable<IScatterData> {
         return this.savedScatterData$;
-    }
-    loadRealTimeData(application: string, fromX: number, toX: number, groupUnitX: number, groupUnitY: number): void {
-        this.loadStart = true;
-        this.application = application;
-        this.groupUnitX = groupUnitX;
-        this.groupUnitY = groupUnitY;
-        // this.getData(fromX, toX, false, true);
     }
     loadRealTimeDataV2(toX: number): void {
         this.loadStart = true;

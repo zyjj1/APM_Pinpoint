@@ -21,7 +21,6 @@ import com.navercorp.pinpoint.bootstrap.module.JavaModule;
 import com.navercorp.pinpoint.bootstrap.module.Providers;
 import com.navercorp.pinpoint.common.util.JvmUtils;
 import com.navercorp.pinpoint.common.util.JvmVersion;
-import jdk.internal.module.Modules;
 
 import java.lang.instrument.Instrumentation;
 import java.net.URL;
@@ -80,6 +79,12 @@ public class ModuleSupport {
 
     private void addPermissionToValueAnnotation(JavaModule agentModule) {
         JavaModule bootstrapModule = getBootstrapModule();
+
+        agentModule.addOpens("com.navercorp.pinpoint.profiler.context.config", bootstrapModule);
+        agentModule.addOpens("com.navercorp.pinpoint.profiler.instrument.config", bootstrapModule);
+        agentModule.addOpens("com.navercorp.pinpoint.profiler.plugin.config", bootstrapModule);
+        agentModule.addOpens("com.navercorp.pinpoint.profiler.context.monitor.config", bootstrapModule);
+
         agentModule.addOpens("com.navercorp.pinpoint.profiler.context.thrift.config", bootstrapModule);
         agentModule.addOpens("com.navercorp.pinpoint.profiler.context.grpc.config", bootstrapModule);
         agentModule.addOpens("com.navercorp.pinpoint.grpc.client.config", bootstrapModule);
@@ -136,6 +141,16 @@ public class ModuleSupport {
         // Error:class com.navercorp.pinpoint.bootstrap.AgentBootLoader$1 cannot access class com.navercorp.pinpoint.profiler.DefaultAgent (in module pinpoint.agent)
         // because module pinpoint.agent does not export com.navercorp.pinpoint.profiler to unnamed module @7bfcd12c
         agentModule.addExports("com.navercorp.pinpoint.profiler", bootstrapModule);
+
+        // Error:class com.navercorp.pinpoint.bootstrap.AgentBootLoader$1 cannot access class com.navercorp.pinpoint.test.PluginTestAgent (in module pinpoint.agent)
+        // because module pinpoint.agent does not export com.navercorp.pinpoint.test to unnamed module @4b9e13df
+        final String pinpointTestModule = "com.navercorp.pinpoint.test";
+        if (agentModule.getPackages().contains(pinpointTestModule)) {
+            agentModule.addExports(pinpointTestModule, bootstrapModule);
+        } else {
+            logger.info(pinpointTestModule + " package not found");
+        }
+
         agentModule.addReads(bootstrapModule);
 
         // Caused by: java.lang.reflect.InaccessibleObjectException: Unable to make protected void java.net.URLClassLoader.addURL(java.net.URL) accessible:
@@ -238,7 +253,7 @@ public class ModuleSupport {
     private JavaModule loadModule(String moduleName) {
         // force base-module loading
         logger.info("loadModule:" + moduleName);
-        final Module module = Modules.loadModule(moduleName);
+        final Module module = InternalModules.loadModule(moduleName);
         return wrapJavaModule(module);
 
 //        final ModuleLayer boot = ModuleLayer.boot();

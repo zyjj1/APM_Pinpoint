@@ -29,7 +29,6 @@
  */
 package com.navercorp.pinpoint.profiler.instrument.classreading;
 
-import java.util.Objects;
 import com.navercorp.pinpoint.common.util.IOUtils;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.Opcodes;
@@ -40,6 +39,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * @author jaehong.kim
@@ -49,7 +49,7 @@ public class ClassReaderWrapper {
     private final ClassReader classReader;
 
     // need readAttributes.
-    private final List<String> annotationInternalNames = new ArrayList<String>();
+    private final List<String> annotationInternalNames = new ArrayList<>();
     private boolean innerClass = false;
 
     // bytecodes of the class.
@@ -117,6 +117,7 @@ public class ClassReaderWrapper {
         return Arrays.asList(this.classReader.getInterfaces());
     }
 
+    @SuppressWarnings("deprecation")
     public byte[] getClassBinary() {
         return this.classReader.b;
     }
@@ -228,6 +229,7 @@ public class ClassReaderWrapper {
         return v;
     }
 
+    @SuppressWarnings("deprecation")
     private int readAnnotationValue(int v, final char[] buf) {
         switch (this.classReader.b[v] & 0xFF) {
             case 'e': // enum_const_value

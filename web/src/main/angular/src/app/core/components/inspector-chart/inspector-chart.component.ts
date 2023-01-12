@@ -1,7 +1,7 @@
 import { Component, OnInit, OnChanges, Input, Output, EventEmitter, ViewChild, ElementRef, SimpleChanges, Renderer2, OnDestroy } from '@angular/core';
 import bb, { PrimitiveArray } from 'billboard.js';
 import { Subject, merge, fromEvent } from 'rxjs';
-import { filter, map } from 'rxjs/operators';
+import { filter, map, takeUntil } from 'rxjs/operators';
 
 import { MessageQueueService, MESSAGE_TO, GutterEventService, NewUrlStateNotificationService } from 'app/shared/services';
 import { UrlPath } from 'app/shared/models';
@@ -32,9 +32,10 @@ export class InspectorChartComponent implements OnInit, OnChanges, OnDestroy {
         this.setHeight();
         merge(
             fromEvent(window, 'resize'),
-            this.messageQueueService.receiveMessage(this.unsubscribe, MESSAGE_TO.INSPECTOR_CHART_SET_LAYOUT).pipe(),
+            this.messageQueueService.receiveMessage(this.unsubscribe, MESSAGE_TO.SET_CHART_LAYOUT).pipe(),
             this.gutterEventService.onGutterResized$
         ).pipe(
+            takeUntil(this.unsubscribe),
             filter(() => {
                 return this.chartInstance && this.el.nativeElement.isConnected;
             }),
@@ -83,7 +84,7 @@ export class InspectorChartComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     private setHeight(): void {
-        const width = window.getComputedStyle(this.chartHolder.nativeElement).getPropertyValue('width');
+        const width = getComputedStyle(this.chartHolder.nativeElement).getPropertyValue('width');
         const height = this.newUrlStateNotificationService.getStartPath() === UrlPath.INSPECTOR
             ? `${Number(width.replace(/px/, '')) / this.inspectorChartRatio}px`
             : `${this.el.nativeElement.offsetHeight}px`;

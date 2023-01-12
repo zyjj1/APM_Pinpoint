@@ -31,8 +31,8 @@ import com.navercorp.pinpoint.profiler.context.id.TraceIdFactory;
 import com.navercorp.pinpoint.profiler.metadata.ApiMetaDataService;
 import com.navercorp.pinpoint.profiler.metadata.SqlMetaDataService;
 import com.navercorp.pinpoint.profiler.metadata.StringMetaDataService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 
 /**
@@ -42,7 +42,7 @@ import org.slf4j.LoggerFactory;
  */
 public class DefaultTraceContext implements TraceContext {
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
 
     private final TraceIdFactory traceIdFactory;
     private final TraceFactory traceFactory;
@@ -125,16 +125,25 @@ public class DefaultTraceContext implements TraceContext {
         return traceFactory.continueTraceObject(trace);
     }
 
-
     @Override
     public Trace newTraceObject() {
         return traceFactory.newTraceObject();
+    }
+
+    @Override
+    public Trace newTraceObject(String urlPath) {
+        return traceFactory.newTraceObject(urlPath);
     }
 
     @InterfaceAudience.LimitedPrivate("vert.x")
     @Override
     public Trace newAsyncTraceObject() {
         return traceFactory.newAsyncTraceObject();
+    }
+
+    @Override
+    public Trace newAsyncTraceObject(String urlPath) {
+        return traceFactory.newAsyncTraceObject(urlPath);
     }
 
     @InterfaceAudience.LimitedPrivate("vert.x")
@@ -211,9 +220,7 @@ public class DefaultTraceContext implements TraceContext {
 
     @Override
     public TraceId createTraceId(final String transactionId, final long parentSpanId, final long spanId, final short flags) {
-        if (transactionId == null) {
-            throw new NullPointerException("transactionId");
-        }
+        Objects.requireNonNull(transactionId, "transactionId");
         // TODO Should handle exception when parsing failed.
         return traceIdFactory.continueTraceId(transactionId, parentSpanId, spanId, flags);
     }

@@ -4,16 +4,17 @@ import java.util.Collection;
 import java.util.ConcurrentModificationException;
 import java.util.Iterator;
 import java.util.Objects;
+import java.util.StringJoiner;
 
 public class StringJoinUtils {
     private StringJoinUtils() {
     }
 
-    public static <T> String join(final Collection<String> collection, final String delemeter) {
+    public static <T> String join(final Collection<String> collection, final String delimiter) {
         if (collection == null) {
             return null;
         }
-        Objects.requireNonNull(delemeter, "separator");
+        Objects.requireNonNull(delimiter, "delimiter");
 
         final int size = collection.size();
         if (size == 0) {
@@ -22,11 +23,11 @@ public class StringJoinUtils {
         if (size == 1) {
             return getFirstElement(collection);
         }
-
-        final int bufferSize = StringJoiner.getBufferSize(collection, delemeter);
-        final StringBuilder buffer = new StringBuilder(bufferSize);
-        StringJoiner.build(buffer, collection, delemeter);
-        return buffer.toString();
+        StringJoiner joiner = new StringJoiner(delimiter);
+        for (String str : collection) {
+            joiner.add(str);
+        }
+        return joiner.toString();
     }
 
     private static String getFirstElement(Collection<String> collection) {

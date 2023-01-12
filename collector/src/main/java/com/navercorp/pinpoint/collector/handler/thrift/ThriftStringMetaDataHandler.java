@@ -24,8 +24,8 @@ import com.navercorp.pinpoint.io.request.ServerResponse;
 import com.navercorp.pinpoint.thrift.dto.TResult;
 import com.navercorp.pinpoint.thrift.dto.TStringMetaData;
 import org.apache.thrift.TBase;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.springframework.stereotype.Service;
 
 import java.util.Objects;
@@ -36,7 +36,7 @@ import java.util.Objects;
 @Service
 public class ThriftStringMetaDataHandler implements RequestResponseHandler<TBase<?, ?>, TBase<?, ?>> {
 
-    private final Logger logger = LoggerFactory.getLogger(getClass());
+    private final Logger logger = LogManager.getLogger(getClass());
 
     private final StringMetaDataService stringMetaDataService;
 
@@ -61,8 +61,12 @@ public class ThriftStringMetaDataHandler implements RequestResponseHandler<TBase
 
     private TResult handleStringMetaData(TStringMetaData stringMetaData) {
         try {
-            final StringMetaDataBo stringMetaDataBo = new StringMetaDataBo(stringMetaData.getAgentId(), stringMetaData.getAgentStartTime(), stringMetaData.getStringId());
-            stringMetaDataBo.setStringValue(stringMetaData.getStringValue());
+            String agentId = stringMetaData.getAgentId();
+            long agentStartTime = stringMetaData.getAgentStartTime();
+            int stringId = stringMetaData.getStringId();
+            String stringValue = stringMetaData.getStringValue();
+            final StringMetaDataBo stringMetaDataBo = new StringMetaDataBo(agentId, agentStartTime, stringId, stringValue);
+
             stringMetaDataService.insert(stringMetaDataBo);
         } catch (Exception e) {
             logger.warn("Failed to handle stringMetaData={}, Caused:{}", stringMetaData, e.getMessage(), e);

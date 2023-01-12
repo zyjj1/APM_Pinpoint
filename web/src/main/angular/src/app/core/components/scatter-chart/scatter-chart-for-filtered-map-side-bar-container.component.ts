@@ -14,7 +14,7 @@ import {
     MessageQueueService,
     MESSAGE_TO
 } from 'app/shared/services';
-import { UrlPath, UrlPathId } from 'app/shared/models';
+import { UrlPath, UrlPathId, UrlQuery } from 'app/shared/models';
 import { ScatterChart } from './class/scatter-chart.class';
 import { ScatterChartInteractionService } from './scatter-chart-interaction.service';
 import { HELP_VIEWER_LIST, HelpViewerPopupContainerComponent } from 'app/core/components/help-viewer-popup/help-viewer-popup-container.component';
@@ -52,6 +52,7 @@ export class ScatterChartForFilteredMapSideBarContainerComponent implements OnIn
     dateFormat: string[];
     showBlockMessagePopup = false;
     shouldHide = true;
+    enableServerSideScan: boolean;
 
     constructor(
         private storeHelperService: StoreHelperService,
@@ -69,6 +70,13 @@ export class ScatterChartForFilteredMapSideBarContainerComponent implements OnIn
     ) {}
 
     ngOnInit() {
+        this.webAppSettingDataService.getExperimentalConfiguration().subscribe(configuration => {
+            // const enableServerSideScan = this.webAppSettingDataService.getExperimentalOption('scatterScan');
+            // this.enableServerSideScan = enableServerSideScan === null ? configuration.enableServerSideScanForScatter.value : enableServerSideScan;
+            // Temp: Set it false till implementing the filter
+            this.enableServerSideScan = false;
+        });
+
         this.setScatterY();
         forkJoin(
             this.translateService.get('COMMON.NO_DATA'),
@@ -99,6 +107,13 @@ export class ScatterChartForFilteredMapSideBarContainerComponent implements OnIn
     ngOnDestroy() {
         this.unsubscribe.next();
         this.unsubscribe.complete();
+    }
+
+    private reset(range?: {[key: string]: number}): void {
+        this.toX = range ? range.toX : Date.now();
+        this.fromX = range ? range.fromX : this.toX - this.webAppSettingDataService.getSystemDefaultPeriod().getMiliSeconds();
+
+        this.scatterChartInteractionService.reset(this.instanceKey, this.selectedApplication, this.selectedAgent, this.fromX, this.toX, this.scatterChartMode);
     }
 
     private setScatterY(): void {
@@ -134,13 +149,15 @@ export class ScatterChartForFilteredMapSideBarContainerComponent implements OnIn
             }
             this.cd.detectChanges();
         });
-        this.messageQueueService.receiveMessage(this.unsubscribe, MESSAGE_TO.SERVER_MAP_TARGET_SELECT).subscribe((target: ISelectedTarget) => {
+        this.messageQueueService.receiveMessage(this.unsubscribe, MESSAGE_TO.SERVER_MAP_TARGET_SELECT).pipe(
+            filter(({isAuthorized}: ISelectedTarget) => isAuthorized)
+        ).subscribe((target: ISelectedTarget) => {
             this.selectedTarget = target;
             this.shouldHide = !(this.selectedTarget.isNode && this.selectedTarget.isWAS && !this.selectedTarget.isMerged);
             if (!this.shouldHide) {
                 this.selectedAgent = '';
                 this.selectedApplication = this.selectedTarget.node[0];
-                this.scatterChartInteractionService.reset(this.instanceKey, this.selectedApplication, this.selectedAgent, this.fromX, this.toX, this.scatterChartMode);
+                this.reset({fromX: this.fromX, toX: this.toX});
                 this.getScatterData(0);
             }
             this.cd.detectChanges();
@@ -180,6 +197,8 @@ export class ScatterChartForFilteredMapSideBarContainerComponent implements OnIn
         });
         this.hideSettingPopup = true;
         this.webAppSettingDataService.setScatterY(this.instanceKey, { min: params.min, max: params.max });
+        this.reset({fromX: this.fromX, toX: this.toX});
+        this.getScatterData(0);
     }
 
     onCancelSetting(): void {
@@ -251,7 +270,17 @@ export class ScatterChartForFilteredMapSideBarContainerComponent implements OnIn
                 this.newUrlStateNotificationService.getPathValue(UrlPathId.PERIOD).getValueWithTime(),
                 this.newUrlStateNotificationService.getPathValue(UrlPathId.END_TIME).getEndTime()
             ],
-            metaInfo: `${this.selectedApplication}|${params.x.from}|${params.x.to}|${params.y.from}|${params.y.to}|${this.selectedAgent}|${params.type.join(',')}`
+            queryParams: {
+                [UrlQuery.DRAG_INFO]: {
+                    x1: params.x.from,
+                    x2: params.x.to,
+                    y1: params.y.from,
+                    y2: params.y.to,
+                    agentId: this.selectedAgent,
+                    dotStatus: params.type,
+                },
+                [UrlQuery.WITH_FILTER]: true
+            },
         });
 
         if (returnOpenWindow === null || returnOpenWindow === undefined) {

@@ -16,11 +16,18 @@
 
 package com.navercorp.pinpoint.profiler.context;
 
-import com.navercorp.pinpoint.bootstrap.context.*;
+import com.navercorp.pinpoint.bootstrap.context.SpanEventRecorder;
+import com.navercorp.pinpoint.bootstrap.context.SpanRecorder;
+import com.navercorp.pinpoint.bootstrap.context.Trace;
+import com.navercorp.pinpoint.bootstrap.context.TraceId;
 import com.navercorp.pinpoint.bootstrap.context.scope.TraceScope;
-import java.util.Objects;
 import com.navercorp.pinpoint.profiler.context.active.ActiveTraceHandle;
+import com.navercorp.pinpoint.profiler.context.id.LocalTraceRoot;
+import com.navercorp.pinpoint.profiler.context.id.Shared;
 import com.navercorp.pinpoint.profiler.context.scope.DefaultTraceScopePool;
+import com.navercorp.pinpoint.profiler.context.storage.UriStatStorage;
+
+import java.util.Objects;
 
 
 /**
@@ -32,26 +39,30 @@ public class DisableTrace implements Trace {
     public static final String UNSUPPORTED_OPERATION  = "disable trace";
     public static final long DISABLE_TRACE_OBJECT_ID = -1;
 
-    private final long id;
-    private final long startTime;
-    private final DefaultTraceScopePool scopePool = new DefaultTraceScopePool();
+    private final LocalTraceRoot traceRoot;
+    private final SpanRecorder spanRecorder;
+    private DefaultTraceScopePool scopePool;
     private final ActiveTraceHandle handle;
+    private final UriStatStorage uriStatStorage;
+
     private boolean closed = false;
 
-    public DisableTrace(long id, long startTime,  ActiveTraceHandle handle) {
-        this.id = id;
-        this.startTime = startTime;
+    public DisableTrace(LocalTraceRoot traceRoot, SpanRecorder spanRecorder, ActiveTraceHandle handle, UriStatStorage uriStatStorage) {
+        this.traceRoot = Objects.requireNonNull(traceRoot, "traceRoot");
+        this.spanRecorder = Objects.requireNonNull(spanRecorder, "spanRecorder");
+
         this.handle = Objects.requireNonNull(handle, "handle");
+        this.uriStatStorage = Objects.requireNonNull(uriStatStorage, "uriStatStorage");
     }
 
     @Override
     public long getId() {
-        return id;
+        return traceRoot.getLocalTransactionId();
     }
 
     @Override
     public long getStartTime() {
-        return startTime;
+        return traceRoot.getTraceStartTime();
     }
 
 
@@ -113,8 +124,21 @@ public class DisableTrace implements Trace {
             return;
         }
         closed = true;
+
+
         final long purgeTime = System.currentTimeMillis();
         handle.purge(purgeTime);
+        boolean status = getStatus();
+        String uriTemplate = getShared().getUriTemplate();
+        uriStatStorage.store(uriTemplate, status, traceRoot.getTraceStartTime(), purgeTime);
+    }
+
+    private boolean getStatus() {
+        return getShared().getErrorCode() == 0;
+    }
+
+    private Shared getShared() {
+        return traceRoot.getShared();
     }
 
 
@@ -125,7 +149,7 @@ public class DisableTrace implements Trace {
 
     @Override
     public SpanRecorder getSpanRecorder() {
-        return null;
+        return spanRecorder;
     }
 
     @Override
@@ -135,11 +159,18 @@ public class DisableTrace implements Trace {
 
     @Override
     public TraceScope getScope(String name) {
+        if (scopePool == null) {
+            return null;
+        }
         return scopePool.get(name);
     }
 
     @Override
     public TraceScope addScope(String name) {
+        if (scopePool == null) {
+            scopePool = new DefaultTraceScopePool();
+        }
         return scopePool.add(name);
     }
+
 }

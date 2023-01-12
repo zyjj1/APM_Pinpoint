@@ -19,6 +19,7 @@ package com.navercorp.pinpoint.collector.handler.grpc;
 import com.google.protobuf.GeneratedMessageV3;
 import com.navercorp.pinpoint.collector.handler.RequestResponseHandler;
 import com.navercorp.pinpoint.collector.service.ApiMetaDataService;
+import com.navercorp.pinpoint.common.util.LineNumber;
 import com.navercorp.pinpoint.common.server.bo.ApiMetaDataBo;
 import com.navercorp.pinpoint.common.server.bo.MethodTypeEnum;
 import com.navercorp.pinpoint.grpc.Header;
@@ -29,8 +30,8 @@ import com.navercorp.pinpoint.grpc.trace.PResult;
 import com.navercorp.pinpoint.io.request.ServerRequest;
 import com.navercorp.pinpoint.io.request.ServerResponse;
 import io.grpc.Status;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.springframework.stereotype.Service;
 
 import java.util.Objects;
@@ -41,7 +42,7 @@ import java.util.Objects;
 @Service
 public class GrpcApiMetaDataHandler implements RequestResponseHandler<GeneratedMessageV3, GeneratedMessageV3> {
 
-    private final Logger logger = LoggerFactory.getLogger(getClass());
+    private final Logger logger = LogManager.getLogger(getClass());
     private final boolean isDebug = logger.isDebugEnabled();
 
     private final ApiMetaDataService apiMetaDataService;
@@ -62,7 +63,7 @@ public class GrpcApiMetaDataHandler implements RequestResponseHandler<GeneratedM
         }
     }
 
-    private GeneratedMessageV3 handleApiMetaData(final PApiMetaData apiMetaData) {
+    GeneratedMessageV3 handleApiMetaData(final PApiMetaData apiMetaData) {
         if (isDebug) {
             logger.debug("Handle PApiMetaData={}", MessageFormatUtils.debugLog(apiMetaData));
         }
@@ -71,19 +72,14 @@ public class GrpcApiMetaDataHandler implements RequestResponseHandler<GeneratedM
             final Header header = ServerContext.getAgentInfo();
             final String agentId = header.getAgentId();
             final long agentStartTime = header.getAgentStartTime();
+            final int line = LineNumber.defaultLineNumber(apiMetaData.getLine());
 
-            final ApiMetaDataBo apiMetaDataBo = new ApiMetaDataBo(agentId, agentStartTime, apiMetaData.getApiId());
-            apiMetaDataBo.setApiInfo(apiMetaData.getApiInfo());
+            final MethodTypeEnum type = MethodTypeEnum.defaultValueOf(apiMetaData.getType());
 
-            final int line = apiMetaData.getLine();
-            if (line != -1) {
-                apiMetaDataBo.setLineNumber(line);
-            }
-
-            final int type = apiMetaData.getType();
-            if (type != -1) {
-                apiMetaDataBo.setMethodTypeEnum(MethodTypeEnum.valueOf(type));
-            }
+            final ApiMetaDataBo apiMetaDataBo = new ApiMetaDataBo.Builder(agentId, agentStartTime, apiMetaData.getApiId(),
+                    line, type, apiMetaData.getApiInfo())
+                    .setLocation(apiMetaData.getLocation())
+                    .build();
 
             this.apiMetaDataService.insert(apiMetaDataBo);
             return PResult.newBuilder().setSuccess(true).build();

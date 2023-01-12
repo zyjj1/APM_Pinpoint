@@ -25,7 +25,6 @@ import com.sematext.hbase.wd.AbstractRowKeyDistributor;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Scan;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
@@ -48,7 +47,6 @@ public class ApplicationStatHbaseOperationFactory {
 
     private final AbstractRowKeyDistributor rowKeyDistributor;
 
-    @Autowired
     public ApplicationStatHbaseOperationFactory(
                 ApplicationStatRowKeyEncoder rowKeyEncoder,
                 ApplicationStatRowKeyDecoder rowKeyDecoder,
@@ -58,16 +56,16 @@ public class ApplicationStatHbaseOperationFactory {
         this.rowKeyDistributor = Objects.requireNonNull(rowKeyDistributor, "rowKeyDistributor");
     }
 
-    public List<Put> createPuts(String applicationId, List<JoinStatBo> joinStatBoList, StatType statType, ApplicationStatSerializer applicationStatSerializer) {
+    public <T extends JoinStatBo> List<Put> createPuts(String applicationId, List<T> joinStatBoList, StatType statType, ApplicationStatSerializer<T> applicationStatSerializer) {
         if (CollectionUtils.isEmpty(joinStatBoList)) {
             return Collections.emptyList();
         }
 
-        Map<Long, List<JoinStatBo>> timeslots = slotApplicationStatDataPoints(joinStatBoList);
+        Map<Long, List<T>> timeslots = slotApplicationStatDataPoints(joinStatBoList);
         List<Put> puts = new ArrayList<>();
-        for (Map.Entry<Long, List<JoinStatBo>> timeslot : timeslots.entrySet()) {
+        for (Map.Entry<Long, List<T>> timeslot : timeslots.entrySet()) {
             long baseTimestamp = timeslot.getKey();
-            List<JoinStatBo> slottedApplicationStatDataPoints = timeslot.getValue();
+            List<T> slottedApplicationStatDataPoints = timeslot.getValue();
 
             final ApplicationStatRowKeyComponent rowKeyComponent = new ApplicationStatRowKeyComponent(applicationId, statType, baseTimestamp);
             byte[] rowKey = this.rowKeyEncoder.encodeRowKey(rowKeyComponent);

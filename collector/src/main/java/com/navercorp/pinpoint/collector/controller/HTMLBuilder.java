@@ -7,7 +7,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * source : http://scrumbucket.org/converting-a-pojo-into-html/
@@ -73,8 +72,8 @@ public class HTMLBuilder {
         }
 
         private List<? extends Map.Entry<?, ?>> sort(Map<?, ?> map) {
-            Stream<? extends Map.Entry<?, ?>> stream = map.entrySet().stream();
-            return stream.sorted(Comparator.comparing(anotherString -> (String) anotherString.getKey()))
+            return map.entrySet().stream()
+                    .sorted(Comparator.comparing(anotherString -> (String) anotherString.getKey()))
                     .collect(Collectors.toList());
         }
     }

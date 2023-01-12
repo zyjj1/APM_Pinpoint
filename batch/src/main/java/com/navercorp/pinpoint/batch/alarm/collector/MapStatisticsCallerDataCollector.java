@@ -16,7 +16,7 @@
 
 package com.navercorp.pinpoint.batch.alarm.collector;
 
-import com.navercorp.pinpoint.batch.alarm.DataCollectorFactory.DataCollectorCategory;
+import com.navercorp.pinpoint.web.alarm.DataCollectorCategory;
 import com.navercorp.pinpoint.web.applicationmap.histogram.TimeHistogram;
 import com.navercorp.pinpoint.web.applicationmap.rawdata.LinkCallData;
 import com.navercorp.pinpoint.web.applicationmap.rawdata.LinkCallDataMap;
@@ -24,7 +24,7 @@ import com.navercorp.pinpoint.web.applicationmap.rawdata.LinkData;
 import com.navercorp.pinpoint.web.applicationmap.rawdata.LinkDataMap;
 import com.navercorp.pinpoint.web.dao.MapStatisticsCallerDao;
 import com.navercorp.pinpoint.web.vo.Application;
-import com.navercorp.pinpoint.web.vo.Range;
+import com.navercorp.pinpoint.common.server.util.time.Range;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -56,7 +56,7 @@ public class MapStatisticsCallerDataCollector extends DataCollector {
             return;
         }
 
-        LinkDataMap callerDataMap = mapStatisticsCallerDao.selectCaller(application, Range.newRange(timeSlotEndTime - slotInterval, timeSlotEndTime));
+        LinkDataMap callerDataMap = mapStatisticsCallerDao.selectCaller(application, Range.between(timeSlotEndTime - slotInterval, timeSlotEndTime));
 
         for (LinkData linkData : callerDataMap.getLinkDataList()) {
             LinkCallDataMap linkCallDataMap = linkData.getLinkCallDataMap();
@@ -94,7 +94,7 @@ public class MapStatisticsCallerDataCollector extends DataCollector {
                 }
                 break;
             default:
-                throw new IllegalArgumentException("Can't count for " + dataCategory.toString());
+                throw new IllegalArgumentException("Can't count for " + dataCategory);
         }
 
         return count;
@@ -125,7 +125,7 @@ public class MapStatisticsCallerDataCollector extends DataCollector {
                 }
                 break;
             default:
-                throw new IllegalArgumentException("Can't calculate rate for " + dataCategory.toString());
+                throw new IllegalArgumentException("Can't calculate rate for " + dataCategory);
         }
 
         return calculatePercent(count, totalCount);

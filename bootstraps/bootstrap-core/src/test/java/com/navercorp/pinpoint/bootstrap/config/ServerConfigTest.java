@@ -16,8 +16,8 @@
 
 package com.navercorp.pinpoint.bootstrap.config;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.Properties;
 
@@ -33,10 +33,10 @@ public class ServerConfigTest {
         properties.setProperty(ServerConfig.HIDE_PINPOINT_HEADER_PROPERTY_NAME, "true");
         properties.setProperty(propertyName, "false");
 
-        ProfilerConfig profilerConfig = new DefaultProfilerConfig(properties);
+        ProfilerConfig profilerConfig = ProfilerConfigLoader.load(properties);
         ServerConfig serverConfig = new ServerConfig(profilerConfig);
 
-        Assert.assertFalse(serverConfig.isHidePinpointHeader(propertyName));
+        Assertions.assertFalse(serverConfig.isHidePinpointHeader(propertyName));
     }
 
     @Test
@@ -46,10 +46,10 @@ public class ServerConfigTest {
         properties.setProperty(ServerConfig.TRACE_REQUEST_PARAM_PROPERTY_NAME, "true");
         properties.setProperty(propertyName, "false");
 
-        ProfilerConfig profilerConfig = new DefaultProfilerConfig(properties);
+        ProfilerConfig profilerConfig = ProfilerConfigLoader.load(properties);
         ServerConfig serverConfig = new ServerConfig(profilerConfig);
 
-        Assert.assertFalse(serverConfig.isTraceRequestParam(propertyName));
+        Assertions.assertFalse(serverConfig.isTraceRequestParam(propertyName));
     }
 
     @Test
@@ -59,12 +59,12 @@ public class ServerConfigTest {
         properties.setProperty(ServerConfig.EXCLUDE_URL_PROPERTY_NAME, "/l7check");
         properties.setProperty(propertyName, "/healthcheck");
 
-        ProfilerConfig profilerConfig = new DefaultProfilerConfig(properties);
+        ProfilerConfig profilerConfig = ProfilerConfigLoader.load(properties);
         ServerConfig serverConfig = new ServerConfig(profilerConfig);
 
         Filter<String> filter = serverConfig.getExcludeUrlFilter(propertyName);
-        Assert.assertTrue(filter.filter("/healthcheck"));
-        Assert.assertFalse(filter.filter("/l7check"));
+        Assertions.assertTrue(filter.filter("/healthcheck"));
+        Assertions.assertFalse(filter.filter("/l7check"));
     }
 
     @Test
@@ -74,10 +74,10 @@ public class ServerConfigTest {
         properties.setProperty(ServerConfig.REAL_IP_HEADER_PROPERTY_NAME, "X-Forwarded-For");
         properties.setProperty(propertyName, "");
 
-        ProfilerConfig profilerConfig = new DefaultProfilerConfig(properties);
+        ProfilerConfig profilerConfig = ProfilerConfigLoader.load(properties);
         ServerConfig serverConfig = new ServerConfig(profilerConfig);
 
-        Assert.assertEquals("X-Forwarded-For", serverConfig.getRealIpHeader(propertyName));
+        Assertions.assertEquals("X-Forwarded-For", serverConfig.getRealIpHeader(propertyName));
     }
 
     @Test
@@ -87,10 +87,10 @@ public class ServerConfigTest {
         properties.setProperty(ServerConfig.REAL_IP_HEADER_PROPERTY_NAME, "");
         properties.setProperty(propertyName, "UNKNOWN");
 
-        ProfilerConfig profilerConfig = new DefaultProfilerConfig(properties);
+        ProfilerConfig profilerConfig = ProfilerConfigLoader.load(properties);
         ServerConfig serverConfig = new ServerConfig(profilerConfig);
 
-        Assert.assertEquals("UNKNOWN", serverConfig.getRealIpEmptyValue(propertyName));
+        Assertions.assertEquals("UNKNOWN", serverConfig.getRealIpEmptyValue(propertyName));
     }
 
     @Test
@@ -100,11 +100,11 @@ public class ServerConfigTest {
         properties.setProperty(ServerConfig.EXCLUDE_METHOD_PROPERTY_NAME, "POST");
         properties.setProperty(propertyName, "HEAD");
 
-        ProfilerConfig profilerConfig = new DefaultProfilerConfig(properties);
+        ProfilerConfig profilerConfig = ProfilerConfigLoader.load(properties);
         ServerConfig serverConfig = new ServerConfig(profilerConfig);
 
         Filter<String> filter = serverConfig.getExcludeMethodFilter(propertyName);
-        Assert.assertTrue(filter.filter("HEAD"));
-        Assert.assertFalse(filter.filter("POST"));
+        Assertions.assertTrue(filter.filter("HEAD"));
+        Assertions.assertFalse(filter.filter("POST"));
     }
 }

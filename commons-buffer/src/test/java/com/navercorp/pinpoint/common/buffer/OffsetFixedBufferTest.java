@@ -16,11 +16,10 @@
 
 package com.navercorp.pinpoint.common.buffer;
 
-import org.junit.Assert;
-
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.nio.ByteBuffer;
 
@@ -28,28 +27,28 @@ import java.nio.ByteBuffer;
  * @author emeroad
  */
 public class OffsetFixedBufferTest {
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
 
     @Test
-    public void testFixedBuffer() throws Exception {
+    public void testFixedBuffer() {
         new OffsetFixedBuffer(new byte[10], 10, 0);
         try {
             new OffsetFixedBuffer(new byte[10], 11, 0);
-            Assert.fail();
-        } catch (IndexOutOfBoundsException ignore) {
+            Assertions.fail();
+        } catch (IndexOutOfBoundsException ignored) {
         }
         try {
             new OffsetFixedBuffer(new byte[10], -1, 0);
-            Assert.fail();
-        } catch (IndexOutOfBoundsException ignore) {
+            Assertions.fail();
+        } catch (IndexOutOfBoundsException ignored) {
         }
     }
 
     @Test
-    public void testFixedBuffer_length() throws Exception {
+    public void testFixedBuffer_length() {
         try {
             new OffsetFixedBuffer(new byte[10], 0, 11);
-            Assert.fail();
+            Assertions.fail();
         } catch (IndexOutOfBoundsException e) {
         }
 
@@ -58,36 +57,36 @@ public class OffsetFixedBufferTest {
     }
 
     @Test
-    public void testGetBuffer() throws Exception {
+    public void testGetBuffer() {
         final int bufferSize = 10;
         Buffer buffer = new OffsetFixedBuffer(new byte[bufferSize], 2, bufferSize - 2);
         final int putValue = 10;
         buffer.putInt(putValue);
         byte[] intBuffer = buffer.getBuffer();
-        Assert.assertEquals(intBuffer.length, 4);
+        Assertions.assertEquals(intBuffer.length, 4);
 
         Buffer read = new FixedBuffer(intBuffer);
         int value = read.readInt();
-        Assert.assertEquals(putValue, value);
+        Assertions.assertEquals(putValue, value);
     }
 
     @Test
-    public void testCopyBuffer() throws Exception {
+    public void testCopyBuffer() {
         final int bufferSize = 10;
         Buffer buffer = new OffsetFixedBuffer(new byte[bufferSize], 2, bufferSize - 2);
 
         final int putValue = 10;
         buffer.putInt(putValue);
         byte[] intBuffer = buffer.copyBuffer();
-        Assert.assertEquals(intBuffer.length, 4);
+        Assertions.assertEquals(intBuffer.length, 4);
 
         Buffer read = new FixedBuffer(intBuffer);
         int value = read.readInt();
-        Assert.assertEquals(putValue, value);
+        Assertions.assertEquals(putValue, value);
     }
 
     @Test
-    public void testWrapByteBuffer() throws Exception {
+    public void testWrapByteBuffer() {
         final int bufferSize = 10;
         Buffer buffer = new OffsetFixedBuffer(new byte[bufferSize], 2, bufferSize - 2);
 
@@ -95,8 +94,8 @@ public class OffsetFixedBufferTest {
         buffer.putInt(2);
 
         ByteBuffer byteBuffer = buffer.wrapByteBuffer();
-        Assert.assertEquals(1, byteBuffer.getInt());
-        Assert.assertEquals(2, byteBuffer.getInt());
+        Assertions.assertEquals(1, byteBuffer.getInt());
+        Assertions.assertEquals(2, byteBuffer.getInt());
     }
 
 }

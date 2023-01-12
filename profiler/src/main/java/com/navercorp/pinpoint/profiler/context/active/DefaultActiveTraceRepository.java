@@ -15,16 +15,15 @@
  */
 
 package com.navercorp.pinpoint.profiler.context.active;
-
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.navercorp.pinpoint.common.trace.BaseHistogramSchema;
 import com.navercorp.pinpoint.common.trace.HistogramSchema;
 import com.navercorp.pinpoint.common.trace.HistogramSlot;
 import com.navercorp.pinpoint.profiler.context.id.TraceRoot;
 import com.navercorp.pinpoint.profiler.monitor.metric.response.ResponseTimeCollector;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -41,7 +40,7 @@ public class DefaultActiveTraceRepository implements ActiveTraceRepository {
     // memory leak defense threshold
     private static final int DEFAULT_MAX_ACTIVE_TRACE_SIZE = 1024 * 10;
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
     private final boolean isDebug = logger.isDebugEnabled();
 
     // oom safe cache
@@ -62,8 +61,7 @@ public class DefaultActiveTraceRepository implements ActiveTraceRepository {
     }
 
     private ConcurrentMap<ActiveTraceHandle, ActiveTrace> createCache(int maxActiveTraceSize) {
-        final CacheBuilder<Object, Object> cacheBuilder = CacheBuilder.newBuilder();
-        cacheBuilder.concurrencyLevel(64);
+        final Caffeine<Object, Object> cacheBuilder = Caffeine.newBuilder();
         cacheBuilder.initialCapacity(maxActiveTraceSize);
         cacheBuilder.maximumSize(maxActiveTraceSize);
 
@@ -127,7 +125,7 @@ public class DefaultActiveTraceRepository implements ActiveTraceRepository {
             return Collections.emptyList();
         }
         final Collection<ActiveTrace> activeTraceCollection = this.activeTraceInfoMap.values();
-        final List<ActiveTraceSnapshot> collectData = new ArrayList<ActiveTraceSnapshot>(activeTraceCollection.size());
+        final List<ActiveTraceSnapshot> collectData = new ArrayList<>(activeTraceCollection.size());
 
         for (ActiveTrace trace : activeTraceCollection) {
             final long startTime = trace.getStartTime();
@@ -152,7 +150,7 @@ public class DefaultActiveTraceRepository implements ActiveTraceRepository {
             return Collections.emptyList();
         }
         final Collection<ActiveTrace> activeTraceCollection = this.activeTraceInfoMap.values();
-        final List<Long> collectData = new ArrayList<Long>(activeTraceCollection.size());
+        final List<Long> collectData = new ArrayList<>(activeTraceCollection.size());
 
         for (ActiveTrace trace : activeTraceCollection) {
             final long startTime = trace.getStartTime();

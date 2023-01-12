@@ -16,22 +16,19 @@
 
 package com.navercorp.pinpoint.test.plugin.shared;
 
-import com.navercorp.pinpoint.test.plugin.ExceptionWriter;
+import com.navercorp.pinpoint.test.plugin.ForkedPinpointPluginTestRunner;
 import com.navercorp.pinpoint.test.plugin.PluginClassLoading;
 import com.navercorp.pinpoint.test.plugin.ReflectPluginTestVerifier;
 import com.navercorp.pinpoint.test.plugin.util.ArrayUtils;
-import com.navercorp.pinpoint.test.plugin.ForkedPinpointPluginTestRunner;
 import com.navercorp.pinpoint.test.plugin.util.ChildFirstClassLoader;
+import com.navercorp.pinpoint.test.plugin.util.CollectionUtils;
 import com.navercorp.pinpoint.test.plugin.util.ProfilerClass;
 import com.navercorp.pinpoint.test.plugin.util.TestLogger;
 import com.navercorp.pinpoint.test.plugin.util.ThreadContextCallable;
 import com.navercorp.pinpoint.test.plugin.util.URLUtils;
-import org.junit.runner.Description;
+
 import org.junit.runner.JUnitCore;
-import org.junit.runner.Result;
 import org.junit.runner.Runner;
-import org.junit.runner.notification.Failure;
-import org.junit.runner.notification.RunListener;
 import org.junit.runners.model.InitializationError;
 import org.tinylog.TaggedLogger;
 
@@ -45,7 +42,6 @@ import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
-import static com.navercorp.pinpoint.test.plugin.PluginTestConstants.JUNIT_OUTPUT_DELIMITER;
 
 /**
  * @author Taejin Koo
@@ -59,6 +55,13 @@ public class SharedPinpointPluginTest {
             logger.error("mavenDependencyResolverClassPaths must not be empty");
             return;
         }
+
+        final String repositoryUrlString = System.getProperty(SharedPluginTestConstants.TEST_REPOSITORY_URLS);
+        if (repositoryUrlString == null) {
+            logger.error("repositoryUrls must not be empty");
+            return;
+        }
+        logger.debug("-D{}={}", SharedPluginTestConstants.TEST_REPOSITORY_URLS, repositoryUrlString);
 
         final String testLocation = System.getProperty(SharedPluginTestConstants.TEST_LOCATION);
         if (testLocation == null) {
@@ -91,10 +94,11 @@ public class SharedPinpointPluginTest {
         }
 
         String[] mavenDependencyResolverClassPathArray = mavenDependencyResolverClassPaths.split(File.pathSeparator);
+        String[] repositoryUrls = repositoryUrlString.split(",");
         TestParameterParser parser = new TestParameterParser();
         List<TestParameter> testParameters = parser.parse(args);
         SharedPinpointPluginTest pluginTest = new SharedPinpointPluginTest(testClazzName, testLocation, testLogger,
-                mavenDependencyResolverClassPathArray, testParameters, System.out);
+                mavenDependencyResolverClassPathArray, repositoryUrls, testParameters, System.out);
         pluginTest.execute();
 
     }
@@ -103,26 +107,29 @@ public class SharedPinpointPluginTest {
     private final String testLocation;
     private final boolean testLogger;
     private final String[] mavenDependencyResolverClassPaths;
+    private final String[] repositoryUrls;
     private final List<TestParameter> testParameters;
     private final PrintStream out;
 
     public SharedPinpointPluginTest(String testClazzName, String testLocation, boolean testLogger,
-                                    String[] mavenDependencyResolverClassPaths, List<TestParameter> testParameters, PrintStream out) {
+                                    String[] mavenDependencyResolverClassPaths, String[] repositoryUrls,
+                                    List<TestParameter> testParameters, PrintStream out) {
         this.testClazzName = testClazzName;
         this.testLocation = testLocation;
         this.testLogger = testLogger;
         this.mavenDependencyResolverClassPaths = mavenDependencyResolverClassPaths;
+        this.repositoryUrls = repositoryUrls;
         this.testParameters = testParameters;
         this.out = out;
 
     }
 
-    private List<TestInfo> newTestCaseInfo(List<TestParameter> testParameters, File testClazzLocation, ClassLoader dependencyClassLoader) throws Exception {
-        ReflectionDependencyResolver dependencyResolver = new ReflectionDependencyResolver(dependencyClassLoader);
+    private List<TestInfo> newTestCaseInfo(List<TestParameter> testParameters, File testClazzLocation, String[] repositoryUrls, ClassLoader dependencyClassLoader) throws Exception {
+        ReflectionDependencyResolver dependencyResolver = new ReflectionDependencyResolver(dependencyClassLoader, repositoryUrls);
         List<File> loggerDependencies = getLoggerDependencies(dependencyResolver, dependencyClassLoader);
         logger.debug("loggerDependency:{}", loggerDependencies);
 
-        List<TestInfo> testInfos = new ArrayList<TestInfo>();
+        List<TestInfo> testInfos = new ArrayList<>();
         for (TestParameter testParameter : testParameters) {
             final List<File> testDependency = new ArrayList<>();
             testDependency.add(testClazzLocation);
@@ -132,7 +139,7 @@ public class SharedPinpointPluginTest {
             List<File> testParameterDependency = getTestParameterDependency(dependencyClassLoader, dependencyResolver, testParameter);
             testDependency.addAll(testParameterDependency);
 
-            final TestInfo testInfo = new TestInfo(testParameter.getTestId(), testDependency);
+            final TestInfo testInfo = new TestInfo(testParameter.getTestId(), testDependency, Arrays.asList(repositoryUrls));
             testInfos.add(testInfo);
         }
         return testInfos;
@@ -188,6 +195,9 @@ public class SharedPinpointPluginTest {
             for (TestParameter testParameter : testParameters) {
                 logger.debug("{} {}", testClazzName, testParameter);
             }
+            for (String repositoryUrl : repositoryUrls) {
+                logger.debug("{}: {}", SharedPluginTestConstants.TEST_REPOSITORY_URLS, repositoryUrl);
+            }
         }
     }
 
@@ -195,28 +205,58 @@ public class SharedPinpointPluginTest {
         logTestInformation();
         ClassLoader mavenDependencyResolverClassLoader = new ChildFirstClassLoader(URLUtils.fileToUrls(mavenDependencyResolverClassPaths));
         File testClazzLocation = new File(testLocation);
-        List<TestInfo> testInfos = newTestCaseInfo(testParameters, testClazzLocation, mavenDependencyResolverClassLoader);
-        for (TestInfo testInfo : testInfos) {
-            execute(testInfo);
-        }
+        List<TestInfo> testInfos = newTestCaseInfo(testParameters, testClazzLocation, repositoryUrls, mavenDependencyResolverClassLoader);
+
+        executes(testInfos);
     }
 
-    private void execute(final TestInfo testInfo) {
-        try {
-            List<File> dependencyFileList = testInfo.getDependencyFileList();
-            if (logger.isDebugEnabled()) {
-                for (File dependency : dependencyFileList) {
-                    logger.debug("testcase cl lib :{}", dependency);
-                }
+    private void executes(List<TestInfo> testInfos) {
+        if (!CollectionUtils.hasLength(testInfos)) {
+            return;
+        }
+
+        TestInfo firstTestInfo = testInfos.get(0);
+        final ClassLoader sharedClassLoader = createTestClassLoader(firstTestInfo);
+        SharedTestExecutor sharedTestExecutor = new SharedTestExecutor(testClazzName, sharedClassLoader);
+
+        sharedTestExecutor.startBefore(10, TimeUnit.MINUTES);
+
+
+        final SharedTestLifeCycleWrapper sharedTestLifeCycleWrapper = sharedTestExecutor.getSharedClassWrapper();
+        for (TestInfo testInfo : testInfos) {
+            execute(testInfo, sharedTestLifeCycleWrapper);
+        }
+
+        sharedTestExecutor.startAfter(5, TimeUnit.MINUTES);
+    }
+
+    private ClassLoader createTestClassLoader(TestInfo testInfo) {
+        List<File> dependencyFileList = testInfo.getDependencyFileList();
+        if (logger.isDebugEnabled()) {
+            for (File dependency : dependencyFileList) {
+                logger.debug("testcase cl lib :{}", dependency);
             }
-            URL[] urls = URLUtils.fileToUrls(dependencyFileList);
-            final ClassLoader testClassLoader = new ChildFirstClassLoader(urls, ProfilerClass.PINPOINT_PROFILER_CLASS);
+        }
+        URL[] urls = URLUtils.fileToUrls(dependencyFileList);
+        return new ChildFirstClassLoader(urls, ProfilerClass.PINPOINT_PROFILER_CLASS);
+    }
+
+    private void execute(final TestInfo testInfo, SharedTestLifeCycleWrapper sharedTestLifeCycleWrapper) {
+        try {
+            final ClassLoader testClassLoader = createTestClassLoader(testInfo);
 
             Runnable runnable = new Runnable() {
                 @Override
                 public void run() {
                     final Class<?> testClazz = loadClass();
                     logger.debug("testClazz:{} cl:{}", testClazz.getName(), testClazz.getClassLoader());
+                    SharedTestBeforeAllInvoker invoker = new SharedTestBeforeAllInvoker(testClazz);
+                    try {
+                        invoker.invoke(sharedTestLifeCycleWrapper.getLifeCycleResult());
+                    } catch (Throwable th) {
+                        logger.error(th, "invoker setter method failed. testClazz:{} testId:{}", testClazzName, testInfo.getTestId());
+                    }
+
                     try {
                         JUnitCore junit = new JUnitCore();
                         junit.addListener(new PrintListener());
@@ -242,7 +282,9 @@ public class SharedPinpointPluginTest {
                 }
             };
             String threadName = testClazzName + " " + testInfo.getTestId() + " Thread";
-            Thread testThread = newThread(runnable, threadName, testClassLoader);
+
+            ThreadFactory threadFactory = new ThreadFactory(threadName, testClassLoader);
+            Thread testThread = threadFactory.newThread(runnable);
             testThread.start();
 
             testThread.join(TimeUnit.MINUTES.toMillis(5));
@@ -259,58 +301,6 @@ public class SharedPinpointPluginTest {
         if (testThread.isAlive()) {
             throw new IllegalStateException(testInfo + " not finished");
         }
-    }
-
-    private Thread newThread(Runnable runnable, String threadName, ClassLoader testClassLoader) {
-        Thread testThread = new Thread(runnable);
-        testThread.setName(threadName);
-        testThread.setContextClassLoader(testClassLoader);
-        testThread.setDaemon(true);
-        return testThread;
-    }
-
-    private class PrintListener extends RunListener {
-        private final ExceptionWriter writer = new ExceptionWriter();
-
-        @Override
-        public void testRunStarted(Description description) throws Exception {
-            out.println(JUNIT_OUTPUT_DELIMITER + "testRunStarted");
-        }
-
-        @Override
-        public void testRunFinished(Result result) throws Exception {
-            out.println(JUNIT_OUTPUT_DELIMITER + "testRunFinished");
-        }
-
-        @Override
-        public void testStarted(Description description) throws Exception {
-            out.println(JUNIT_OUTPUT_DELIMITER + "testStarted" + JUNIT_OUTPUT_DELIMITER + description.getDisplayName());
-        }
-
-        @Override
-        public void testFinished(Description description) throws Exception {
-            out.println(JUNIT_OUTPUT_DELIMITER + "testFinished" + JUNIT_OUTPUT_DELIMITER + description.getDisplayName());
-        }
-
-        @Override
-        public void testFailure(Failure failure) throws Exception {
-            out.println(JUNIT_OUTPUT_DELIMITER + "testFailure" + JUNIT_OUTPUT_DELIMITER + failureToString(failure));
-        }
-
-        @Override
-        public void testAssumptionFailure(Failure failure) {
-            out.println(JUNIT_OUTPUT_DELIMITER + "testAssumptionFailure" + JUNIT_OUTPUT_DELIMITER + failureToString(failure));
-        }
-
-        @Override
-        public void testIgnored(Description description) throws Exception {
-            out.println(JUNIT_OUTPUT_DELIMITER + "testIgnored" + JUNIT_OUTPUT_DELIMITER + description.getDisplayName());
-        }
-
-        private String failureToString(Failure failure) {
-            return writer.write(failure.getTestHeader(), failure.getException());
-        }
-
     }
 
 }

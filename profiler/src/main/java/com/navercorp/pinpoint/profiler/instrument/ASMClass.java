@@ -32,7 +32,9 @@ import com.navercorp.pinpoint.bootstrap.interceptor.annotation.TargetMethods;
 import com.navercorp.pinpoint.bootstrap.interceptor.scope.ExecutionPolicy;
 import com.navercorp.pinpoint.bootstrap.interceptor.scope.InterceptorScope;
 import com.navercorp.pinpoint.bootstrap.plugin.ObjectFactory;
+
 import java.util.Objects;
+
 import com.navercorp.pinpoint.common.util.JvmUtils;
 import com.navercorp.pinpoint.common.util.JvmVersion;
 import com.navercorp.pinpoint.exception.PinpointException;
@@ -43,8 +45,8 @@ import com.navercorp.pinpoint.profiler.util.JavaAssistUtils;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.ClassNode;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
@@ -57,7 +59,7 @@ import java.util.List;
 public class ASMClass implements InstrumentClass {
     private static final String FIELD_PREFIX = "_$PINPOINT$_";
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
 
     private final EngineComponent engineComponent;
 
@@ -87,7 +89,7 @@ public class ASMClass implements InstrumentClass {
             return false;
         }
         // interface static method or default method is java 1.8 or later
-        if (isInterface() && (this.classNode.getMajorVersion() < 52 || !JvmUtils.getVersion().onOrAfter(JvmVersion.JAVA_8))) {
+        if (isInterface() && (this.classNode.getMajorVersion() < JvmVersion.JAVA_8.getClassVersion() || !JvmUtils.getVersion().onOrAfter(JvmVersion.JAVA_8))) {
             return false;
         }
         return true;
@@ -135,6 +137,12 @@ public class ASMClass implements InstrumentClass {
     }
 
     @Override
+    @Deprecated
+    public InstrumentMethod getLambdaMethod(String... parameterTypes) {
+        return getDeclaredMethod("get$Lambda", parameterTypes);
+    }
+
+    @Override
     public List<InstrumentMethod> getDeclaredMethods() {
         return getDeclaredMethods(MethodFilters.ACCEPT_ALL);
     }
@@ -143,7 +151,7 @@ public class ASMClass implements InstrumentClass {
     public List<InstrumentMethod> getDeclaredMethods(final MethodFilter methodFilter) {
         Objects.requireNonNull(methodFilter, "methodFilter");
 
-        final List<InstrumentMethod> candidateList = new ArrayList<InstrumentMethod>();
+        final List<InstrumentMethod> candidateList = new ArrayList<>();
         for (ASMMethodNodeAdapter methodNode : this.classNode.getDeclaredMethods()) {
             final InstrumentMethod method = new ASMMethod(this.engineComponent, this.pluginContext, this, methodNode);
             if (methodFilter.accept(method)) {
@@ -161,7 +169,7 @@ public class ASMClass implements InstrumentClass {
 
     @Override
     public List<InstrumentMethod> getDeclaredConstructors() {
-        final List<InstrumentMethod> candidateList = new ArrayList<InstrumentMethod>();
+        final List<InstrumentMethod> candidateList = new ArrayList<>();
         for (ASMMethodNodeAdapter methodNode : this.classNode.getDeclaredConstructors()) {
             final InstrumentMethod method = new ASMMethod(this.engineComponent, this.pluginContext, this, methodNode);
             candidateList.add(method);
@@ -358,7 +366,6 @@ public class ASMClass implements InstrumentClass {
             throw new InstrumentException(interceptorClassName + " not found Caused by:" + ex.getMessage(), ex);
         }
     }
-
 
 
     private int addInterceptor0(Class<? extends Interceptor> interceptorClass, Object[] constructorArgs, InterceptorScope scope, ExecutionPolicy executionPolicy) throws InstrumentException {
@@ -607,7 +614,7 @@ public class ASMClass implements InstrumentClass {
     public List<InstrumentClass> getNestedClasses(ClassFilter filter) {
         Objects.requireNonNull(filter, "filter");
 
-        final List<InstrumentClass> nestedClasses = new ArrayList<InstrumentClass>();
+        final List<InstrumentClass> nestedClasses = new ArrayList<>();
         for (ASMClassNodeAdapter innerClassNode : this.classNode.getInnerClasses()) {
             final ASMNestedClass nestedClass = new ASMNestedClass(engineComponent, this.pluginContext, innerClassNode);
             if (filter.accept(nestedClass)) {

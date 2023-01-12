@@ -16,13 +16,13 @@
 
 package com.navercorp.pinpoint.batch.common;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.batch.core.configuration.JobLocator;
+import org.springframework.batch.core.launch.JobLauncher;
 
-import javax.annotation.PostConstruct;
 import java.util.Date;
 
 /**
@@ -30,19 +30,15 @@ import java.util.Date;
  */
 public class BatchJobLauncher extends JobLaunchSupport {
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
 
     public static final String CLEANUP_INACTIVE_AGENTS_JOB_NAME = "cleanupInactiveAgentsJob";
 
-    @Autowired
-    private BatchConfiguration batchConfiguration;
+    private final boolean enableCleanupInactiveAgentsJob;
 
-    private boolean enableCleanupInactiveAgentsJob;
-
-    @PostConstruct
-    private void setup() {
-        boolean enableCleanupInactiveAgents = batchConfiguration.isEnableCleanupInactiveAgents();
-        this.enableCleanupInactiveAgentsJob = enableCleanupInactiveAgents;
+    public BatchJobLauncher(JobLocator locator, JobLauncher launcher, BatchConfiguration batchConfiguration) {
+        super(locator, launcher);
+        this.enableCleanupInactiveAgentsJob = batchConfiguration.isEnableCleanupInactiveAgents();
     }
 
     public void alarmJob() {

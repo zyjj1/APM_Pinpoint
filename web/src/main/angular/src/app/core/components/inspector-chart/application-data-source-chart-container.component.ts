@@ -3,16 +3,16 @@ import { TranslateService } from '@ngx-translate/core';
 import * as moment from 'moment-timezone';
 import { PrimitiveArray, Data, spline, zoom } from 'billboard.js';
 import { Subject, forkJoin, combineLatest, of } from 'rxjs';
-import { takeUntil, tap, switchMap, catchError } from 'rxjs/operators';
+import { takeUntil, tap, switchMap, catchError, filter } from 'rxjs/operators';
 
 import { AnalyticsService, StoreHelperService, DynamicPopupService, TRACKED_EVENT_LIST } from 'app/shared/services';
 import { ApplicationDataSourceChartDataService, IApplicationDataSourceChart } from './application-data-source-chart-data.service';
 import { HELP_VIEWER_LIST, HelpViewerPopupContainerComponent } from 'app/core/components/help-viewer-popup/help-viewer-popup-container.component';
-import { isThatType } from 'app/core/utils/util';
 import { InspectorPageService, ISourceForChart } from 'app/routes/inspector-page/inspector-page.service';
 import { IInspectorChartData } from './inspector-chart-data.service';
 import { makeXData, makeYData, getMaxTickValue } from 'app/core/utils/chart-util';
 import { Layer } from './inspector-chart-container.component';
+import { InspectorChartThemeService } from './inspector-chart-theme.service';
 
 @Component({
     selector: 'pp-application-data-source-chart-container',
@@ -44,6 +44,7 @@ export class ApplicationDataSourceChartContainerComponent implements OnInit, OnD
     constructor(
         private storeHelperService: StoreHelperService,
         private inspectorChartDataService: ApplicationDataSourceChartDataService,
+        private inspectorChartThemeService: InspectorChartThemeService,
         private translateService: TranslateService,
         private analyticsService: AnalyticsService,
         private dynamicPopupService: DynamicPopupService,
@@ -103,10 +104,15 @@ export class ApplicationDataSourceChartContainerComponent implements OnInit, OnD
             tap(({range}: ISourceForChart) => this.previousRange = range),
             switchMap(({range}: ISourceForChart) => {
                 return this.inspectorChartDataService.getData(range).pipe(
-                    catchError(() => of(null))
+                    catchError((error: IServerError) => {
+                        this.activeLayer = Layer.RETRY;
+                        this.setRetryMessage(error.exception);
+                        return of(null);
+                    })
                 );
-            })
-        ).subscribe((data) => this.chartDataResCallbackFn(data));
+            }),
+            filter((data: IApplicationDataSourceChart[] | null) => !!data)
+        ).subscribe((data: IApplicationDataSourceChart[]) => this.chartDataResCallbackFn(data));
     }
 
     private setChartVisibility(showChart: boolean): void {
@@ -123,8 +129,13 @@ export class ApplicationDataSourceChartContainerComponent implements OnInit, OnD
     onRetry(): void {
         this.activeLayer = Layer.LOADING;
         this.inspectorChartDataService.getData(this.previousRange).pipe(
-            catchError(() => of(null))
-        ).subscribe((data) => this.chartDataResCallbackFn(data));
+            catchError((error: IServerError) => {
+                this.activeLayer = Layer.RETRY;
+                this.setRetryMessage(error.exception);
+                return of(null);
+            }),
+            filter((data: IApplicationDataSourceChart[] | null) => !!data)
+        ).subscribe((data: IApplicationDataSourceChart[]) => this.chartDataResCallbackFn(data));
     }
 
     onSourceDataSelected(index: number): void {
@@ -133,16 +144,11 @@ export class ApplicationDataSourceChartContainerComponent implements OnInit, OnD
         this.setChartConfig(this.makeChartData((this.chartData as IApplicationDataSourceChart[])[index]));
     }
 
-    chartDataResCallbackFn(data: IApplicationDataSourceChart[] | AjaxException | null): void {
-        if (data === null || isThatType<AjaxException>(data, 'exception')) {
-            this.activeLayer = Layer.RETRY;
-            this.setRetryMessage(data);
-        } else {
-            this.chartData = data;
-            this.sourceForList = data.map(({serviceType, jdbcUrl}: IApplicationDataSourceChart) => ({serviceType, jdbcUrl}));
-            this.setMinMaxAgentIdList(data[0]);
-            this.setChartConfig(this.makeChartData(data[0]));
-        }
+    chartDataResCallbackFn(data: IApplicationDataSourceChart[]): void {
+        this.chartData = data;
+        this.sourceForList = data.map(({serviceType, jdbcUrl}: IApplicationDataSourceChart) => ({serviceType, jdbcUrl}));
+        this.setMinMaxAgentIdList(data[0]);
+        this.setChartConfig(this.makeChartData(data[0]));
     }
 
     private setChartConfig(data: PrimitiveArray[]): void {
@@ -153,8 +159,8 @@ export class ApplicationDataSourceChartContainerComponent implements OnInit, OnD
         this.isDataEmpty = this.isEmpty(data);
     }
 
-    private setRetryMessage(data: any): void {
-        this.retryMessage = data ? data.exception.message : this.dataFetchFailedText;
+    private setRetryMessage(message: string): void {
+        this.retryMessage = message;
     }
 
     private isEmpty(data: PrimitiveArray[]): boolean {
@@ -186,9 +192,7 @@ export class ApplicationDataSourceChartContainerComponent implements OnInit, OnD
                 max: 'Max',
             },
             colors: {
-                min: '#66B2FF',
-                avg: '#4C0099',
-                max: '#0000CC',
+                ...this.inspectorChartThemeService.getMinAvgMaxColors()
             },
             empty: {
                 label: {

@@ -27,8 +27,6 @@ import com.navercorp.pinpoint.bootstrap.plugin.proxy.ProxyRequestRecorder;
 import com.navercorp.pinpoint.bootstrap.plugin.request.util.DisableParameterRecorder;
 import com.navercorp.pinpoint.bootstrap.plugin.request.util.ParameterRecorder;
 import com.navercorp.pinpoint.bootstrap.plugin.request.util.RemoteAddressResolverFactory;
-import com.navercorp.pinpoint.bootstrap.plugin.uri.DisabledUriStatRecorder;
-import com.navercorp.pinpoint.bootstrap.plugin.uri.UriStatRecorder;
 import com.navercorp.pinpoint.common.trace.ServiceType;
 import com.navercorp.pinpoint.common.util.CollectionUtils;
 
@@ -56,7 +54,7 @@ public class ServletRequestListenerBuilder<REQ> {
 
     private List<String> recordRequestHeaders;
     private List<String> recordRequestCookies;
-    private UriStatRecorder<REQ> uriStatRecorder = DisabledUriStatRecorder.create();
+    private boolean recordStatusCode = true;
 
     public ServletRequestListenerBuilder(final ServiceType serviceType,
                                          final TraceContext traceContext,
@@ -99,14 +97,13 @@ public class ServletRequestListenerBuilder<REQ> {
         this.recordRequestCookies = recordRequestCookies;
     }
 
-    public void setReqUriStatRecorder(UriStatRecorder<REQ> reqUriStatRecorder) {
-        Objects.requireNonNull(reqUriStatRecorder, "reqUriStatRecorder");
-        this.uriStatRecorder = reqUriStatRecorder;
+    public void setRecordStatusCode(boolean recordStatusCode) {
+        this.recordStatusCode = recordStatusCode;
     }
 
     private <T> Filter<T> newExcludeUrlFilter(Filter<T> excludeUrlFilter) {
         if (excludeUrlFilter == null) {
-            return new SkipFilter<T>();
+            return new SkipFilter<>();
         }
         return excludeUrlFilter;
     }
@@ -116,12 +113,12 @@ public class ServletRequestListenerBuilder<REQ> {
 
         RequestAdaptor<REQ> requestAdaptor = RemoteAddressResolverFactory.wrapRealIpSupport(this.requestAdaptor, realIpHeader, realIpEmptyValue);
 
-        RequestTraceReader<REQ> requestTraceReader = new RequestTraceReader<REQ>(traceContext, requestAdaptor, true);
+        RequestTraceReader<REQ> requestTraceReader = new RequestTraceReader<>(traceContext, requestAdaptor, true);
 
 
         ProxyRequestRecorder<REQ> proxyRequestRecorder;
         if (requestRecorderFactory == null) {
-            proxyRequestRecorder = new DisableRequestRecorder<REQ>();
+            proxyRequestRecorder = new DisableRequestRecorder<>();
         } else {
             proxyRequestRecorder = requestRecorderFactory.getProxyRequestRecorder(requestAdaptor);
         }
@@ -136,47 +133,52 @@ public class ServletRequestListenerBuilder<REQ> {
         // not general api : http??
         HttpStatusCodeRecorder httpStatusCodeRecorder;
         if (httpStatusCodeErrors == null) {
-            HttpStatusCodeErrors httpStatusCodeErrors = new HttpStatusCodeErrors(Collections.<String>emptyList());
+            HttpStatusCodeErrors httpStatusCodeErrors = new HttpStatusCodeErrors(Collections.emptyList());
             httpStatusCodeRecorder = new HttpStatusCodeRecorder(httpStatusCodeErrors);
         } else {
             httpStatusCodeRecorder = new HttpStatusCodeRecorder(httpStatusCodeErrors);
         }
 
 
-        return new ServletRequestListener<REQ>(serviceType, traceContext, requestAdaptor, requestTraceReader,
-                excludeUrlFilter, parameterRecorder, proxyRequestRecorder, serverRequestRecorder, httpStatusCodeRecorder, uriStatRecorder);
+        return new ServletRequestListener<>(serviceType, traceContext, requestAdaptor, requestTraceReader,
+                excludeUrlFilter, parameterRecorder, proxyRequestRecorder, serverRequestRecorder, httpStatusCodeRecorder, recordStatusCode);
     }
 
 
     private ServerRequestRecorder<REQ> newServerRequestRecorder(RequestAdaptor<REQ> requestAdaptor) {
         final ServerHeaderRecorder<REQ> headerRecorder = newServerHeaderRecorder(requestAdaptor);
         final ServerCookieRecorder<REQ> cookieRecorder = newServerCookieRecorder(requestAdaptor);
-        return new ServerRequestRecorder<REQ>(requestAdaptor, headerRecorder, cookieRecorder);
+        return new ServerRequestRecorder<>(requestAdaptor, headerRecorder, cookieRecorder);
     }
 
     private ServerHeaderRecorder<REQ> newServerHeaderRecorder(RequestAdaptor<REQ> requestAdaptor) {
         if (CollectionUtils.isEmpty(recordRequestHeaders)) {
-            return new BypassServerHeaderRecorder<REQ>();
+            return new BypassServerHeaderRecorder<>();
         }
-        return new DefaultServerHeaderRecorder<REQ>(requestAdaptor, recordRequestHeaders);
+
+        if (AllServerHeaderRecorder.isRecordAllHeaders(recordRequestHeaders)) {
+            return new AllServerHeaderRecorder<>(requestAdaptor);
+        }
+
+        return new DefaultServerHeaderRecorder<>(requestAdaptor, recordRequestHeaders);
     }
 
     private ServerCookieRecorder<REQ> newServerCookieRecorder(RequestAdaptor<REQ> requestAdaptor) {
         if (CollectionUtils.isEmpty(recordRequestCookies)) {
-            return new BypassServerCookieRecorder<REQ>();
+            return new BypassServerCookieRecorder<>();
         }
 
         if (!(requestAdaptor instanceof CookieSupportAdaptor)) {
             // unsupported
-            return new BypassServerCookieRecorder<REQ>();
+            return new BypassServerCookieRecorder<>();
         }
         CookieSupportAdaptor<REQ> cookieAdaptor = (CookieSupportAdaptor<REQ>) requestAdaptor;
-        return new DefaultServerCookieRecorder<REQ>(cookieAdaptor, recordRequestCookies);
+        return new DefaultServerCookieRecorder<>(cookieAdaptor, recordRequestCookies);
     }
 
     private ParameterRecorder<REQ> newParameterRecorder() {
         if (this.parameterRecorder == null) {
-            return new DisableParameterRecorder<REQ>();
+            return new DisableParameterRecorder<>();
         }
         return this.parameterRecorder;
     }

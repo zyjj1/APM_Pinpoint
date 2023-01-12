@@ -193,7 +193,7 @@ public class SocketUtils {
     }
 
 
-    private static enum SocketType {
+    private enum SocketType {
 
         TCP {
             @Override
@@ -287,7 +287,7 @@ public class SocketUtils {
             isTrue((maxPort - minPort) >= numRequested,
                     "'numRequested' must not be greater than 'maxPort' - 'minPort'");
 
-            final SortedSet<Integer> availablePorts = new TreeSet<Integer>();
+            final SortedSet<Integer> availablePorts = new TreeSet<>();
             int attemptCount = 0;
             while ((++attemptCount <= numRequested + 100) && (availablePorts.size() < numRequested)) {
                 availablePorts.add(findAvailablePort(minPort, maxPort));

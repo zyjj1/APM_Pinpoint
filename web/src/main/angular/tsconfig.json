@@ -16,7 +16,7 @@
             "node_modules/@types"
         ],
         "lib": [
-            "es2017",
+            "es2019",
             "dom",
             "dom.iterable",
             "esnext.array"
@@ -26,7 +26,10 @@
         "noImplicitAny": true,
         "noImplicitReturns": true,
         "strict": false,
-        "noUnusedLocals": true
+        "noUnusedLocals": true,
+        "resolveJsonModule": true,
+        "allowSyntheticDefaultImports": true,
+        "esModuleInterop": true,
     },
     "angularCompilerOptions": {
         "fullTemplateTypeCheck": true,

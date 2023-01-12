@@ -14,50 +14,64 @@
  */
 package com.navercorp.pinpoint.bootstrap.plugin.jdbc;
 
+import com.navercorp.pinpoint.bootstrap.instrument.InstrumentMethod;
+import com.navercorp.pinpoint.bootstrap.instrument.MethodFilter;
+
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import com.navercorp.pinpoint.bootstrap.instrument.InstrumentMethod;
-import com.navercorp.pinpoint.bootstrap.instrument.MethodFilter;
+import java.util.Objects;
 
 /**
  * @author Jongho Moon
  *
  */
 public class PreparedStatementBindingMethodFilter implements MethodFilter {
-    private static final Map<String, List<String[]>> BIND_METHODS;
+    private static final Map<String, List<String[]>> BIND_METHODS = getBindVariableDesc();
 
-    static {
+
+    private static Map<String, List<String[]>> getBindVariableDesc() {
         List<Method> methods = PreparedStatementUtils.findBindVariableSetMethod();
-        BIND_METHODS = new HashMap<String, List<String[]>>();
-        
+        Map<String, List<String[]>> bindMethod = new HashMap<>();
+
         for (Method method : methods) {
-            List<String[]> list = BIND_METHODS.get(method.getName());
-            
-            if (list == null) {
-                list = new ArrayList<String[]>();
-                BIND_METHODS.put(method.getName(), list);
+            List<String[]> parameterTypeList = bindMethod.get(method.getName());
+
+            if (parameterTypeList == null) {
+                parameterTypeList = new ArrayList<>();
+                bindMethod.put(method.getName(), parameterTypeList);
             }
-            
-            Class<?>[] paramTypes = method.getParameterTypes();
-            int len = paramTypes.length;
-            String[] paramTypeNames = new String[len];
-            
-            for (int i = 0; i < len; i++) {
-                paramTypeNames[i] = paramTypes[i].getName();
-            }
-            
-            list.add(paramTypeNames);
+
+            String[] paramTypeNames = getParameterTypeNames(method);
+
+            parameterTypeList.add(paramTypeNames);
         }
+        return bindMethod;
     }
-    
-    
+
+    private static String[] getParameterTypeNames(Method method) {
+        if (method.getParameterCount() == 0) {
+            return new String[0];
+        }
+        return getParameterTypeNames(method.getParameterTypes());
+    }
+
+    private static String[] getParameterTypeNames(Class<?>[] paramTypes) {
+        int len = paramTypes.length;
+        String[] paramTypeNames = new String[len];
+        for (int i = 0; i < len; i++) {
+            Class<?> paramType = paramTypes[i];
+            paramTypeNames[i] = ReflectionUtils.getParameterTypeName(paramType);
+        }
+        return paramTypeNames;
+    }
+
+
     public static PreparedStatementBindingMethodFilter includes(String... names) {
-        Map<String, List<String[]>> targets = new HashMap<String, List<String[]>>(names.length);
+        Map<String, List<String[]>> targets = new HashMap<>(names.length);
         
         for (String name : names) {
             List<String[]> paramTypes = BIND_METHODS.get(name);
@@ -71,7 +85,7 @@ public class PreparedStatementBindingMethodFilter implements MethodFilter {
     }
 
     public static PreparedStatementBindingMethodFilter excludes(String... names) {
-        Map<String, List<String[]>> targets = new HashMap<String, List<String[]>>(BIND_METHODS);
+        Map<String, List<String[]>> targets = new HashMap<>(BIND_METHODS);
         
         for (String name : names) {
             targets.remove(name);
@@ -84,11 +98,11 @@ public class PreparedStatementBindingMethodFilter implements MethodFilter {
     private final Map<String, List<String[]>> methods;
     
     public PreparedStatementBindingMethodFilter() {
-        this.methods = BIND_METHODS;
+        this(BIND_METHODS);
     }
     
-    public PreparedStatementBindingMethodFilter(Map<String, List<String[]>> targets) {
-        this.methods = targets;
+    public PreparedStatementBindingMethodFilter(Map<String, List<String[]>> methods) {
+        this.methods = Objects.requireNonNull(methods, "methods");
     }
 
     @Override

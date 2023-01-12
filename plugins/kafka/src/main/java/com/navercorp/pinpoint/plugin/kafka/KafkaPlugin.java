@@ -1,11 +1,11 @@
 /*
- * Copyright 2018 NAVER Corp.
+ * Copyright 2021 NAVER Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -37,6 +37,7 @@ import com.navercorp.pinpoint.plugin.kafka.field.accessor.RemoteAddressFieldAcce
 import com.navercorp.pinpoint.plugin.kafka.field.accessor.SocketChannelListFieldAccessor;
 import com.navercorp.pinpoint.plugin.kafka.field.getter.ApiVersionsGetter;
 import com.navercorp.pinpoint.plugin.kafka.field.getter.SelectorGetter;
+import com.navercorp.pinpoint.plugin.kafka.interceptor.ConsumerConstructor_V_2_7_Interceptor;
 import com.navercorp.pinpoint.plugin.kafka.interceptor.ConsumerConstructorInterceptor;
 import com.navercorp.pinpoint.plugin.kafka.interceptor.ConsumerMultiRecordEntryPointInterceptor;
 import com.navercorp.pinpoint.plugin.kafka.interceptor.ConsumerPollInterceptor;
@@ -46,6 +47,7 @@ import com.navercorp.pinpoint.plugin.kafka.interceptor.ProducerAddHeaderIntercep
 import com.navercorp.pinpoint.plugin.kafka.interceptor.NetworkClientPollInterceptor;
 import com.navercorp.pinpoint.plugin.kafka.interceptor.ProducerConstructorInterceptor;
 import com.navercorp.pinpoint.plugin.kafka.interceptor.ProducerSendInterceptor;
+import com.navercorp.pinpoint.plugin.kafka.interceptor.SocketChannelCloseInterceptor;
 import com.navercorp.pinpoint.plugin.kafka.interceptor.SocketChannelRegisterInterceptor;
 
 import java.security.ProtectionDomain;
@@ -66,6 +68,10 @@ public class KafkaPlugin implements ProfilerPlugin, TransformTemplateAware {
     @Override
     public void setup(ProfilerPluginSetupContext context) {
         final KafkaConfig config = new KafkaConfig(context.getConfig());
+        if (Boolean.FALSE == config.isEnable()) {
+            logger.info("{} disabled", this.getClass().getSimpleName());
+            return;
+        }
         logger.info("{} config:{}", this.getClass().getSimpleName(), config);
 
         if (config.isProducerEnable()) {
@@ -111,11 +117,19 @@ public class KafkaPlugin implements ProfilerPlugin, TransformTemplateAware {
         public byte[] doInTransform(Instrumentor instrumentor, ClassLoader classLoader, String className, Class<?> classBeingRedefined, ProtectionDomain protectionDomain, byte[] classfileBuffer) throws InstrumentException {
             final InstrumentClass target = instrumentor.getInstrumentClass(classLoader, className, classfileBuffer);
 
-            // Version 2.3.0+ is supported.
-            InstrumentMethod constructor = target.getConstructor("java.util.Map",
+            // Version 2.8.0+ is supported.
+            InstrumentMethod constructor = target.getConstructor("org.apache.kafka.clients.producer.ProducerConfig",
                     "org.apache.kafka.common.serialization.Serializer", "org.apache.kafka.common.serialization.Serializer",
                     "org.apache.kafka.clients.producer.internals.ProducerMetadata", "org.apache.kafka.clients.KafkaClient",
                     "org.apache.kafka.clients.producer.internals.ProducerInterceptors", "org.apache.kafka.common.utils.Time");
+
+            if (constructor == null) {
+                // Version 2.3.0+ is supported.
+                constructor = target.getConstructor("java.util.Map",
+                        "org.apache.kafka.common.serialization.Serializer", "org.apache.kafka.common.serialization.Serializer",
+                        "org.apache.kafka.clients.producer.internals.ProducerMetadata", "org.apache.kafka.clients.KafkaClient",
+                        "org.apache.kafka.clients.producer.internals.ProducerInterceptors", "org.apache.kafka.common.utils.Time");
+            }
 
             if (constructor == null) {
                 // Version 2.2.0+ is supported.
@@ -196,8 +210,15 @@ public class KafkaPlugin implements ProfilerPlugin, TransformTemplateAware {
 
             InstrumentMethod constructor = target.getConstructor("org.apache.kafka.clients.consumer.ConsumerConfig",
                     "org.apache.kafka.common.serialization.Deserializer", "org.apache.kafka.common.serialization.Deserializer");
-            if(constructor != null) {
+            if (constructor != null) {
                 constructor.addInterceptor(ConsumerConstructorInterceptor.class);
+            }
+
+            if (constructor == null) {
+                constructor = target.getConstructor("java.util.Map", "org.apache.kafka.common.serialization.Deserializer", "org.apache.kafka.common.serialization.Deserializer");
+                if (constructor != null) {
+                    constructor.addInterceptor(ConsumerConstructor_V_2_7_Interceptor.class);
+                }
             }
 
             // Version 2.2.0+ is supported.
@@ -353,6 +374,15 @@ public class KafkaPlugin implements ProfilerPlugin, TransformTemplateAware {
 
     public static class KafkaSelectorTransform implements TransformCallback {
 
+        private static final String[][] SELECTOR_CLOSE_METHOD_PARAMS = {
+                // for v1.1.0+
+                {"org.apache.kafka.common.network.KafkaChannel", "org.apache.kafka.common.network.Selector$CloseMode"},
+                // for v1.0.1 ~ 1.0.2
+                {"org.apache.kafka.common.network.KafkaChannel", "boolean"},
+                // for ~ v1.0.0            // for
+                {"org.apache.kafka.common.network.KafkaChannel", "boolean", "boolean"}
+        };
+
         @Override
         public byte[] doInTransform(Instrumentor instrumentor, ClassLoader classLoader, String className, Class<?> classBeingRedefined, ProtectionDomain protectionDomain, byte[] classfileBuffer) throws InstrumentException {
             final InstrumentClass target = instrumentor.getInstrumentClass(classLoader, className, classfileBuffer);
@@ -370,6 +400,23 @@ public class KafkaPlugin implements ProfilerPlugin, TransformTemplateAware {
                 target.addField(SocketChannelListFieldAccessor.class);
             }
 
+            InstrumentMethod closeMethod = null;
+            for (String[] selectorCloseMethodParam : SELECTOR_CLOSE_METHOD_PARAMS) {
+                closeMethod = target.getDeclaredMethod("close", selectorCloseMethodParam);
+                if (closeMethod != null) {
+                    break;
+                }
+            }
+
+            if (closeMethod != null) {
+                closeMethod.addInterceptor(SocketChannelCloseInterceptor.class);
+            }
+
+            InstrumentMethod doCloseMethod = target.getDeclaredMethod("close", "org.apache.kafka.common.network.KafkaChannel", "boolean");
+            if (doCloseMethod != null) {
+                doCloseMethod.addInterceptor(SocketChannelCloseInterceptor.class);
+            }
+
             return target.toBytecode();
         }
     }
@@ -379,11 +426,12 @@ public class KafkaPlugin implements ProfilerPlugin, TransformTemplateAware {
         @Override
         public byte[] doInTransform(Instrumentor instrumentor, ClassLoader classLoader, String className, Class<?> classBeingRedefined, ProtectionDomain protectionDomain, byte[] classfileBuffer) throws InstrumentException {
             final InstrumentClass target = instrumentor.getInstrumentClass(classLoader, className, classfileBuffer);
+            final int kafkaVersion = KafkaVersion.getVersion(classLoader);
 
             InstrumentMethod pollMethod = target.getDeclaredMethod("poll", "long", "long");
 
             if (pollMethod != null) {
-                pollMethod.addInterceptor(NetworkClientPollInterceptor.class);
+                pollMethod.addInterceptor(NetworkClientPollInterceptor.class, va(kafkaVersion, KafkaVersion.getResponseDataMethod()));
                 target.addGetter(SelectorGetter.class, "selector");
             }
 

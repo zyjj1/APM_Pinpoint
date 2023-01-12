@@ -1,4 +1,5 @@
-import { Component, OnInit, Input, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, Input, Output, EventEmitter, ViewChild } from '@angular/core';
+import { CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
 
 @Component({
     selector: 'pp-transaction-timeline',
@@ -7,6 +8,7 @@ import { Component, OnInit, Input, Output, EventEmitter } from '@angular/core';
 })
 
 export class TransactionTimelineComponent implements OnInit {
+    @ViewChild(CdkVirtualScrollViewport, {static: false}) viewPort: CdkVirtualScrollViewport;
     @Input() data: any[];
     @Input() keyIndex: { [key: string]: number};
     @Input() startTime: number;
@@ -14,8 +16,16 @@ export class TransactionTimelineComponent implements OnInit {
     @Input() barRatio: number;
     @Output() outSelectTransaction: EventEmitter<string> = new EventEmitter();
 
-    selectedRow: number[] = [];
+    searchTargetIndexList: number[] = [];
+    focusRowIndex: number;
     colorSet: { [key: string]: string } = {};
+    getTimelineBarState = (i: number) => {
+        return {
+            'search-target': this.searchTargetIndexList.includes(i),
+            'focus': this.focusRowIndex === i
+        };
+    };
+
     constructor() {}
     ngOnInit() {}
     private calcColor(str: string): string {
@@ -52,9 +62,6 @@ export class TransactionTimelineComponent implements OnInit {
     getTop(index: number): number {
         return index * 21;
     }
-    isSelectedRow(index: number): boolean {
-        return this.selectedRow.indexOf(index) !== -1;
-    }
     getStartTime(call: any): number {
         return call[this.keyIndex.begin] - this.startTime;
     }
@@ -65,28 +72,25 @@ export class TransactionTimelineComponent implements OnInit {
     onSelectCall(index: number, call: any): void {
         this.outSelectTransaction.emit(call[this.keyIndex.id]);
     }
-    searchRow({type, query}: {type: string, query: string | number}): number {
+    getQueryedRowCount({type, query}: {type: string, query: string}): number {
         let resultCount = 0;
-        this.selectedRow = [];
-        const fnCompare = {
-            'self': (data: any, value: string): boolean => {
-                return data[this.keyIndex.executionMilliseconds] >= value;
-            },
-            'argument': (data: any, value: number): boolean => {
-                return data[this.keyIndex.arguments].indexOf(value) !== -1;
-            }
-        };
-        this.data.forEach((call: any, index: number) => {
-            if (fnCompare[type](call, query)) {
+
+        this.searchTargetIndexList = [];
+        this.data.forEach((call: any, i: number) => {
+            // Check only "Self" at this moment
+            if (+call[this.keyIndex.executionMilliseconds] >= +query) {
+                this.searchTargetIndexList.push(i);
                 resultCount++;
-                this.selectedRow.push(index);
             }
         });
-        if (resultCount > 0) {
-            // move row
-        }
+
         return resultCount;
     }
+    focusTargetRow(targetIndex: number) {
+        this.focusRowIndex = this.searchTargetIndexList[targetIndex];
+        this.viewPort.scrollToIndex(this.focusRowIndex);
+    }
+
     showApplicationName(call: any, index: number): boolean {
         if (index === 0 || index >= this.data.length) {
             return true;

@@ -31,11 +31,7 @@ public class HandshakerFactory {
 
     public static final String SOCKET_ID = "socketId";
 
-
     private static final int DEFAULT_ENABLE_WORKER_PACKET_RETRY_COUNT = Integer.MAX_VALUE;
-
-    private final int maxHandshakeCount = DEFAULT_ENABLE_WORKER_PACKET_RETRY_COUNT;
-
 
     private final SocketIdFactory socketIdFactory;
     private final Map<String, Object> properties;
@@ -53,13 +49,13 @@ public class HandshakerFactory {
 
     public PinpointClientHandshaker newHandShaker(Timer channelTimer) {
         Map<String, Object> handshakeData = createHandShakeData();
-        return new PinpointClientHandshaker(handshakeData, channelTimer, clientOption.getEnableWorkerPacketDelay(), maxHandshakeCount);
+        return new PinpointClientHandshaker(handshakeData, channelTimer, clientOption.getEnableWorkerPacketDelay(), DEFAULT_ENABLE_WORKER_PACKET_RETRY_COUNT);
     }
 
 
     private Map<String, Object> createHandShakeData() {
 
-        Map<String, Object> handshakeData = new HashMap<String, Object>(this.properties);
+        Map<String, Object> handshakeData = new HashMap<>(this.properties);
 
         final int socketId = this.socketIdFactory.nextSocketId();
         handshakeData.put(SOCKET_ID, socketId);

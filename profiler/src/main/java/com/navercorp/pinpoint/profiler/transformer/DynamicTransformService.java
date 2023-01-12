@@ -24,8 +24,8 @@ import com.navercorp.pinpoint.bootstrap.instrument.RequestHandle;
 import com.navercorp.pinpoint.common.util.JvmUtils;
 import com.navercorp.pinpoint.common.util.JvmVersion;
 import com.navercorp.pinpoint.profiler.ProfilerException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import com.navercorp.pinpoint.bootstrap.instrument.DynamicTransformRequestListener;
 import com.navercorp.pinpoint.bootstrap.instrument.DynamicTransformTrigger;
@@ -33,14 +33,13 @@ import com.navercorp.pinpoint.bootstrap.instrument.DynamicTransformTrigger;
 import java.util.Objects;
 
 import static com.navercorp.pinpoint.common.util.JvmVersion.JAVA_8;
-import static com.navercorp.pinpoint.common.util.JvmVersion.JAVA_9;
 
 /**
  * @author emeroad
  */
 public class DynamicTransformService implements DynamicTransformTrigger {
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
 
     private final Instrumentation instrumentation;
 
@@ -102,11 +101,8 @@ public class DynamicTransformService implements DynamicTransformTrigger {
         }
     }
 
-    public void setTransformRequestEventListener(DynamicTransformRequestListener retransformEventListener) {
-        if (retransformEventListener == null) {
-            throw new NullPointerException("dynamicTransformRequestListener");
-        }
-        this.dynamicTransformRequestListener = retransformEventListener;
+    public void setTransformRequestEventListener(DynamicTransformRequestListener dynamicTransformRequestListener) {
+        this.dynamicTransformRequestListener = Objects.requireNonNull(dynamicTransformRequestListener, "dynamicTransformRequestListener");
     }
 
 }

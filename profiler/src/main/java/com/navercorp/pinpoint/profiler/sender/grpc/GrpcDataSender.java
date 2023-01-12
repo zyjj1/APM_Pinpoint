@@ -19,10 +19,10 @@ package com.navercorp.pinpoint.profiler.sender.grpc;
 import java.util.Objects;
 import com.navercorp.pinpoint.common.profiler.concurrent.ExecutorFactory;
 import com.navercorp.pinpoint.common.profiler.concurrent.PinpointThreadFactory;
+import com.navercorp.pinpoint.common.profiler.logging.ThrottledLogger;
 import com.navercorp.pinpoint.grpc.ExecutorUtils;
 import com.navercorp.pinpoint.grpc.ManagedChannelUtils;
 import com.navercorp.pinpoint.grpc.client.ChannelFactory;
-import com.navercorp.pinpoint.grpc.logging.ThrottledLogger;
 import com.navercorp.pinpoint.profiler.context.thrift.MessageConverter;
 import com.navercorp.pinpoint.profiler.sender.DataSender;
 
@@ -30,8 +30,8 @@ import com.google.protobuf.GeneratedMessageV3;
 
 import io.grpc.ConnectivityState;
 import io.grpc.ManagedChannel;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
@@ -41,8 +41,8 @@ import java.util.concurrent.ThreadFactory;
 /**
  * @author Woonduk Kang(emeroad)
  */
-public abstract class GrpcDataSender implements DataSender<Object> {
-    protected final Logger logger = LoggerFactory.getLogger(this.getClass());
+public abstract class GrpcDataSender<T> implements DataSender<T> {
+    protected final Logger logger = LogManager.getLogger(this.getClass());
     protected final boolean isDebug = logger.isDebugEnabled();
 
     protected final String name;
@@ -53,7 +53,7 @@ public abstract class GrpcDataSender implements DataSender<Object> {
     protected final long logId;
 
     // not thread safe
-    protected final MessageConverter<GeneratedMessageV3> messageConverter;
+    protected final MessageConverter<T, GeneratedMessageV3> messageConverter;
 
     protected final ExecutorService executor;
 
@@ -61,13 +61,13 @@ public abstract class GrpcDataSender implements DataSender<Object> {
 
     protected volatile boolean shutdown;
     
-    protected final BlockingQueue<Object> queue;
+    protected final BlockingQueue<T> queue;
     protected final ThrottledLogger tLogger;
 
 
     public GrpcDataSender(String host, int port,
                           int executorQueueSize,
-                          MessageConverter<GeneratedMessageV3> messageConverter,
+                          MessageConverter<T, GeneratedMessageV3> messageConverter,
                           ChannelFactory channelFactory) {
         this.channelFactory = Objects.requireNonNull(channelFactory, "channelFactory");
 
@@ -87,7 +87,7 @@ public abstract class GrpcDataSender implements DataSender<Object> {
 
 
         this.tLogger = ThrottledLogger.getLogger(logger, 100);
-        this.queue = new LinkedBlockingQueue<Object>(executorQueueSize);
+        this.queue = new LinkedBlockingQueue<>(executorQueueSize);
     }
 
     public long getLogId() {
@@ -103,8 +103,11 @@ public abstract class GrpcDataSender implements DataSender<Object> {
 
         @Override
         public void run() {
-            ConnectivityState change = managedChannel.getState(false);
+            final ConnectivityState change = managedChannel.getState(false);
             logger.info("ConnectivityState changed before:{}, change:{}", before, change);
+            if (change == ConnectivityState.TRANSIENT_FAILURE) {
+                logger.info("Failed to connect to collector server {} {}/{}", name, host, port);
+            }
             managedChannel.notifyWhenStateChanged(change, new ConnectivityStateMonitor(change));
         }
     }
@@ -115,7 +118,7 @@ public abstract class GrpcDataSender implements DataSender<Object> {
     }
 
     @Override
-    public boolean send(final Object data) {
+    public boolean send(final T data) {
         if (this.queue.offer(data)) {
             return true;
         }

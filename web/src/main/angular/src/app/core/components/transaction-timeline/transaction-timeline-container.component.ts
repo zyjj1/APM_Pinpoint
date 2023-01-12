@@ -11,7 +11,7 @@ import {
 } from 'app/shared/services';
 import { TransactionSearchInteractionService, ISearchParam } from 'app/core/components/transaction-search/transaction-search-interaction.service';
 import { TransactionTimelineComponent } from './transaction-timeline.component';
-import { Actions } from 'app/shared/store';
+import { Actions } from 'app/shared/store/reducers';
 
 @Component({
     selector: 'pp-transaction-timeline-container',
@@ -42,8 +42,15 @@ export class TransactionTimelineContainerComponent implements OnInit, OnDestroy 
         this.connectStore();
         this.transactionSearchInteractionService.onSearch$.pipe(
             takeUntil(this.unsubscribe),
-        ).subscribe((params: ISearchParam) => {
-            this.transactionSearchInteractionService.setSearchResultCount(this.transactionTimelineComponent.searchRow(params));
+        ).subscribe(({type, query, resultIndex}: ISearchParam) => {
+            const resultCount = this.transactionTimelineComponent.getQueryedRowCount({type, query});
+
+            if (resultCount !== 0) {
+                this.transactionTimelineComponent.focusTargetRow(resultIndex);
+            }
+            this.cd.detectChanges();
+
+            this.transactionSearchInteractionService.setSearchResultCount(resultCount);
         });
     }
 

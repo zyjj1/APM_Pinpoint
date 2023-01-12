@@ -14,13 +14,17 @@
  */
 package com.navercorp.pinpoint.plugin.mongo;
 
+import com.mongodb.MongoClientSettings;
+import com.mongodb.ServerAddress;
 import com.mongodb.WriteConcern;
 import com.navercorp.pinpoint.bootstrap.context.SpanEventRecorder;
+import com.navercorp.pinpoint.common.plugin.util.HostAndPort;
 import com.navercorp.pinpoint.common.util.StringJoinUtils;
 import com.navercorp.pinpoint.common.util.StringStringValue;
 import org.bson.BsonType;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -69,8 +73,8 @@ public final class MongoUtil {
             return null;
         }
 
-        final List<String> parsedJson = new ArrayList<String>(2);
-        final List<String> jsonParameter = new ArrayList<String>(16);
+        final List<String> parsedJson = new ArrayList<>(2);
+        final List<String> jsonParameter = new ArrayList<>(16);
 
         for (Object arg : args) {
 
@@ -78,7 +82,7 @@ public final class MongoUtil {
 
             String documentString = writeContext.parse(arg);
 
-            if(!documentString.equals(WriteContext.UNTRACED)) {
+            if (!documentString.equals(WriteContext.UNTRACED)) {
                 parsedJson.add(documentString);
             }
         }
@@ -87,5 +91,17 @@ public final class MongoUtil {
         String jsonParameterString = StringJoinUtils.join(jsonParameter, SEPARATOR);
         return new NormalizedBson(parsedJsonString, jsonParameterString);
     }
-}
 
+    public static List<String> getHostList(MongoClientSettings mongoClientSettings) {
+        if (mongoClientSettings.getClusterSettings() == null || mongoClientSettings.getClusterSettings().getHosts() == null) {
+            return Collections.emptyList();
+        }
+        final List<String> hostList = new ArrayList<>();
+        for (ServerAddress sa : mongoClientSettings.getClusterSettings().getHosts()) {
+            final String hostAddress = HostAndPort.toHostAndPortString(sa.getHost(), sa.getPort());
+            hostList.add(hostAddress);
+        }
+
+        return hostList;
+    }
+}

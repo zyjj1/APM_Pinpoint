@@ -17,6 +17,7 @@
 package com.navercorp.pinpoint.web.view;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.navercorp.pinpoint.common.server.util.json.TypeRef;
 import com.navercorp.pinpoint.common.util.CollectionUtils;
 import com.navercorp.pinpoint.common.util.ThreadMXBeanUtils;
 import com.navercorp.pinpoint.profiler.context.thrift.ThreadDumpThriftMessageConverter;
@@ -24,10 +25,10 @@ import com.navercorp.pinpoint.profiler.monitor.metric.deadlock.ThreadDumpMetricS
 import com.navercorp.pinpoint.profiler.util.ThreadDumpUtils;
 import com.navercorp.pinpoint.thrift.dto.command.TActiveThreadDump;
 import com.navercorp.pinpoint.thrift.dto.command.TThreadDump;
-import com.navercorp.pinpoint.web.vo.AgentActiveThreadDumpFactory;
-import com.navercorp.pinpoint.web.vo.AgentActiveThreadDumpList;
-import org.junit.Assert;
-import org.junit.Test;
+import com.navercorp.pinpoint.web.vo.activethread.AgentActiveThreadDumpFactory;
+import com.navercorp.pinpoint.web.vo.activethread.AgentActiveThreadDumpList;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.lang.management.ThreadInfo;
 import java.util.ArrayList;
@@ -48,22 +49,22 @@ public class AgentActiveThreadDumpListSerializerTest {
         AgentActiveThreadDumpList activeThreadDumpList = createThreadDumpList(allThreadInfo);
         String jsonValue = mapper.writeValueAsString(activeThreadDumpList);
 
-        List<?> list = mapper.readValue(jsonValue, List.class);
+        List<Map<String, Object>> list = mapper.readValue(jsonValue, TypeRef.listMap());
 
-        Assert.assertTrue(CollectionUtils.hasLength(list));
+        Assertions.assertTrue(CollectionUtils.hasLength(list));
 
-        Map<?, ?> map = (Map<?, ?>) list.get(0);
+        Map<String, Object> map = list.get(0);
 
-        Assert.assertTrue(map.containsKey("threadId"));
-        Assert.assertTrue(map.containsKey("threadName"));
-        Assert.assertTrue(map.containsKey("threadState"));
-        Assert.assertTrue(map.containsKey("startTime"));
-        Assert.assertTrue(map.containsKey("execTime"));
-        Assert.assertTrue(map.containsKey("localTraceId"));
-        Assert.assertTrue(map.containsKey("sampled"));
-        Assert.assertTrue(map.containsKey("transactionId"));
-        Assert.assertTrue(map.containsKey("entryPoint"));
-        Assert.assertTrue(map.containsKey("detailMessage"));
+        Assertions.assertTrue(map.containsKey("threadId"));
+        Assertions.assertTrue(map.containsKey("threadName"));
+        Assertions.assertTrue(map.containsKey("threadState"));
+        Assertions.assertTrue(map.containsKey("startTime"));
+        Assertions.assertTrue(map.containsKey("execTime"));
+        Assertions.assertTrue(map.containsKey("localTraceId"));
+        Assertions.assertTrue(map.containsKey("sampled"));
+        Assertions.assertTrue(map.containsKey("transactionId"));
+        Assertions.assertTrue(map.containsKey("entryPoint"));
+        Assertions.assertTrue(map.containsKey("detailMessage"));
     }
 
     private AgentActiveThreadDumpList createThreadDumpList(ThreadInfo[] allThreadInfo) {

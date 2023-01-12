@@ -16,12 +16,12 @@
 
 package com.navercorp.pinpoint.common.server.bo.stat.join;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * @author minwoo.jung
@@ -31,7 +31,7 @@ public class JoinResponseTimeBoTest {
     @Test
     public void joinResponseTimeBoListTest() {
         long time = 1496988667231L;
-        List<JoinResponseTimeBo> joinResponseTimeBoList = new ArrayList<JoinResponseTimeBo>();
+        List<JoinResponseTimeBo> joinResponseTimeBoList = new ArrayList<>();
         JoinResponseTimeBo joinResponseTimeBo1 = new JoinResponseTimeBo("agent1", time, 3000, 2, "agent1", 6000, "agent1");
         JoinResponseTimeBo joinResponseTimeBo2 = new JoinResponseTimeBo("agent2", time, 4000, 200, "agent2", 9000, "agent2");
         JoinResponseTimeBo joinResponseTimeBo3 = new JoinResponseTimeBo("agent3", time, 2000, 20, "agent3", 7000, "agent3");
@@ -51,7 +51,7 @@ public class JoinResponseTimeBoTest {
 
     @Test
     public void joinResponseTimeBoList2Test() {
-        List<JoinResponseTimeBo> joinResponseTimeBoList = new ArrayList<JoinResponseTimeBo>();
+        List<JoinResponseTimeBo> joinResponseTimeBoList = new ArrayList<>();
         JoinResponseTimeBo joinResponseTimeBo = JoinResponseTimeBo.joinResponseTimeBoList(joinResponseTimeBoList, 1496988667231L);
         assertEquals(joinResponseTimeBo, JoinResponseTimeBo.EMPTY_JOIN_RESPONSE_TIME_BO);
     }

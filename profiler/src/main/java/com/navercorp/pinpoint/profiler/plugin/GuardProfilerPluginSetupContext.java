@@ -17,11 +17,11 @@
 package com.navercorp.pinpoint.profiler.plugin;
 
 import com.navercorp.pinpoint.bootstrap.config.ProfilerConfig;
-import com.navercorp.pinpoint.bootstrap.plugin.ApplicationTypeDetector;
 import com.navercorp.pinpoint.bootstrap.plugin.ProfilerPluginSetupContext;
 import com.navercorp.pinpoint.bootstrap.plugin.jdbc.JdbcUrlParserV2;
-import com.navercorp.pinpoint.bootstrap.plugin.uri.UriExtractorProvider;
 import com.navercorp.pinpoint.common.trace.ServiceType;
+
+import java.util.Objects;
 
 /**
  * @author emeroad
@@ -32,22 +32,13 @@ public class GuardProfilerPluginSetupContext implements ProfilerPluginSetupConte
     private boolean close = false;
 
     public GuardProfilerPluginSetupContext(ProfilerPluginSetupContext delegate) {
-        if (delegate == null) {
-            throw new NullPointerException("delegate");
-        }
-        this.delegate = delegate;
+        this.delegate = Objects.requireNonNull(delegate, "delegate");
     }
 
     @Override
     public ProfilerConfig getConfig() {
 //        checkOpen();
         return this.delegate.getConfig();
-    }
-
-    @Override
-    public void addApplicationTypeDetector(ApplicationTypeDetector... detectors) {
-        checkOpen();
-        this.delegate.addApplicationTypeDetector(detectors);
     }
 
     @Override
@@ -70,12 +61,6 @@ public class GuardProfilerPluginSetupContext implements ProfilerPluginSetupConte
     public void addJdbcUrlParser(JdbcUrlParserV2 jdbcUrlParser) {
         checkOpen();
         this.delegate.addJdbcUrlParser(jdbcUrlParser);
-    }
-
-    @Override
-    public void addUriExtractor(UriExtractorProvider uriExtractorProvider) {
-        checkOpen();
-        this.delegate.addUriExtractor(uriExtractorProvider);
     }
 
     private void checkOpen() {

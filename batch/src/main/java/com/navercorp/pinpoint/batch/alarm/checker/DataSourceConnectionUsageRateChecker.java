@@ -20,7 +20,7 @@ import com.navercorp.pinpoint.batch.alarm.collector.DataSourceDataCollector;
 import com.navercorp.pinpoint.batch.alarm.vo.DataSourceAlarmVO;
 import com.navercorp.pinpoint.web.alarm.vo.Rule;
 
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -30,8 +30,8 @@ import java.util.Map;
  */
 public class DataSourceConnectionUsageRateChecker extends DataSourceAlarmListValueAgentChecker {
 
-    private static String SMS_MESSAGE_FORMAT = "[PINPOINT Alarm - %s] DataSource %s connection pool usage %s%s (Threshold : %s%s, Raw : %s/%s)";
-    private static String EMAIL_MESSAGE_FORMAT = " Value of agent(%s) has %s%s(DataSource %s connection pool usage) during the past 5 mins.(Threshold : %s%s, Raw : %s/%s)";
+    private static final String SMS_MESSAGE_FORMAT = "[PINPOINT Alarm - %s] DataSource %s connection pool usage %s%s (Threshold : %s%s, Raw : %s/%s)";
+    private static final String EMAIL_MESSAGE_FORMAT = " Value of agent(%s) has %s%s(DataSource %s connection pool usage) during the past 5 mins.(Threshold : %s%s, Raw : %s/%s)";
 
     public DataSourceConnectionUsageRateChecker(DataSourceDataCollector dataSourceDataCollector, Rule rule) {
         super(rule, "%", dataSourceDataCollector);
@@ -62,7 +62,7 @@ public class DataSourceConnectionUsageRateChecker extends DataSourceAlarmListVal
     }
 
     public List<String> getSmsMessage() {
-        List<String> messages = new LinkedList<>();
+        List<String> messages = new ArrayList<>();
 
 
         for (Map.Entry<String, List<DataSourceAlarmVO>> detected : detectedAgents.entrySet()) {

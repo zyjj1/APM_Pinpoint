@@ -17,19 +17,21 @@
 package com.navercorp.pinpoint.profiler.sender.grpc;
 
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLong;
+
 import com.navercorp.pinpoint.grpc.StatusError;
 import com.navercorp.pinpoint.grpc.StatusErrors;
 import io.grpc.stub.ClientCallStreamObserver;
 import io.grpc.stub.ClientResponseObserver;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 /**
  * @author Woonduk Kang(emeroad)
  */
 public class ResponseStreamObserver<ReqT, ResT> implements ClientResponseObserver<ReqT, ResT> {
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
 
     private final StreamEventListener<ReqT> listener;
 
@@ -41,9 +43,15 @@ public class ResponseStreamObserver<ReqT, ResT> implements ClientResponseObserve
     public void beforeStart(final ClientCallStreamObserver<ReqT> requestStream) {
         logger.info("beforeStart {}", listener);
         requestStream.setOnReadyHandler(new Runnable() {
+            private final AtomicLong isReadyCounter = new AtomicLong(0);
+
             @Override
             public void run() {
-                listener.start(requestStream);
+                final long isReadyCount = isReadyCounter.incrementAndGet();
+                logger.info("onReadyHandler {} isReadyCount:{}", listener, isReadyCount);
+                if (isReadyCount == 1) {
+                    listener.start(requestStream);
+                }
             }
         });
     }
@@ -61,16 +69,15 @@ public class ResponseStreamObserver<ReqT, ResT> implements ClientResponseObserve
         if (statusError.isSimpleError()) {
             logger.info("Failed to stream, name={}, cause={}", listener, statusError.getMessage());
         } else {
-            logger.warn("Failed to stream, name={}, cause={}", listener, statusError.getMessage(), statusError.getThrowable());
+            logger.info("Failed to stream, name={}, cause={}", listener, statusError.getMessage(), statusError.getThrowable());
         }
         listener.onError(t);
     }
 
     @Override
     public void onCompleted() {
-        logger.warn("{} onCompleted", listener);
+        logger.info("{} onCompleted", listener);
         listener.onCompleted();
-
     }
 
     @Override

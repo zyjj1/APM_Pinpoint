@@ -12,6 +12,7 @@ export class ScatterChartOptionsComponent implements OnInit {
     @Output() outShowHelp: EventEmitter<MouseEvent> = new EventEmitter();
     @Input() instanceKey: string;
     @Input() hiddenOptions: { setting: boolean, download: boolean, open: boolean, help: boolean };
+
     constructor() {}
     ngOnInit() {}
     onShowHelp($event: MouseEvent): void {

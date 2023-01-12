@@ -23,22 +23,23 @@ import com.navercorp.pinpoint.rpc.TestByteUtils;
 import com.navercorp.pinpoint.rpc.util.PinpointRPCTestUtils;
 import com.navercorp.pinpoint.test.server.TestPinpointServerAcceptor;
 import com.navercorp.pinpoint.test.server.TestServerMessageListenerFactory;
-import com.navercorp.pinpoint.test.utils.TestAwaitTaskUtils;
-import com.navercorp.pinpoint.test.utils.TestAwaitUtils;
 import com.navercorp.pinpoint.testcase.util.SocketUtils;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
+import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author emeroad
@@ -46,15 +47,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 //@Ignore
 public class ReconnectTest {
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
 
     private static PinpointClientFactory clientFactory;
 
     private final TestServerMessageListenerFactory testServerMessageListenerFactory = new TestServerMessageListenerFactory(TestServerMessageListenerFactory.HandshakeType.DUPLEX);
 
-    private final TestAwaitUtils awaitUtils = new TestAwaitUtils(100, 1000);
 
-    @BeforeClass
+    @BeforeAll
     public static void setUp() throws IOException {
         clientFactory = new DefaultPinpointClientFactory();
         clientFactory.setReconnectDelay(200);
@@ -62,8 +62,8 @@ public class ReconnectTest {
         clientFactory.setWriteTimeoutMillis(200);
         clientFactory.setRequestTimeoutMillis(200);
     }
-    
-    @AfterClass
+
+    @AfterAll
     public static void tearDown() {
         if (clientFactory != null) {
             clientFactory.release();
@@ -74,7 +74,7 @@ public class ReconnectTest {
     public void reconnect() throws IOException, InterruptedException {
         TestPinpointServerAcceptor testPinpointServerAcceptor = new TestPinpointServerAcceptor();
         int bindPort = testPinpointServerAcceptor.bind();
-        
+
         final AtomicBoolean reconnectPerformed = new AtomicBoolean(false);
 
         TestPinpointServerAcceptor newTestPinpointServerAcceptor = null;
@@ -101,23 +101,24 @@ public class ReconnectTest {
             logger.debug("request server");
             byte[] randomByte = TestByteUtils.createRandomByte(10);
             byte[] response = PinpointRPCTestUtils.request(client, randomByte);
-            
-            Assert.assertArrayEquals(randomByte, response);
-            
+
+            Assertions.assertArrayEquals(randomByte, response);
+
             PinpointRPCTestUtils.close(client);
         } finally {
             TestPinpointServerAcceptor.staticClose(newTestPinpointServerAcceptor);
         }
-        
-        Assert.assertTrue(reconnectPerformed.get());
+
+        Assertions.assertTrue(reconnectPerformed.get());
     }
-    
+
     // it takes very long time. 
     // @Test
-    @Ignore
+    @Disabled
+    @SuppressWarnings("unused")
     public void reconnectStressTest() throws IOException, InterruptedException {
         int count = 3;
-        
+
         ThreadMXBean tbean = ManagementFactory.getThreadMXBean();
 
         int threadCount = tbean.getThreadCount();
@@ -141,20 +142,20 @@ public class ReconnectTest {
             byte[] randomByte = TestByteUtils.createRandomByte(10);
             byte[] response = PinpointRPCTestUtils.request(client, randomByte);
 
-            Assert.assertArrayEquals(randomByte, response);
+            Assertions.assertArrayEquals(randomByte, response);
 
             PinpointRPCTestUtils.close(client);
             testPinpointServerAcceptor.close();
         }
-        
+
         Thread.sleep(10000);
 
-        Assert.assertEquals(threadCount, tbean.getThreadCount());
+        Assertions.assertEquals(threadCount, tbean.getThreadCount());
     }
 
 
     @Test
-    public void scheduledConnect() throws IOException, InterruptedException {
+    public void scheduledConnect() {
         final PinpointClientFactory clientFactory = new DefaultPinpointClientFactory();
         clientFactory.setReconnectDelay(200);
         PinpointClient client = null;
@@ -172,7 +173,7 @@ public class ReconnectTest {
             byte[] randomByte = TestByteUtils.createRandomByte(10);
             byte[] response = PinpointRPCTestUtils.request(client, randomByte);
 
-            Assert.assertArrayEquals(randomByte, response);
+            Assertions.assertArrayEquals(randomByte, response);
         } finally {
             PinpointRPCTestUtils.close(client);
             clientFactory.release();
@@ -207,23 +208,23 @@ public class ReconnectTest {
         client.send(new byte[10]);
 
         try {
-            Future future = client.sendAsync(new byte[10]);
+            Future<?> future = client.sendAsync(new byte[10]);
             future.await();
             future.getResult();
-            Assert.fail();
-        } catch (PinpointSocketException e) {
+            Assertions.fail();
+        } catch (PinpointSocketException ignored) {
         }
 
         try {
             client.sendSync(new byte[10]);
-            Assert.fail();
-        } catch (PinpointSocketException e) {
+            Assertions.fail();
+        } catch (PinpointSocketException ignored) {
         }
 
         try {
             PinpointRPCTestUtils.request(client, new byte[10]);
-            Assert.fail();
-        } catch (PinpointSocketException e) {
+            Assertions.fail();
+        } catch (PinpointSocketException ignored) {
         }
 
         PinpointRPCTestUtils.close(client);
@@ -256,7 +257,7 @@ public class ReconnectTest {
         // when abnormal case in which server has been closed first, confirm that a client socket should be closed properly.
         TestPinpointServerAcceptor testPinpointServerAcceptor = new TestPinpointServerAcceptor();
         int bindPort = testPinpointServerAcceptor.bind();
-        
+
         PinpointClient client = clientFactory.connect("127.0.0.1", bindPort);
 
         // just close server and request
@@ -267,8 +268,8 @@ public class ReconnectTest {
         response.await();
         try {
             response.getResult();
-            Assert.fail("expected exception");
-        } catch (Exception e) {
+            Assertions.fail("expected exception");
+        } catch (Exception ignored) {
         }
 
         assertClientDisconnected(client);
@@ -276,25 +277,22 @@ public class ReconnectTest {
     }
 
     private void assertClientDisconnected(final PinpointClient client) {
-        boolean pass = awaitUtils.await(new TestAwaitTaskUtils() {
-            @Override
-            public boolean checkCompleted() {
-                return !client.isConnected();
-            }
-        });
-
-        Assert.assertTrue(pass);
+        Awaitility.await("assertClientDisconnected")
+                .untilAsserted(() -> assertThat(isConnected(client).call()).isFalse());
     }
 
     private void assertClientConnected(final PinpointClient client) {
-        boolean pass = awaitUtils.await(new TestAwaitTaskUtils() {
+        Awaitility.await("assertClientConnected")
+                .until(isConnected(client));
+    }
+
+    private Callable<Boolean> isConnected(final PinpointClient client) {
+        return new Callable<Boolean>() {
             @Override
-            public boolean checkCompleted() {
+            public Boolean call() {
                 return client.isConnected();
             }
-        });
-
-        Assert.assertTrue(pass);
+        };
     }
 
 }

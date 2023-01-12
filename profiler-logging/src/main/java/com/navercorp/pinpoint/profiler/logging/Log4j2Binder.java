@@ -18,12 +18,10 @@ package com.navercorp.pinpoint.profiler.logging;
 
 import com.navercorp.pinpoint.bootstrap.logging.PLogger;
 import com.navercorp.pinpoint.bootstrap.logging.PLoggerBinder;
-import com.navercorp.pinpoint.bootstrap.logging.PLoggerFactory;
-import java.util.Objects;
-import org.apache.logging.log4j.core.Logger;
-import org.apache.logging.log4j.core.LoggerContext;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.spi.ExtendedLogger;
+import org.apache.logging.log4j.spi.LoggerContext;
 
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -32,7 +30,7 @@ import java.util.concurrent.ConcurrentMap;
  */
 public class Log4j2Binder implements PLoggerBinder {
 
-    private final ConcurrentMap<String, PLogger> loggerCache = new ConcurrentHashMap<String, PLogger>(256, 0.75f, 128);
+    private final ConcurrentMap<String, PLogger> loggerCache = new ConcurrentHashMap<>(256, 0.75f, 128);
     private final LoggerContext loggerContext;
 
     public Log4j2Binder(LoggerContext loggerContext) {
@@ -46,7 +44,7 @@ public class Log4j2Binder implements PLoggerBinder {
         if (hitPLogger != null) {
             return hitPLogger;
         }
-        Logger logger = loggerContext.getLogger(name);
+        ExtendedLogger logger = loggerContext.getLogger(name);
         PLogger log4j2Adapter = new Log4j2PLoggerAdapter(logger);
 
         final PLogger before = loggerCache.putIfAbsent(name, log4j2Adapter);

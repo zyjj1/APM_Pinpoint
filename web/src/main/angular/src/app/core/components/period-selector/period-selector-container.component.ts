@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRe
 import { Subject, Observable } from 'rxjs';
 import { takeUntil, tap } from 'rxjs/operators';
 import { TranslateService } from '@ngx-translate/core';
+import { PRIMARY_OUTLET, Router } from '@angular/router';
 
 import {
     TranslateReplaceService,
@@ -31,7 +32,7 @@ export class PeriodSelectorContainerComponent implements OnInit, OnDestroy {
     hiddenComponent: boolean;
     selectedPeriod: Period;
     selectedEndTime: EndTime;
-    periodList: Array<Period>;
+    periodList: Period[];
     maxPeriod: number;
     isRealTimeMode: boolean;
     showRealTimeButton: boolean;
@@ -47,6 +48,7 @@ export class PeriodSelectorContainerComponent implements OnInit, OnDestroy {
         private translateReplaceService: TranslateReplaceService,
         private analyticsService: AnalyticsService,
         private cd: ChangeDetectorRef,
+        private router: Router,
     ) {}
 
     ngOnInit() {
@@ -95,35 +97,48 @@ export class PeriodSelectorContainerComponent implements OnInit, OnDestroy {
         });
     }
 
+    // TODO: Set the period as query param instead of taking it as path.
     onChangePeriodTime(selectedPeriod: string): void {
         if (this.newUrlStateNotificationService.isRealTimeMode(selectedPeriod)) {
             this.analyticsService.trackEvent(TRACKED_EVENT_LIST.SET_PERIOD_AS_REAL_TIME);
             this.urlRouteManagerService.moveToRealTime();
         } else {
             this.analyticsService.trackEvent(TRACKED_EVENT_LIST.SELECT_PERIOD, selectedPeriod);
+
+            const secondPath = this.newUrlStateNotificationService.hasValue(UrlPathId.APPLICATION)
+                ? this.newUrlStateNotificationService.getPathValue(UrlPathId.APPLICATION).getUrlStr()
+                : this.newUrlStateNotificationService.getPathValue(UrlPathId.HOST_GROUP);
+            const lastPath = this.newUrlStateNotificationService.getPathValue(UrlPathId.AGENT_ID) || this.newUrlStateNotificationService.getPathValue(UrlPathId.HOST);
+
             this.urlRouteManagerService.move({
                 url: [
                     this.newUrlStateNotificationService.getStartPath(),
-                    this.newUrlStateNotificationService.getPathValue(UrlPathId.APPLICATION).getUrlStr(),
+                    secondPath,
                     selectedPeriod
                 ],
                 needServerTimeRequest: true,
-                nextUrl: this.newUrlStateNotificationService.hasValue(UrlPathId.AGENT_ID) ? [this.newUrlStateNotificationService.getPathValue(UrlPathId.AGENT_ID)] : []
+                nextUrl: lastPath ? [lastPath] : []
             });
         }
     }
 
     onChangeCalendarTime(oChangeTime: any): void {
         this.analyticsService.trackEvent(TRACKED_EVENT_LIST.SELECT_PERIOD, oChangeTime.period.getValueWithTime());
+
+        const secondPath = this.newUrlStateNotificationService.hasValue(UrlPathId.APPLICATION)
+            ? this.newUrlStateNotificationService.getPathValue(UrlPathId.APPLICATION).getUrlStr()
+            : this.newUrlStateNotificationService.getPathValue(UrlPathId.HOST_GROUP);
+        const lastPath = this.newUrlStateNotificationService.getPathValue(UrlPathId.AGENT_ID) || this.newUrlStateNotificationService.getPathValue(UrlPathId.HOST);
+
         this.urlRouteManagerService.move({
             url: [
                 this.newUrlStateNotificationService.getStartPath(),
-                this.newUrlStateNotificationService.getPathValue(UrlPathId.APPLICATION).getUrlStr(),
+                secondPath,
                 oChangeTime.period.getValueWithTime(),
                 oChangeTime.endTime.getEndTime()
             ],
             needServerTimeRequest: false,
-            nextUrl: this.newUrlStateNotificationService.hasValue(UrlPathId.AGENT_ID) ? [this.newUrlStateNotificationService.getPathValue(UrlPathId.AGENT_ID)] : []
+            nextUrl: lastPath ? [lastPath] : []
         });
     }
 }

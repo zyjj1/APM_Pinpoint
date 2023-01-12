@@ -21,8 +21,8 @@ import com.navercorp.pinpoint.common.trace.ServiceType;
 import com.navercorp.pinpoint.loader.service.ServiceTypeRegistryService;
 
 import com.navercorp.pinpoint.common.server.util.pair.LongPair;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
@@ -30,13 +30,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Predicate;
 
 /**
  * @author Woonduk Kang(emeroad)
  */
 public class LinkMap {
 
-    private static final Logger logger = LoggerFactory.getLogger(LinkMap.class);
+    private static final Logger logger = LogManager.getLogger(LinkMap.class);
 
     private final MultiValueMap<LongPair, Node> spanToLinkMap;
 
@@ -47,7 +48,9 @@ public class LinkMap {
         this.duplicatedNodeList = Objects.requireNonNull(duplicatedNodeList, "duplicatedNodeList");
     }
 
-    public static LinkMap buildLinkMap(List<Node> nodeList, TraceState traceState, long collectorAcceptTime, ServiceTypeRegistryService serviceTypeRegistryService) {
+    public static LinkMap buildLinkMap(NodeList nodeList, TraceState traceState, Predicate<SpanBo> focusFilter, ServiceTypeRegistryService serviceTypeRegistryService) {
+        Objects.requireNonNull(focusFilter, "focusFilter");
+
         final MultiValueMap<LongPair, Node> spanToLinkMap = new LinkedMultiValueMap<>();
 
         // for performance & remove duplicate span
@@ -66,7 +69,7 @@ public class LinkMap {
                 } else {
                     traceState.progress();
                     // duplicated span, choose focus span
-                    if (span.getCollectorAcceptTime() == collectorAcceptTime) {
+                    if (focusFilter.test(span)) {
                         // replace value
                         spanToLinkMap.put(spanIdPairKey, Collections.singletonList(node));
                         duplicatedNodeList.add(firstNode);

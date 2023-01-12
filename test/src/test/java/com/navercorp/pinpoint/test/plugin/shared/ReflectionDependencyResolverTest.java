@@ -16,26 +16,23 @@
 
 package com.navercorp.pinpoint.test.plugin.shared;
 
-import org.junit.Assert;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.io.File;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 
 /**
- * TODO : Test fails in Travis
  * @author Woonduk Kang(emeroad)
  */
-@Ignore
 public class ReflectionDependencyResolverTest {
 
     @Test
     public void get() throws Exception {
-        ReflectionDependencyResolver dependencyResolver = new ReflectionDependencyResolver(Thread.currentThread().getContextClassLoader());
-        List<File> files = dependencyResolver.lookup(Arrays.asList("org.slf4j:slf4j-api:1.7.21"));
-        Assert.assertEquals(files.size(), 1);
+        ReflectionDependencyResolver dependencyResolver = new ReflectionDependencyResolver(Thread.currentThread().getContextClassLoader(), new String[]{});
+        List<File> files = dependencyResolver.lookup(Collections.singletonList("commons-logging:commons-logging:1.2"));
+        Assertions.assertEquals(files.size(), 1);
     }
 }

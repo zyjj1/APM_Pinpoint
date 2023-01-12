@@ -17,11 +17,12 @@
 package com.navercorp.pinpoint.profiler.monitor;
 
 import com.navercorp.pinpoint.profiler.context.storage.UriStatStorage;
+import com.navercorp.pinpoint.profiler.monitor.metric.MetricType;
 import com.navercorp.pinpoint.profiler.monitor.metric.uri.AgentUriStatData;
 import com.navercorp.pinpoint.profiler.sender.DataSender;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import java.io.Closeable;
 import java.util.Objects;
@@ -31,13 +32,13 @@ import java.util.Objects;
  */
 public class UriStatCollectingJob implements Runnable, Closeable {
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
     private final boolean isTraceable = logger.isTraceEnabled();
 
-    private final DataSender dataSender;
+    private final DataSender<MetricType> dataSender;
     private final UriStatStorage uriStatStorage;
 
-    public UriStatCollectingJob(DataSender dataSender, UriStatStorage uriStatStorage) {
+    public UriStatCollectingJob(DataSender<MetricType> dataSender, UriStatStorage uriStatStorage) {
         this.dataSender = Objects.requireNonNull(dataSender, "dataSender");
         this.uriStatStorage = Objects.requireNonNull(uriStatStorage, "uriStatStorage");
     }
@@ -59,7 +60,7 @@ public class UriStatCollectingJob implements Runnable, Closeable {
     public void close() {
         try {
             uriStatStorage.close();
-        } catch (Exception e) {
+        } catch (Exception ignored) {
             // do nothing
         }
     }

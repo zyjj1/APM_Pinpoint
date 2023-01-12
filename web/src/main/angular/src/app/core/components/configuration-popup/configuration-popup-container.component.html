@@ -1,5 +1,8 @@
 <pp-configuration-popup
+    [webhookEnable]="webhookEnable"
+    [currentTheme]="currentTheme"
     (outMenuClick)="onMenuClick($event)"
+    (outChangeTheme)="onChangeTheme($event)"
     (outOpenLink)="onOpenLink()"
     (clickOutside)="onClickOutside()"
     [exclude]="'.fa-cog'">

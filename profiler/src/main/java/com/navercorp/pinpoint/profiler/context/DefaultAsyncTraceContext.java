@@ -21,8 +21,8 @@ import com.navercorp.pinpoint.bootstrap.context.Trace;
 import java.util.Objects;
 import com.navercorp.pinpoint.exception.PinpointException;
 import com.navercorp.pinpoint.profiler.context.id.TraceRoot;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 
 /**
@@ -30,11 +30,11 @@ import org.slf4j.LoggerFactory;
  */
 public class DefaultAsyncTraceContext implements AsyncTraceContext {
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
 
     private static final Reference<Trace> EMPTY = DefaultReference.emptyReference();
 
-    private Provider<BaseTraceFactory> baseTraceFactoryProvider;
+    private final Provider<BaseTraceFactory> baseTraceFactoryProvider;
     private final Binder<Trace> binder;
 
     public DefaultAsyncTraceContext(Provider<BaseTraceFactory> baseTraceFactoryProvider, Binder<Trace> binder) {
@@ -43,27 +43,25 @@ public class DefaultAsyncTraceContext implements AsyncTraceContext {
     }
 
     @Override
-    public Reference<Trace> continueAsyncTraceObject(TraceRoot traceRoot, LocalAsyncId localAsyncId) {
+    public Reference<Trace> continueAsyncContextTraceObject(TraceRoot traceRoot, LocalAsyncId localAsyncId, boolean canSampled) {
         final Reference<Trace> reference = checkAndGet();
 
-        final BaseTraceFactory baseTraceFactory = baseTraceFactoryProvider.get();
-        final Trace trace = baseTraceFactory.continueAsyncTraceObject(traceRoot, localAsyncId);
+        final Trace trace = newAsyncContextTraceObject(traceRoot, localAsyncId, canSampled);
 
         bind(reference, trace);
         return reference;
     }
 
     @Override
-    public Trace newAsyncTraceObject(TraceRoot traceRoot, LocalAsyncId localAsyncId) {
+    public Trace newAsyncContextTraceObject(TraceRoot traceRoot, LocalAsyncId localAsyncId, boolean canSampled) {
         final BaseTraceFactory baseTraceFactory = baseTraceFactoryProvider.get();
-        return baseTraceFactory.continueAsyncTraceObject(traceRoot, localAsyncId);
+        return baseTraceFactory.continueAsyncContextTraceObject(traceRoot, localAsyncId, canSampled);
     }
 
 
     @Override
     public Reference<Trace> currentRawTraceObject() {
-        final Reference<Trace> reference = binder.get();
-        return reference;
+        return binder.get();
     }
 
     @Override

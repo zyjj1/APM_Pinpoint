@@ -24,6 +24,8 @@ import reactor.netty.http.server.HttpServerRequest;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.util.Collection;
+import java.util.Collections;
 
 /**
  * @author jaehong.kim
@@ -43,9 +45,16 @@ public class HttpRequestAdaptor implements RequestAdaptor<HttpServerRequest> {
     }
 
     @Override
+    public Collection<String> getHeaderNames(HttpServerRequest request) {
+        final HttpHeaders entries = request.requestHeaders();
+        return entries == null ? Collections.emptyList() : entries.names();
+    }
+
+    @Override
     public String getRpcName(HttpServerRequest request) {
         try {
-            return request.uri();
+            final String path = UriUtils.path(request.uri());
+            return path;
         } catch (Exception ignored) {
         }
         return null;

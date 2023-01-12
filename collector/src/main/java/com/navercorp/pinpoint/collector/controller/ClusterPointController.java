@@ -16,11 +16,13 @@
 
 package com.navercorp.pinpoint.collector.controller;
 
-import com.navercorp.pinpoint.collector.cluster.AgentInfo;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.navercorp.pinpoint.collector.cluster.ClusterPoint;
 import com.navercorp.pinpoint.collector.cluster.ClusterPointLocator;
 import com.navercorp.pinpoint.collector.cluster.GrpcAgentConnection;
 import com.navercorp.pinpoint.collector.receiver.grpc.PinpointGrpcServer;
+import com.navercorp.pinpoint.common.server.cluster.ClusterKey;
 import com.navercorp.pinpoint.common.util.Assert;
 import com.navercorp.pinpoint.common.util.StringUtils;
 import com.navercorp.pinpoint.io.request.Message;
@@ -31,20 +33,15 @@ import com.navercorp.pinpoint.rpc.common.SocketStateCode;
 import com.navercorp.pinpoint.thrift.dto.command.TCommandEcho;
 import com.navercorp.pinpoint.thrift.io.CommandHeaderTBaseDeserializerFactory;
 import com.navercorp.pinpoint.thrift.io.HeaderTBaseDeserializer;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import org.apache.thrift.TBase;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Controller;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -54,30 +51,27 @@ import java.util.Objects;
 /**
  * @author Taejin Koo
  */
-@Controller
+@RestController
 @RequestMapping("/cluster/grpc")
 public class ClusterPointController {
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
 
     private static final TCommandEcho CONNECTION_CHECK_COMMAND = new TCommandEcho("PING");
 
     private final HeaderTBaseDeserializer tBaseDeserializer = CommandHeaderTBaseDeserializerFactory.getDefaultInstance().createDeserializer();
 
-
-    private final ClusterPointLocator clusterPointLocator;
+    private final ClusterPointLocator<ClusterPoint<?>> clusterPointLocator;
 
     private final ObjectMapper mapper;
 
 
-    @Autowired
     public ClusterPointController(ClusterPointLocator clusterPointLocator, ObjectMapper mapper) {
         this.clusterPointLocator = Objects.requireNonNull(clusterPointLocator, "clusterPointLocator");
         this.mapper = Objects.requireNonNull(mapper, "mapper");
     }
 
-    @RequestMapping(value = "/html/getClusterPoint", method = RequestMethod.GET)
-    @ResponseBody
+    @GetMapping(value = "/html/getClusterPoint")
     public String getClusterPointToHtml(
             @RequestParam("applicationName") String applicationName,
             @RequestParam(value = "agentId", defaultValue = "") String agentId,
@@ -87,8 +81,7 @@ public class ClusterPointController {
         return buildHtml(result);
     }
 
-    @RequestMapping(value = "/getClusterPoint", method = RequestMethod.GET)
-    @ResponseBody
+    @GetMapping(value = "/getClusterPoint")
     public String getClusterPoint(
             @RequestParam("applicationName") String applicationName,
             @RequestParam(value = "agentId", defaultValue = "") String agentId,
@@ -98,8 +91,7 @@ public class ClusterPointController {
         return mapper.writeValueAsString(result);
     }
 
-    @RequestMapping(value = "/checkConnectionStatus", method = RequestMethod.GET)
-    @ResponseBody
+    @GetMapping(value = "/checkConnectionStatus")
     public String checkConnectionStatus(
             @RequestParam("applicationName") String applicationName,
             @RequestParam("agentId") String agentId,
@@ -138,22 +130,22 @@ public class ClusterPointController {
         Objects.requireNonNull(applicationName, "applicationName");
 
         List<GrpcAgentConnection> result = new ArrayList<>();
-        List<ClusterPoint> clusterPointList = clusterPointLocator.getClusterPointList();
-        for (ClusterPoint clusterPoint : clusterPointList) {
+        List<ClusterPoint<?>> clusterPointList = clusterPointLocator.getClusterPointList();
+        for (ClusterPoint<?> clusterPoint : clusterPointList) {
             if (!(clusterPoint instanceof GrpcAgentConnection)) {
                 continue;
             }
-            AgentInfo destAgentInfo = clusterPoint.getDestAgentInfo();
+            ClusterKey destClusterInfo = clusterPoint.getDestClusterKey();
 
-            if (!destAgentInfo.getApplicationName().equals(applicationName)) {
+            if (!destClusterInfo.getApplicationName().equals(applicationName)) {
                 continue;
             }
 
-            if (StringUtils.hasText(agentId) && !destAgentInfo.getAgentId().equals(agentId)) {
+            if (StringUtils.hasText(agentId) && !destClusterInfo.getAgentId().equals(agentId)) {
                 continue;
             }
 
-            if (startTimestamp > 0 && destAgentInfo.getStartTimestamp() != startTimestamp) {
+            if (startTimestamp > 0 && destClusterInfo.getStartTimestamp() != startTimestamp) {
                 continue;
             }
 
@@ -164,7 +156,7 @@ public class ClusterPointController {
     }
 
     private CheckConnectionStatusResult request(GrpcAgentConnection grpcAgentConnection, int checkCount) {
-        logger.info("Ping  message will be sent. collector => {}.", grpcAgentConnection.getDestAgentInfo().getAgentKey());
+        logger.info("Ping  message will be sent. collector => {}.", grpcAgentConnection.getDestClusterKey());
 
         Future<ResponseMessage> response = null;
         try {
@@ -238,7 +230,7 @@ public class ClusterPointController {
 
         private final InetSocketAddress remoteAddress;
 
-        private final String agentKey;
+        private final ClusterKey clusterKey;
 
         private final String socketStateCode;
 
@@ -249,7 +241,7 @@ public class ClusterPointController {
         public GrpcAgentConnectionStats(GrpcAgentConnection grpcAgentConnection, CheckConnectionStatusResult checkConnectionStatusResult) {
             PinpointGrpcServer pinpointGrpcServer = grpcAgentConnection.getPinpointGrpcServer();
             this.socketStateCode = pinpointGrpcServer.getState().name();
-            this.agentKey = pinpointGrpcServer.getAgentInfo().getAgentKey();
+            this.clusterKey = pinpointGrpcServer.getClusterKey();
             this.remoteAddress = pinpointGrpcServer.getRemoteAddress();
 
             this.availableCheckConnectionState = grpcAgentConnection.isSupportCommand(CONNECTION_CHECK_COMMAND);
@@ -260,8 +252,8 @@ public class ClusterPointController {
             return remoteAddress;
         }
 
-        public String getAgentKey() {
-            return agentKey;
+        public ClusterKey getClusterKey() {
+            return clusterKey;
         }
 
         public String getSocketStateCode() {
@@ -277,7 +269,7 @@ public class ClusterPointController {
         }
     }
 
-    private static enum CheckConnectionStatusResult {
+    private enum CheckConnectionStatusResult {
 
         NOT_CHECKED,
         STATUS_CHECK_NOT_SUPPORTED,

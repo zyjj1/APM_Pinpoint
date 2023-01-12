@@ -21,27 +21,28 @@ package com.navercorp.pinpoint.flink;
 
 import com.navercorp.pinpoint.common.server.bo.stat.join.JoinStatBo;
 import com.navercorp.pinpoint.flink.dao.hbase.StatisticsDao;
+import com.navercorp.pinpoint.flink.function.AgentStatTimestampAssigner;
 import com.navercorp.pinpoint.flink.function.ApplicationStatBoWindow;
-import com.navercorp.pinpoint.flink.function.Timestamp;
-import com.navercorp.pinpoint.flink.function.ApplicationStatBoFliter;
+import com.navercorp.pinpoint.flink.function.ApplicationStatBoFilter;
+import com.navercorp.pinpoint.flink.function.ApplicationStatKeySelector;
 import com.navercorp.pinpoint.flink.receiver.TcpSourceFunction;
 import com.navercorp.pinpoint.flink.vo.RawData;
+import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.api.java.utils.ParameterTool;
-import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import java.io.Serializable;
 
 public class StatStreamingVer2Job implements Serializable {
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final static Logger logger = LogManager.getLogger(StatStreamingVer2Job.class);
 
     public static void main(String[] args) throws Exception {
         ParameterTool parameters = ParameterTool.fromArgs(args);
@@ -57,20 +58,20 @@ public class StatStreamingVer2Job implements Serializable {
         final StreamExecutionEnvironment env = bootstrap.createStreamExecutionEnvironment();
         env.getConfig().setGlobalJobParameters(parameters);
         DataStreamSource<RawData> rawData = env.addSource(tcpSourceFunction);
-        env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
 
         //0. generation rawdata
         final SingleOutputStreamOperator<Tuple3<String, JoinStatBo, Long>> statOperator = rawData.flatMap(bootstrap.getTbaseFlatMapper());
 
         //1-1 save data processing application stat raw data
         final StatisticsDao statisticsDao = bootstrap.getStatisticsDao();
-        DataStream<Tuple3<String, JoinStatBo, Long>> applicationStatAggregationData = statOperator.filter(new ApplicationStatBoFliter())
-            .assignTimestampsAndWatermarks(new Timestamp())
-            .keyBy(0)
+        DataStream<Tuple3<String, JoinStatBo, Long>> applicationStatAggregationData = statOperator.filter(new ApplicationStatBoFilter())
+            .assignTimestampsAndWatermarks(WatermarkStrategy.<Tuple3<String, JoinStatBo, Long>>forMonotonousTimestamps()
+                                                            .withTimestampAssigner(new AgentStatTimestampAssigner()))
+            .keyBy(new ApplicationStatKeySelector())
             .window(TumblingEventTimeWindows.of(Time.milliseconds(ApplicationStatBoWindow.WINDOW_SIZE)))
             .allowedLateness(Time.milliseconds(ApplicationStatBoWindow.ALLOWED_LATENESS))
             .apply(new ApplicationStatBoWindow());
-        applicationStatAggregationData.writeUsingOutputFormat(statisticsDao);
+            applicationStatAggregationData.addSink(statisticsDao);
 
         // 1-2. aggregate application stat data
 //        statOperator.filter(new FilterFunction<Tuple3<String, JoinStatBo, Long>>() {

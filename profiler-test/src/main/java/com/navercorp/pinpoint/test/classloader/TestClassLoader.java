@@ -64,21 +64,20 @@ public class TestClassLoader extends TransformClassLoader {
         this.instrumentContext = new PluginInstrumentContext(applicationContext.getProfilerConfig(), applicationContext.getInstrumentEngine(),
                 applicationContext.getDynamicTransformTrigger(), classInjector, classFileTransformerLoader);
 
-        this.delegateClass = new ArrayList<String>();
+        this.delegateClass = new ArrayList<>();
     }
 
 
     public void addDelegateClass(String className) {
-        if (className == null) {
-            throw new NullPointerException("className");
-        }
+        Objects.requireNonNull(className, "className");
+
         this.delegateClass.add(className);
     }
 
     @Override
     protected Class<?> findClass(String name) throws ClassNotFoundException {
         if (logger.isLoggable(Level.FINE)) {
-            logger.fine("findClass className:{}" + name);
+            logger.fine("findClass className:" + name);
         }
         return super.findClass(name);
     }
@@ -102,7 +101,7 @@ public class TestClassLoader extends TransformClassLoader {
 
     public void addTransformer(final String targetClassName, final TransformCallback transformer) {
         if (logger.isLoggable(Level.FINE)) {
-            logger.fine("addTransformer targetClassName:{}" + targetClassName + " callback:{}" + transformer);
+            logger.fine("addTransformer targetClassName:" + targetClassName + " callback:" + transformer);
         }
         final Matcher matcher = Matchers.newClassNameMatcher(targetClassName);
         final TransformCallbackProvider transformCallbackProvider = new InstanceTransformCallbackProvider(transformer);
@@ -121,7 +120,7 @@ public class TestClassLoader extends TransformClassLoader {
     @Override
     protected Class<?> loadClassByDelegation(String name) throws ClassNotFoundException {
         if (logger.isLoggable(Level.FINE)) {
-            logger.fine("loadClassByDelegation className:{}" + name);
+            logger.fine("loadClassByDelegation className:" + name);
         }
         return super.loadClassByDelegation(name);
     }

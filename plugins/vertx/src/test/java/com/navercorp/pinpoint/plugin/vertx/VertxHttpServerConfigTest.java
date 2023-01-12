@@ -15,13 +15,13 @@
  */
 package com.navercorp.pinpoint.plugin.vertx;
 
-import com.navercorp.pinpoint.bootstrap.config.DefaultProfilerConfig;
 import com.navercorp.pinpoint.bootstrap.config.ProfilerConfig;
-import org.junit.Test;
+import com.navercorp.pinpoint.bootstrap.config.ProfilerConfigLoader;
+import org.junit.jupiter.api.Test;
 
 import java.util.Properties;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * @author jaehong.kim
@@ -37,7 +37,7 @@ public class VertxHttpServerConfigTest {
         properties.setProperty("profiler.vertx.http.server.realipemptyvalue", "unknown");
         properties.setProperty("profiler.vertx.http.server.excludemethod", "chunk, continue");
 
-        ProfilerConfig profilerConfig = new DefaultProfilerConfig(properties);
+        ProfilerConfig profilerConfig = ProfilerConfigLoader.load(properties);
         VertxHttpServerConfig config = new VertxHttpServerConfig(profilerConfig);
 
         assertEquals(true, config.isTraceRequestParam());
@@ -53,7 +53,7 @@ public class VertxHttpServerConfigTest {
         properties.setProperty("profiler.vertx.http.server.realipemptyvalue", "");
         properties.setProperty("profiler.vertx.http.server.excludemethod", "");
 
-        profilerConfig = new DefaultProfilerConfig(properties);
+        profilerConfig = ProfilerConfigLoader.load(properties);
         config = new VertxHttpServerConfig(profilerConfig);
 
         assertEquals(false, config.isTraceRequestParam());

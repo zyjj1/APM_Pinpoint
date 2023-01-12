@@ -16,46 +16,50 @@
 
 package com.navercorp.pinpoint.batch.job;
 
-import com.navercorp.pinpoint.web.service.AgentInfoService;
-import com.navercorp.pinpoint.web.vo.AgentInfoFilter;
-import com.navercorp.pinpoint.web.vo.ApplicationAgentsList;
+import com.navercorp.pinpoint.web.dao.ApplicationIndexDao;
+import com.navercorp.pinpoint.web.vo.Application;
 import org.springframework.batch.core.ExitStatus;
 import org.springframework.batch.core.StepExecution;
 import org.springframework.batch.core.StepExecutionListener;
 import org.springframework.batch.item.ItemReader;
-import org.springframework.batch.item.NonTransientResourceException;
-import org.springframework.batch.item.ParseException;
-import org.springframework.batch.item.UnexpectedInputException;
-import org.springframework.beans.factory.annotation.Autowired;
 
-import java.util.LinkedList;
+import javax.annotation.Nonnull;
+import java.util.List;
+import java.util.Objects;
 import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.stream.Collectors;
 
 /**
- * @author Taejin Koo
+ * @author youngjin.kim2
  */
-public class AgentCountReader implements ItemReader<ApplicationAgentsList>, StepExecutionListener {
+public class AgentCountReader implements ItemReader<String>, StepExecutionListener {
 
-    @Autowired
-    private AgentInfoService agentInfoService;
+    private final ApplicationIndexDao applicationIndexDao;
 
-    private final Queue<ApplicationAgentsList> queue = new LinkedList<>();
+    private Queue<String> applicationNameQueue;
 
-    @Override
-    public void beforeStep(StepExecution stepExecution) {
-        long timestamp = System.currentTimeMillis();
-        ApplicationAgentsList applicationAgentList = agentInfoService.getAllApplicationAgentsList(AgentInfoFilter::accept, timestamp);
-        queue.add(applicationAgentList);
+    public AgentCountReader(ApplicationIndexDao applicationIndexDao) {
+        this.applicationIndexDao = Objects.requireNonNull(applicationIndexDao, "applicationIndexDao");
     }
 
     @Override
-    public ApplicationAgentsList read() throws Exception, UnexpectedInputException, ParseException, NonTransientResourceException {
-        return queue.poll();
+    public void beforeStep(@Nonnull StepExecution stepExecution) {
+        List<String> applicationNames = applicationIndexDao.selectAllApplicationNames()
+                .stream()
+                .map(Application::getName)
+                .collect(Collectors.toUnmodifiableList());
+        this.applicationNameQueue = new ConcurrentLinkedQueue<>(applicationNames);
     }
 
     @Override
-    public ExitStatus afterStep(StepExecution stepExecution) {
+    public ExitStatus afterStep(@Nonnull StepExecution stepExecution) {
         return null;
+    }
+
+    @Override
+    public String read() {
+        return applicationNameQueue.poll();
     }
 
 }

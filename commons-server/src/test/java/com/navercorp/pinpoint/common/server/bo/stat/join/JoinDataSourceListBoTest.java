@@ -16,14 +16,13 @@
 
 package com.navercorp.pinpoint.common.server.bo.stat.join;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * @author minwoo.jung
@@ -40,7 +39,7 @@ public class JoinDataSourceListBoTest {
         assertEquals(joinDataSourceListBo.getId(), id);
         assertEquals(joinDataSourceListBo.getTimestamp(), currentTime);
         List<JoinDataSourceBo> joinDataSourceBoList = joinDataSourceListBo.getJoinDataSourceBoList();
-        Collections.sort(joinDataSourceBoList, Comparator.comparingInt(JoinDataSourceBo::getServiceTypeCode));
+        joinDataSourceBoList.sort(Comparator.comparingInt(JoinDataSourceBo::getServiceTypeCode));
 
         assertEquals(joinDataSourceBoList.size(), 5);
 
@@ -74,7 +73,7 @@ public class JoinDataSourceListBoTest {
     public void joinDataSourceListBoList2Test() {
         final String id = "test_app";
         final long currentTime = System.currentTimeMillis();
-        final List<JoinDataSourceListBo> joinDataSourceListBoList = new ArrayList<JoinDataSourceListBo>(0);
+        final List<JoinDataSourceListBo> joinDataSourceListBoList = new ArrayList<>(0);
         final JoinDataSourceListBo joinDataSourceListBo = JoinDataSourceListBo.joinDataSourceListBoList(joinDataSourceListBoList, currentTime);
         assertEquals(joinDataSourceListBo, JoinDataSourceListBo.EMPTY_JOIN_DATA_SOURCE_LIST_BO);
     }
@@ -82,7 +81,7 @@ public class JoinDataSourceListBoTest {
 
     private List<JoinDataSourceListBo> createJoinDataSourceListBoList(String id, long currentTime) {
 
-        List<JoinDataSourceListBo> joinDataSourceListBoList = new ArrayList<JoinDataSourceListBo>();
+        List<JoinDataSourceListBo> joinDataSourceListBoList = new ArrayList<>();
 
         JoinDataSourceListBo joinDataSourceListBo1 = new JoinDataSourceListBo(id, createJoinDataSourceBoList(10), currentTime);
         JoinDataSourceListBo joinDataSourceListBo2 = new JoinDataSourceListBo(id, createJoinDataSourceBoList(20), currentTime);
@@ -100,13 +99,13 @@ public class JoinDataSourceListBoTest {
     }
 
     private List<JoinDataSourceBo> createJoinDataSourceBoList(int plus) {
-        List<JoinDataSourceBo> joinDataSourceBoList = new ArrayList<JoinDataSourceBo>();
+        List<JoinDataSourceBo> joinDataSourceBoList = new ArrayList<>();
 
-        JoinDataSourceBo joinDataSourceBo1 = new JoinDataSourceBo((short)1000, "jdbc:mysql", 30 + plus, 25 + plus, "agent_id_1_" + plus, 60 + plus, "agent_id_6_" + plus);
-        JoinDataSourceBo joinDataSourceBo2 = new JoinDataSourceBo((short)2000, "jdbc:mssql", 20 + plus, 5 + plus, "agent_id_2_" + plus, 30 + plus, "agent_id_7_" + plus);
-        JoinDataSourceBo joinDataSourceBo3 = new JoinDataSourceBo((short)3000, "jdbc:postgre", 10 + plus, 25 + plus, "agent_id_3_" + plus, 50 + plus, "agent_id_8_" + plus);
-        JoinDataSourceBo joinDataSourceBo4 = new JoinDataSourceBo((short)4000, "jdbc:oracle", 40 + plus, 10 + plus, "agent_id_4_" + plus, 70 + plus, "agent_id_9_" + plus);
-        JoinDataSourceBo joinDataSourceBo5 = new JoinDataSourceBo((short)5000, "jdbc:cubrid", 50 + plus, 25 + plus, "agent_id_5_" + plus, 80 + plus, "agent_id_10_" + plus);
+        JoinDataSourceBo joinDataSourceBo1 = new JoinDataSourceBo((short) 1000, "jdbc:mysql", 30 + plus, 25 + plus, "agent_id_1_" + plus, 60 + plus, "agent_id_6_" + plus);
+        JoinDataSourceBo joinDataSourceBo2 = new JoinDataSourceBo((short) 2000, "jdbc:mssql", 20 + plus, 5 + plus, "agent_id_2_" + plus, 30 + plus, "agent_id_7_" + plus);
+        JoinDataSourceBo joinDataSourceBo3 = new JoinDataSourceBo((short) 3000, "jdbc:postgre", 10 + plus, 25 + plus, "agent_id_3_" + plus, 50 + plus, "agent_id_8_" + plus);
+        JoinDataSourceBo joinDataSourceBo4 = new JoinDataSourceBo((short) 4000, "jdbc:oracle", 40 + plus, 10 + plus, "agent_id_4_" + plus, 70 + plus, "agent_id_9_" + plus);
+        JoinDataSourceBo joinDataSourceBo5 = new JoinDataSourceBo((short) 5000, "jdbc:cubrid", 50 + plus, 25 + plus, "agent_id_5_" + plus, 80 + plus, "agent_id_10_" + plus);
 
         joinDataSourceBoList.add(joinDataSourceBo1);
         joinDataSourceBoList.add(joinDataSourceBo2);

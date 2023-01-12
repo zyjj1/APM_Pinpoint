@@ -18,11 +18,11 @@ package com.navercorp.pinpoint.web.vo.timeline.inspector;
 
 import com.navercorp.pinpoint.common.server.bo.event.AgentEventBo;
 import com.navercorp.pinpoint.common.server.util.AgentEventType;
+import com.navercorp.pinpoint.common.server.util.time.Range;
 import com.navercorp.pinpoint.web.filter.agent.AgentEventFilter;
 import com.navercorp.pinpoint.web.vo.AgentEvent;
-import com.navercorp.pinpoint.web.vo.Range;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -41,7 +41,7 @@ public class AgentEventTimelineTest {
     @Test
     public void noFilter() {
         // Given
-        Range timelineRange = Range.newRange(100, 200);
+        Range timelineRange = Range.between(100, 200);
         List<AgentEvent> agentEvents = Arrays.asList(
                 createAgentEvent(140, AgentEventType.AGENT_PING),
                 createAgentEvent(190, AgentEventType.AGENT_PING));
@@ -52,13 +52,13 @@ public class AgentEventTimelineTest {
                 .from(agentEvents)
                 .build();
         // Then
-        Assert.assertEquals(expectedTimelineSegments, timeline.getTimelineSegments());
+        Assertions.assertEquals(expectedTimelineSegments, timeline.getTimelineSegments());
     }
 
     @Test
     public void nullFilter() {
         // Given
-        Range timelineRange = Range.newRange(100, 200);
+        Range timelineRange = Range.between(100, 200);
         List<AgentEvent> agentEvents = Arrays.asList(
                 createAgentEvent(140, AgentEventType.AGENT_PING),
                 createAgentEvent(190, AgentEventType.AGENT_PING));
@@ -70,13 +70,13 @@ public class AgentEventTimelineTest {
                 .addFilter(null)
                 .build();
         // Then
-        Assert.assertEquals(expectedTimelineSegments, timeline.getTimelineSegments());
+        Assertions.assertEquals(expectedTimelineSegments, timeline.getTimelineSegments());
     }
 
     @Test
     public void multipleFilters() {
         // Given
-        Range timelineRange = Range.newRange(100, 200);
+        Range timelineRange = Range.between(100, 200);
         List<AgentEvent> agentEvents = Arrays.asList(
                 createAgentEvent(110, AgentEventType.AGENT_PING),
                 createAgentEvent(120, AgentEventType.AGENT_CONNECTED),
@@ -109,19 +109,19 @@ public class AgentEventTimelineTest {
             AgentEventMarker marker = segment.getValue();
             allEventsTotalCount += marker.getTotalCount();
             Map<AgentEventType, Integer> eventTypeCountMap = marker.getTypeCounts();
-            Assert.assertTrue(includedAgentEventTypes.containsAll(eventTypeCountMap.keySet()));
-            Assert.assertFalse(eventTypeCountMap.keySet().contains(AgentEventType.AGENT_UNEXPECTED_SHUTDOWN));
-            Assert.assertFalse(eventTypeCountMap.keySet().contains(AgentEventType.AGENT_UNEXPECTED_CLOSE_BY_SERVER));
-            Assert.assertFalse(eventTypeCountMap.keySet().contains(AgentEventType.USER_THREAD_DUMP));
-            Assert.assertFalse(eventTypeCountMap.keySet().contains(AgentEventType.OTHER));
+            Assertions.assertTrue(includedAgentEventTypes.containsAll(eventTypeCountMap.keySet()));
+            Assertions.assertFalse(eventTypeCountMap.containsKey(AgentEventType.AGENT_UNEXPECTED_SHUTDOWN));
+            Assertions.assertFalse(eventTypeCountMap.containsKey(AgentEventType.AGENT_UNEXPECTED_CLOSE_BY_SERVER));
+            Assertions.assertFalse(eventTypeCountMap.containsKey(AgentEventType.USER_THREAD_DUMP));
+            Assertions.assertFalse(eventTypeCountMap.containsKey(AgentEventType.OTHER));
         }
-        Assert.assertEquals(allEventsTotalCount, includedAgentEventTypes.size());
+        Assertions.assertEquals(allEventsTotalCount, includedAgentEventTypes.size());
     }
 
     @Test
     public void leftBiasedSpread() {
         // Given
-        Range range = Range.newRange(100, 200);
+        Range range = Range.between(100, 200);
         AgentEvent event1 = createAgentEvent(0, AgentEventType.AGENT_CONNECTED);
         AgentEvent event2 = createAgentEvent(5, AgentEventType.AGENT_PING);
         AgentEvent event3 = createAgentEvent(50, AgentEventType.AGENT_PING);
@@ -137,13 +137,13 @@ public class AgentEventTimelineTest {
                 .from(Arrays.asList(event1, event2, event3, event4, event5, event6))
                 .build();
         // Then
-        Assert.assertEquals(expectedTimelineSegments, timeline.getTimelineSegments());
+        Assertions.assertEquals(expectedTimelineSegments, timeline.getTimelineSegments());
     }
 
     @Test
     public void rightBiasedSpread() {
         // Given
-        Range range = Range.newRange(0, 199);
+        Range range = Range.between(0, 199);
         AgentEvent event1 = createAgentEvent(0, AgentEventType.AGENT_CONNECTED);
         AgentEvent event2 = createAgentEvent(5, AgentEventType.AGENT_PING);
         AgentEvent event3 = createAgentEvent(100, AgentEventType.AGENT_PING);
@@ -159,13 +159,13 @@ public class AgentEventTimelineTest {
                 .from(Arrays.asList(event1, event2, event3, event4, event5, event6))
                 .build();
         // Then
-        Assert.assertEquals(expectedTimelineSegments, timeline.getTimelineSegments());
+        Assertions.assertEquals(expectedTimelineSegments, timeline.getTimelineSegments());
     }
 
     @Test
     public void rangeLessThanNumTimeslots() {
         // Given
-        Range range = Range.newRange(10, 20);
+        Range range = Range.between(10, 20);
         AgentEvent event1 = createAgentEvent(10, AgentEventType.AGENT_PING);
         AgentEvent event2 = createAgentEvent(11, AgentEventType.AGENT_PING);
         AgentEvent event3 = createAgentEvent(12, AgentEventType.AGENT_PING);
@@ -192,7 +192,7 @@ public class AgentEventTimelineTest {
                 .from(Arrays.asList(event1, event2, event3, event4, event5, event6, event7, event8, event9, event10))
                 .build();
         // Then
-        Assert.assertEquals(expectedTimelineSegments, timeline.getTimelineSegments());
+        Assertions.assertEquals(expectedTimelineSegments, timeline.getTimelineSegments());
     }
 
     @Test
@@ -201,11 +201,11 @@ public class AgentEventTimelineTest {
         long timeRangeMs = TimeUnit.DAYS.toMillis(7);
         long from = System.currentTimeMillis();
         long to = from + timeRangeMs;
-        Range range = Range.newRange(from, to);
+        Range range = Range.between(from, to);
         int numTimeslots = 100;
         int expectedEventCountPerSegment = 20;
         List<AgentEvent> agentEvents = new ArrayList<>();
-        for (int i = 0 ; i < timeRangeMs; i += (timeRangeMs / (numTimeslots * expectedEventCountPerSegment))) {
+        for (int i = 0; i < timeRangeMs; i += (timeRangeMs / (numTimeslots * expectedEventCountPerSegment))) {
             agentEvents.add(createAgentEvent(from + i, AgentEventType.AGENT_PING));
         }
         // When
@@ -214,12 +214,12 @@ public class AgentEventTimelineTest {
                 .build();
         // Then
         List<AgentEventTimelineSegment> timelineSegments = timeline.getTimelineSegments();
-        Assert.assertEquals(numTimeslots, timelineSegments.size());
+        Assertions.assertEquals(numTimeslots, timelineSegments.size());
         for (AgentEventTimelineSegment timelineSegment : timelineSegments) {
             AgentEventMarker eventMarker = timelineSegment.getValue();
-            Assert.assertEquals(expectedEventCountPerSegment, eventMarker.getTotalCount());
+            Assertions.assertEquals(expectedEventCountPerSegment, eventMarker.getTotalCount());
             int pingEventCount = eventMarker.getTypeCounts().get(AgentEventType.AGENT_PING);
-            Assert.assertEquals(expectedEventCountPerSegment, pingEventCount);
+            Assertions.assertEquals(expectedEventCountPerSegment, pingEventCount);
         }
     }
 

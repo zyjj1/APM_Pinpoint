@@ -21,7 +21,7 @@ import com.navercorp.pinpoint.bootstrap.context.ParsingResult;
 import com.navercorp.pinpoint.bootstrap.context.SpanEventRecorder;
 import com.navercorp.pinpoint.common.trace.AnnotationKey;
 import com.navercorp.pinpoint.common.trace.ServiceType;
-import java.util.Objects;
+import com.navercorp.pinpoint.common.util.DataType;
 import com.navercorp.pinpoint.common.util.IntStringStringValue;
 import com.navercorp.pinpoint.common.util.StringUtils;
 import com.navercorp.pinpoint.profiler.context.Annotation;
@@ -29,12 +29,16 @@ import com.navercorp.pinpoint.profiler.context.AsyncContextFactory;
 import com.navercorp.pinpoint.profiler.context.AsyncId;
 import com.navercorp.pinpoint.profiler.context.DefaultTrace;
 import com.navercorp.pinpoint.profiler.context.SpanEvent;
+import com.navercorp.pinpoint.profiler.context.SpanEventFactory;
+import com.navercorp.pinpoint.profiler.context.annotation.Annotations;
 import com.navercorp.pinpoint.profiler.context.errorhandler.IgnoreErrorHandler;
 import com.navercorp.pinpoint.profiler.context.id.TraceRoot;
 import com.navercorp.pinpoint.profiler.metadata.SqlMetaDataService;
 import com.navercorp.pinpoint.profiler.metadata.StringMetaDataService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.util.Objects;
 
 /**
  *
@@ -42,7 +46,7 @@ import org.slf4j.LoggerFactory;
  *
  */
 public class WrappedSpanEventRecorder extends AbstractRecorder implements SpanEventRecorder {
-    private static final Logger logger = LoggerFactory.getLogger(DefaultTrace.class.getName());
+    private static final Logger logger = LogManager.getLogger(DefaultTrace.class.getName());
     private static final boolean isDebug = logger.isDebugEnabled();
 
     protected final TraceRoot traceRoot;
@@ -92,22 +96,15 @@ public class WrappedSpanEventRecorder extends AbstractRecorder implements SpanEv
             }
         }
 
-        String output = defaultString2(parsingResult.getOutput(), null);
-        bindValue = defaultString2(bindValue, null);
+        String output = StringUtils.defaultIfEmpty(parsingResult.getOutput(), null);
+        bindValue = StringUtils.defaultIfEmpty(bindValue, null);
         final IntStringStringValue sqlValue = new IntStringStringValue(parsingResult.getId(), output, bindValue);
 
         recordSqlParam(sqlValue);
     }
 
-    private String defaultString2(String string, String defaultString) {
-        if (StringUtils.isEmpty(string)) {
-            return defaultString;
-        }
-        return string;
-    }
-
     private void recordSqlParam(IntStringStringValue intStringStringValue) {
-        Annotation annotation = new Annotation(AnnotationKey.SQL_ID.getCode(), intStringStringValue);
+        Annotation<DataType> annotation = Annotations.of(AnnotationKey.SQL_ID.getCode(), intStringStringValue);
         spanEvent.addAnnotation(annotation);
     }
 
@@ -128,8 +125,14 @@ public class WrappedSpanEventRecorder extends AbstractRecorder implements SpanEv
     public AsyncContext recordNextAsyncContext() {
         final TraceRoot traceRoot = this.traceRoot;
         final AsyncId asyncIdObject = getNextAsyncId();
-        final AsyncContext asyncContext = asyncContextFactory.newAsyncContext(traceRoot, asyncIdObject);
-        return asyncContext;
+        // sequence or stack overflow
+        final boolean canSampled = isOverflowState();
+        return asyncContextFactory.newAsyncContext(traceRoot, asyncIdObject, canSampled);
+    }
+
+    // add more conditions to disable asynchronous invocation trace
+    protected boolean isOverflowState() {
+        return !SpanEventFactory.isDisableSpanEvent(spanEvent);
     }
 
     @Override
@@ -157,7 +160,7 @@ public class WrappedSpanEventRecorder extends AbstractRecorder implements SpanEv
         spanEvent.setApiId(apiId);
     }
 
-    void addAnnotation(Annotation annotation) {
+    void addAnnotation(Annotation<?> annotation) {
         spanEvent.addAnnotation(annotation);
     }
 

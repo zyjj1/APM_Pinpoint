@@ -20,18 +20,16 @@ import com.navercorp.pinpoint.collector.config.FlinkConfiguration;
 import com.navercorp.pinpoint.common.server.cluster.zookeeper.CuratorZookeeperClient;
 import com.navercorp.pinpoint.common.server.cluster.zookeeper.ZookeeperClient;
 import com.navercorp.pinpoint.common.server.cluster.zookeeper.ZookeeperEventWatcher;
-import com.navercorp.pinpoint.common.server.util.concurrent.CommonState;
-import com.navercorp.pinpoint.common.server.util.concurrent.CommonStateContext;
-import com.navercorp.pinpoint.common.util.StringUtils;
-import org.apache.zookeeper.KeeperException;
+import com.navercorp.pinpoint.common.server.cluster.zookeeper.exception.PinpointZookeeperException;
+import com.navercorp.pinpoint.common.server.cluster.zookeeper.util.CommonState;
+import com.navercorp.pinpoint.common.server.cluster.zookeeper.util.CommonStateContext;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher.Event.EventType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
-import java.io.IOException;
 import java.util.Objects;
 
 /**
@@ -39,7 +37,8 @@ import java.util.Objects;
  */
 public class FlinkClusterService {
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
+
     private final CommonStateContext serviceState;
     private final FlinkConfiguration config;
     private final FlinkClusterConnectionManager clusterConnectionManager;
@@ -48,19 +47,15 @@ public class FlinkClusterService {
     private ZookeeperClient client;
     private ZookeeperClusterManager zookeeperClusterManager;
 
-    public FlinkClusterService(FlinkConfiguration config, FlinkClusterConnectionManager clusterConnectionManager, String pinpointFlinkClusterPath) {
+    public FlinkClusterService(FlinkConfiguration config, FlinkClusterConnectionManager clusterConnectionManager) {
         this.config = Objects.requireNonNull(config, "config");
         this.serviceState = new CommonStateContext();
         this.clusterConnectionManager = Objects.requireNonNull(clusterConnectionManager, "clusterConnectionManager");
-
-        if (StringUtils.isEmpty(pinpointFlinkClusterPath)) {
-            throw new IllegalArgumentException("pinpointFlinkClusterPath must not be empty.");
-        }
-        this.pinpointFlinkClusterPath = pinpointFlinkClusterPath;
+        this.pinpointFlinkClusterPath = config.getFlinkZNodePath();
     }
 
     @PostConstruct
-    public void setUp() throws KeeperException, IOException, InterruptedException {
+    public void setUp() {
         if (!config.isFlinkClusterEnable()) {
             logger.info("flink cluster disable.");
             return;
@@ -73,7 +68,11 @@ public class FlinkClusterService {
 
                     ClusterManagerWatcher watcher = new ClusterManagerWatcher(pinpointFlinkClusterPath);
                     this.client = new CuratorZookeeperClient(config.getFlinkClusterZookeeperAddress(), config.getFlinkClusterSessionTimeout(), watcher);
-                    this.client.connect();
+                    try {
+                        this.client.connect();
+                    } catch (PinpointZookeeperException e) {
+                        throw new RuntimeException("ZookeeperClient connect failed", e);
+                    }
 
                     this.zookeeperClusterManager = new ZookeeperClusterManager(client, pinpointFlinkClusterPath, clusterConnectionManager);
                     this.zookeeperClusterManager.start();

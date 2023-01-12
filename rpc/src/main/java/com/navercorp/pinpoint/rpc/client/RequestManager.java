@@ -17,6 +17,7 @@
 package com.navercorp.pinpoint.rpc.client;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
@@ -25,8 +26,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.util.Timeout;
 import org.jboss.netty.util.Timer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import com.navercorp.pinpoint.rpc.ChannelWriteFailListenableFuture;
 import com.navercorp.pinpoint.rpc.DefaultFuture;
@@ -42,25 +43,21 @@ import com.navercorp.pinpoint.rpc.server.PinpointServer;
  */
 public class RequestManager {
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
 
     private final AtomicInteger requestId = new AtomicInteger(1);
 
-    private final ConcurrentMap<Integer, DefaultFuture<ResponseMessage>> requestMap = new ConcurrentHashMap<Integer, DefaultFuture<ResponseMessage>>();
+    private final ConcurrentMap<Integer, DefaultFuture<ResponseMessage>> requestMap = new ConcurrentHashMap<>();
     // Have to move Timer into factory?
     private final Timer timer;
     private final long defaultTimeoutMillis;
 
     public RequestManager(Timer timer, long defaultTimeoutMillis) {
-        if (timer == null) {
-            throw new NullPointerException("timer");
-        }
-        
+        this.timer = Objects.requireNonNull(timer, "timer");
+
         if (defaultTimeoutMillis <= 0) {
             throw new IllegalArgumentException("defaultTimeoutMillis must greater than zero.");
         }
-        
-        this.timer = timer;
         this.defaultTimeoutMillis = defaultTimeoutMillis;
     }
 
@@ -80,9 +77,8 @@ public class RequestManager {
     }
 
     private void addTimeoutTask(DefaultFuture future, long timeoutMillis) {
-        if (future == null) {
-            throw new NullPointerException("future");
-        }
+        Objects.requireNonNull(future, "future");
+
         try {
             Timeout timeout = timer.newTimeout(future, timeoutMillis, TimeUnit.MILLISECONDS);
             future.setTimeout(timeout);
@@ -140,7 +136,7 @@ public class RequestManager {
 
     public ChannelWriteFailListenableFuture<ResponseMessage> register(int requestId, long timeoutMillis) {
         // shutdown check
-        final ChannelWriteFailListenableFuture<ResponseMessage> responseFuture = new ChannelWriteFailListenableFuture<ResponseMessage>(timeoutMillis);
+        final ChannelWriteFailListenableFuture<ResponseMessage> responseFuture = new ChannelWriteFailListenableFuture<>(timeoutMillis);
 
         final DefaultFuture old = this.requestMap.put(requestId, responseFuture);
         if (old != null) {

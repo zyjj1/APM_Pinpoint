@@ -61,8 +61,8 @@ import org.jboss.netty.channel.SimpleChannelHandler;
 import org.jboss.netty.util.Timeout;
 import org.jboss.netty.util.Timer;
 import org.jboss.netty.util.TimerTask;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import java.net.SocketAddress;
 import java.util.List;
@@ -78,7 +78,7 @@ public class DefaultPinpointClientHandler extends SimpleChannelHandler implement
 
     private static final String WRITE_BUFFER_FULL_MESSAGE = "write buffer is full";
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
 
     private final AtomicInteger pingIdGenerator;
     private final PinpointClientHandlerState state;
@@ -141,9 +141,8 @@ public class DefaultPinpointClientHandler extends SimpleChannelHandler implement
     }
 
     public void setPinpointClient(PinpointClient pinpointClient) {
-        if (pinpointClient == null) {
-            throw new NullPointerException("pinpointClient");
-        }
+        Objects.requireNonNull(pinpointClient, "pinpointClient");
+
         this.pinpointClient = pinpointClient;
     }
 
@@ -281,9 +280,7 @@ public class DefaultPinpointClientHandler extends SimpleChannelHandler implement
 
     @Override
     public void response(int requestId, byte[] payload) {
-        if (payload == null) {
-            throw new NullPointerException("bytes");
-        }
+        Objects.requireNonNull(payload, "payload");
 
         ensureOpen();
         ResponsePacket response = new ResponsePacket(requestId, payload);
@@ -332,9 +329,7 @@ public class DefaultPinpointClientHandler extends SimpleChannelHandler implement
     }
 
     private ChannelFuture send0(byte[] bytes) {
-        if (bytes == null) {
-            throw new NullPointerException("bytes");
-        }
+        Objects.requireNonNull(bytes, "bytes");
 
         ensureOpen();
         SendPacket send = new SendPacket(bytes);
@@ -343,13 +338,11 @@ public class DefaultPinpointClientHandler extends SimpleChannelHandler implement
     }
 
     public Future<ResponseMessage> request(byte[] bytes) {
-        if (bytes == null) {
-            throw new NullPointerException("bytes");
-        }
+        Objects.requireNonNull(bytes, "bytes");
 
         final boolean isEnable = state.isEnableCommunication();
         if (!isEnable) {
-            DefaultFuture<ResponseMessage> closedException = new DefaultFuture<ResponseMessage>();
+            DefaultFuture<ResponseMessage> closedException = new DefaultFuture<>();
             closedException.setFailure(new PinpointSocketException("invalid state:" + state.getCurrentStateCode() + " channel:" + channel));
             return closedException;
         }
@@ -364,9 +357,15 @@ public class DefaultPinpointClientHandler extends SimpleChannelHandler implement
     @Override
     public ClientStreamChannel openStream(byte[] payload, ClientStreamChannelEventHandler streamChannelEventHandler) throws StreamException {
         ensureOpen();
-
         PinpointClientHandlerContext context = getChannelContext(channel);
         return context.openStream(payload, streamChannelEventHandler);
+    }
+
+    @Override
+    public ClientStreamChannel openStreamAndAwait(byte[] payload, ClientStreamChannelEventHandler streamChannelEventHandler, long timeout) throws StreamException {
+        ensureOpen();
+        PinpointClientHandlerContext context = getChannelContext(channel);
+        return context.openStreamAndAwait(payload, streamChannelEventHandler, timeout);
     }
 
     @Override
@@ -587,9 +586,8 @@ public class DefaultPinpointClientHandler extends SimpleChannelHandler implement
     }
 
     private ChannelFuture write0(Object message, ChannelFutureListener futureListener) {
-        if (futureListener == null) {
-            throw new NullPointerException("futureListener");
-        }
+        Objects.requireNonNull(futureListener, "futureListener");
+
         ChannelFuture future = write0(message);
         future.addListener(futureListener);
         return future;
@@ -614,9 +612,7 @@ public class DefaultPinpointClientHandler extends SimpleChannelHandler implement
     }
 
     private PinpointClientHandlerContext getChannelContext(Channel channel) {
-        if (channel == null) {
-            throw new NullPointerException("channel");
-        }
+        Objects.requireNonNull(channel, "channel");
         return (PinpointClientHandlerContext) channel.getAttachment();
     }
 

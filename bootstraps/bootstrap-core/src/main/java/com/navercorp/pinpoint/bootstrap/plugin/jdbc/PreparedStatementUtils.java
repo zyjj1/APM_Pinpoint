@@ -20,8 +20,8 @@ package com.navercorp.pinpoint.bootstrap.plugin.jdbc;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.regex.Pattern;
 
 /**
@@ -42,11 +42,9 @@ public final class PreparedStatementUtils {
     }
 
     public static List<Method> findBindVariableSetMethod(BindVariableFilter filter) {
-        if (filter == null) {
-            throw new NullPointerException("filter");
-        }
+        Objects.requireNonNull(filter, "filter");
 
-        List<Method> temp = new ArrayList<Method>(bindMethod.size());
+        List<Method> temp = new ArrayList<>(bindMethod.size());
         for (Method method : bindMethod) {
             if (filter.filter(method)) {
                 temp.add(method);
@@ -62,14 +60,14 @@ public final class PreparedStatementUtils {
         }
         final Class<?> preparedStatement = SqlModule.getSqlPreparedStatement();
         Method[] methods = preparedStatement.getDeclaredMethods();
-        List<Method> bindMethod = new LinkedList<Method>();
+        List<Method> bindMethod = new ArrayList<>();
         for (Method method : methods) {
             if (isSetter(method.getName())) {
-                final Class<?>[] parameterTypes = method.getParameterTypes();
-
-                if (parameterTypes.length < 2) {
+                if (method.getParameterCount() < 2) {
                     continue;
                 }
+
+                final Class<?>[] parameterTypes = method.getParameterTypes();
                 if (parameterTypes[0] != int.class) {
                     continue;
                 }

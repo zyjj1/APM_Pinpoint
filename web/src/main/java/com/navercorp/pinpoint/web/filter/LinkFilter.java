@@ -22,6 +22,7 @@ import java.util.Objects;
 
 import com.navercorp.pinpoint.common.server.bo.SpanBo;
 import com.navercorp.pinpoint.common.server.bo.SpanEventBo;
+import com.navercorp.pinpoint.common.util.StringUtils;
 import com.navercorp.pinpoint.loader.service.AnnotationKeyRegistryService;
 import com.navercorp.pinpoint.loader.service.ServiceTypeRegistryService;
 import com.navercorp.pinpoint.common.trace.ServiceType;
@@ -41,16 +42,16 @@ import com.navercorp.pinpoint.web.filter.transaction.WasToBackendFilter;
 import com.navercorp.pinpoint.web.filter.transaction.WasToQueueFilter;
 import com.navercorp.pinpoint.web.filter.transaction.WasToUnknownFilter;
 import com.navercorp.pinpoint.web.filter.transaction.WasToWasFilter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.util.StringUtils;
+
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 /**
  * @author netspider
  * @author emeroad
  */
 public class LinkFilter implements Filter<List<SpanBo>> {
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
 
     private final List<ServiceType> fromServiceDescList;
     private final FilterDescriptor.FromNode fromNode;

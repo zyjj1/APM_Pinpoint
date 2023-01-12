@@ -25,22 +25,19 @@ import com.navercorp.pinpoint.bootstrap.context.scope.TraceScope;
 import com.navercorp.pinpoint.bootstrap.logging.PLogger;
 import com.navercorp.pinpoint.bootstrap.logging.PLoggerFactory;
 
+import java.util.Objects;
+
 public abstract class AsyncContextSpanEventSimpleAroundInterceptor implements AroundInterceptor {
     protected final PLogger logger = PLoggerFactory.getLogger(getClass());
     protected final boolean isDebug = logger.isDebugEnabled();
+    protected final boolean isTrace = logger.isTraceEnabled();
     protected static final String ASYNC_TRACE_SCOPE = AsyncContext.ASYNC_TRACE_SCOPE;
 
     protected final MethodDescriptor methodDescriptor;
 
     public AsyncContextSpanEventSimpleAroundInterceptor(TraceContext traceContext, MethodDescriptor methodDescriptor) {
-        if (traceContext == null) {
-            throw new NullPointerException("traceContext");
-        }
-        if (methodDescriptor == null) {
-            throw new NullPointerException("methodDescriptor");
-        }
-
-        this.methodDescriptor = methodDescriptor;
+        Objects.requireNonNull(traceContext, "traceContext");
+        this.methodDescriptor = Objects.requireNonNull(methodDescriptor, "methodDescriptor");
     }
 
     @Override
@@ -51,7 +48,9 @@ public abstract class AsyncContextSpanEventSimpleAroundInterceptor implements Ar
 
         final AsyncContext asyncContext = getAsyncContext(target, args);
         if (asyncContext == null) {
-            logger.debug("AsyncContext not found");
+            if (isTrace) {
+                logger.trace("AsyncContext not found");
+            }
             return;
         }
 
@@ -84,7 +83,9 @@ public abstract class AsyncContextSpanEventSimpleAroundInterceptor implements Ar
 
         final AsyncContext asyncContext = getAsyncContext(target, args, result, throwable);
         if (asyncContext == null) {
-            logger.debug("AsyncContext not found");
+            if (isTrace) {
+                logger.trace("AsyncContext not found");
+            }
             return;
         }
 
@@ -131,8 +132,8 @@ public abstract class AsyncContextSpanEventSimpleAroundInterceptor implements Ar
     private Trace getAsyncTrace(AsyncContext asyncContext) {
         final Trace trace = asyncContext.continueAsyncTraceObject();
         if (trace == null) {
-            if (logger.isWarnEnabled()) {
-                logger.warn("Failed to continue async trace. 'result is null'");
+            if (isDebug) {
+                logger.debug("Failed to continue async trace. 'result is null'");
             }
             return null;
         }

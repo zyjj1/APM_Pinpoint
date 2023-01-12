@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { IInspectorChartContainer } from './inspector-chart-container-factory';
 import { makeYData, makeXData } from 'app/core/utils/chart-util';
 import { IInspectorChartData, InspectorChartDataService } from './inspector-chart-data.service';
+import { InspectorChartThemeService } from './inspector-chart-theme.service';
 
 export class AgentCPUChartContainer implements IInspectorChartContainer {
     private apiUrl = 'getAgentStat/cpuLoad/chart.pinpoint';
@@ -12,10 +13,11 @@ export class AgentCPUChartContainer implements IInspectorChartContainer {
     title = 'JVM/System CPU Usage';
 
     constructor(
-        private inspectorChartDataService: InspectorChartDataService
+        private inspectorChartDataService: InspectorChartDataService,
+        private inspectorChartThemeService: InspectorChartThemeService,
     ) {}
 
-    getData(range: number[]): Observable<IInspectorChartData | AjaxException> {
+    getData(range: number[]): Observable<IInspectorChartData> {
         return this.inspectorChartDataService.getData(this.apiUrl, range);
     }
 
@@ -28,6 +30,8 @@ export class AgentCPUChartContainer implements IInspectorChartContainer {
     }
 
     makeDataOption(): Data {
+        const alpha = this.inspectorChartThemeService.getAlpha(0.4);
+
         return {
             types: {
                 jvm: areaSpline(),
@@ -38,8 +42,8 @@ export class AgentCPUChartContainer implements IInspectorChartContainer {
                 system: 'System'
             },
             colors: {
-                jvm: 'rgba(174, 199, 232, 0.5)',
-                system: 'rgba(31, 119, 180, 0.5)'
+                jvm: `rgba(174, 199, 232, ${alpha})`,
+                system: `rgba(31, 119, 180, ${alpha})`
             }
         };
     }
@@ -68,6 +72,10 @@ export class AgentCPUChartContainer implements IInspectorChartContainer {
                 default: [0, this.defaultYMax]
             }
         };
+    }
+
+    makeTooltipOptions(): {[key: string]: any} {
+        return {};
     }
 
     convertWithUnit(value: number): string {

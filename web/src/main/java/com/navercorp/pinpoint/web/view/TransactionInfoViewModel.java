@@ -20,6 +20,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.navercorp.pinpoint.common.profiler.util.TransactionId;
 import com.navercorp.pinpoint.common.profiler.util.TransactionIdUtils;
 import com.navercorp.pinpoint.common.server.util.DateTimeFormatUtils;
+import com.navercorp.pinpoint.web.applicationmap.histogram.TimeHistogramFormat;
 import com.navercorp.pinpoint.web.applicationmap.link.Link;
 import com.navercorp.pinpoint.web.applicationmap.nodes.Node;
 import com.navercorp.pinpoint.web.calltree.span.TraceState;
@@ -48,7 +49,9 @@ public class TransactionInfoViewModel {
     private final RecordSet recordSet;
     private final TraceState.State completeState;
 
+
     private final LogConfiguration logConfiguration;
+    private TimeHistogramFormat timeHistogramFormat = TimeHistogramFormat.V1;
 
     public TransactionInfoViewModel(TransactionId transactionId, long spanId, Collection<Node> nodes, Collection<Link> links, RecordSet recordSet, TraceState.State state, LogConfiguration logConfiguration) {
         this.transactionId = transactionId;
@@ -58,6 +61,10 @@ public class TransactionInfoViewModel {
         this.recordSet = recordSet;
         this.completeState = state;
         this.logConfiguration = Objects.requireNonNull(logConfiguration, "logConfiguration");
+    }
+
+    public void setTimeHistogramFormat(TimeHistogramFormat timeHistogramFormat) {
+        this.timeHistogramFormat = timeHistogramFormat;
     }
 
     @JsonProperty("applicationName")
@@ -78,6 +85,11 @@ public class TransactionInfoViewModel {
     @JsonProperty("agentId")
     public String getAgentId() {
         return recordSet.getAgentId();
+    }
+
+    @JsonProperty("agentName")
+    public String getAgentName() {
+        return recordSet.getAgentName();
     }
 
     @JsonProperty("applicationId")
@@ -151,12 +163,12 @@ public class TransactionInfoViewModel {
         List<CallStack> list = new ArrayList<CallStack>();
         boolean first = true;
         long barRatio = 0;
-        for(Record record : recordSet.getRecordList()) {
-            if(first) {
-                if(record.isMethod()) {
+        for (Record record : recordSet.getRecordList()) {
+            if (first) {
+                if (record.isMethod()) {
                     long begin = record.getBegin();
                     long end = record.getBegin() + record.getElapsed();
-                    if(end  - begin > 0) {
+                    if (end - begin > 0) {
                         barRatio = 100 / (end - begin);
                     }
                 }
@@ -172,17 +184,24 @@ public class TransactionInfoViewModel {
     @JsonProperty("applicationMapData")
     public Map<String, List<Object>> getApplicationMapData() {
         Map<String, List<Object>> result = new HashMap<String, List<Object>>();
+        if (timeHistogramFormat == TimeHistogramFormat.V2) {
+            for (Node node : nodes) {
+                node.setTimeHistogramFormat(timeHistogramFormat);
+            }
+            for (Link link : links) {
+                link.setTimeHistogramFormat(timeHistogramFormat);
+            }
+        }
 
         List<Object> nodeDataArray = new ArrayList<>(nodes);
         result.put("nodeDataArray", nodeDataArray);
-
         List<Object> linkDataArray = new ArrayList<>(links);
         result.put("linkDataArray", linkDataArray);
 
         return result;
     }
 
-    @JsonSerialize(using=TransactionInfoCallStackSerializer.class)
+    @JsonSerialize(using = TransactionInfoCallStackSerializer.class)
     public static class CallStack {
         static final String[] INDEX = {"depth",
                 "begin",
@@ -207,7 +226,10 @@ public class TransactionInfoViewModel {
                 "agent",
                 "isFocused",
                 "hasException",
-                "isAuthorized"
+                "isAuthorized",
+                "agentName",
+                "lineNumber",
+                "location"
         };
 
         private String depth = "";
@@ -231,9 +253,12 @@ public class TransactionInfoViewModel {
         private String methodType = "";
         private String apiType = "";
         private String agent = "";
+        private String agentName = "";
         private boolean isFocused;
         private boolean hasException;
         private boolean isAuthorized;
+        private int lineNumber;
+        private String location = "";
 
         public CallStack(final Record record, long barRatio) {
             begin = record.getBegin();
@@ -253,16 +278,19 @@ public class TransactionInfoViewModel {
                 executeTime = DateTimeFormatUtils.formatAbsolute(record.getBegin()); // time format
                 gap = String.valueOf(record.getGap());
                 elapsedTime = String.valueOf(record.getElapsed());
-                barWidth = String.format("%1d", (int)(((end - begin) * barRatio) + 0.9));
+                barWidth = String.format("%1d", (int) (((end - begin) * barRatio) + 0.9));
                 executionMilliseconds = String.valueOf(record.getExecutionMilliseconds());
             }
             simpleClassName = record.getSimpleClassName();
             methodType = String.valueOf(record.getMethodTypeEnum().getCode());
             apiType = record.getApiType();
-            agent = record.getAgent();
+            agent = record.getAgentId();
+            agentName = record.getAgentName();
             isFocused = record.isFocused();
             hasException = record.getHasException();
             isAuthorized = record.isAuthorized();
+            lineNumber = record.getLineNumber();
+            location = record.getLocation();
         }
 
         public String getDepth() {
@@ -349,6 +377,10 @@ public class TransactionInfoViewModel {
             return agent;
         }
 
+        public String getAgentName() {
+            return agentName;
+        }
+
         public boolean isFocused() {
             return isFocused;
         }
@@ -356,9 +388,17 @@ public class TransactionInfoViewModel {
         public boolean isHasException() {
             return hasException;
         }
-        
+
         public boolean isAuthorized() {
             return isAuthorized;
+        }
+
+        public int getLineNumber() {
+            return lineNumber;
+        }
+
+        public String getLocation() {
+            return location;
         }
     }
 }

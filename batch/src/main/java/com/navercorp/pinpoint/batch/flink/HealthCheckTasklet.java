@@ -16,13 +16,12 @@
 package com.navercorp.pinpoint.batch.flink;
 
 import com.navercorp.pinpoint.batch.common.BatchConfiguration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.springframework.batch.core.StepContribution;
 import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.repeat.RepeatStatus;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -32,6 +31,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * @author minwoo.jung
@@ -39,19 +39,22 @@ import java.util.Map;
 @Deprecated
 public class HealthCheckTasklet implements Tasklet {
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
     private final static String URL_FORMAT = "http://%s:8081/joboverview";
     private final List<String> jobNameList;
 
-    @Autowired
-    private RestTemplate restTemplate;
+    private final RestTemplate restTemplate;
 
-    @Autowired
-    private BatchConfiguration batchConfiguration;
+    private final BatchConfiguration batchConfiguration;
 
-    public HealthCheckTasklet() {
+
+    public HealthCheckTasklet(BatchConfiguration batchConfiguration, RestTemplate restTemplate) {
         this.jobNameList = new ArrayList<>(1);
         jobNameList.add("Aggregation Stat Data");
+
+        this.batchConfiguration = Objects.requireNonNull(batchConfiguration, "batchConfiguration");
+        this.restTemplate = Objects.requireNonNull(restTemplate, "restTemplate");
+
     }
 
     @Override
@@ -62,7 +65,7 @@ public class HealthCheckTasklet implements Tasklet {
             return RepeatStatus.FINISHED;
         }
 
-        Map<String, Boolean> jobExecuteStatus = createjobExecuteStatus();
+        Map<String, Boolean> jobExecuteStatus = createJobExecuteStatus();
 
         for (String url : urlList) {
             try {
@@ -95,17 +98,19 @@ public class HealthCheckTasklet implements Tasklet {
 
     private void checkJobExecuteStatus(ResponseEntity<Map> responseEntity, Map<String, Boolean> jobExecuteStatus) {
         Map<?, ?> responseData = responseEntity.getBody();
-        List<?> runningJob = (List<?>)responseData.get("running");
+        if(responseData != null) {
+            List<?> runningJob = (List<?>)responseData.get("running");
 
-        if (runningJob != null) {
-            for (Object job : runningJob) {
-                Map<?, ?> jobInfo = (Map<?, ?>)job;
-                String jobName = (String) jobInfo.get("name");
+            if (runningJob != null) {
+                for (Object job : runningJob) {
+                    Map<?, ?> jobInfo = (Map<?, ?>)job;
+                    String jobName = (String) jobInfo.get("name");
 
-                Boolean status = jobExecuteStatus.get(jobName);
+                    Boolean status = jobExecuteStatus.get(jobName);
 
-                if (status != null) {
-                    jobExecuteStatus.put(jobName, true);
+                    if (status != null) {
+                        jobExecuteStatus.put(jobName, true);
+                    }
                 }
             }
         }
@@ -123,7 +128,7 @@ public class HealthCheckTasklet implements Tasklet {
         return urlList;
     }
 
-    public Map<String, Boolean> createjobExecuteStatus() {
+    public Map<String, Boolean> createJobExecuteStatus() {
         Map<String, Boolean> jobExecuteStatus = new HashMap<>();
 
         for (String jobName : jobNameList) {

@@ -1,15 +1,16 @@
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, of } from 'rxjs';
 import { Store, select } from '@ngrx/store';
 import { LocalStorageService } from 'angular-2-local-storage';
 import 'moment-timezone';
 import * as moment from 'moment-timezone';
-import { map, filter, take } from 'rxjs/operators';
 
-import { AppState, Actions, STORE_KEY } from 'app/shared/store';
+import { AppState, Actions, STORE_KEY } from 'app/shared/store/reducers';
 import { ComponentDefaultSettingDataService } from 'app/shared/services/component-default-setting-data.service';
 import { Application, Period } from 'app/core/models';
 import { NewUrlStateNotificationService } from 'app/shared/services/new-url-state-notification.service';
+import { Theme } from 'app/shared/services/theme.service';
+import { ExperimentalConfigurationMeta } from '.';
 
 interface IMinMax {
     min: number;
@@ -32,35 +33,25 @@ export class WebAppSettingDataService {
         APPLICATION_CHART_LAYOUT_INFO: 'applicationChartLayoutInfo',
         AGENT_CHART_LAYOUT_INFO: 'agentChartLayoutInfo',
         LANGUAGE: 'language',
+        THEME: 'theme',
+        SIDE_NAV_BAR_SCALE: 'sideNavigationBarScale',
     };
     private IMAGE_PATH = './assets/img/';
     private IMAGE_EXT = '.png';
     private SERVER_MAP_PATH = 'servermap/';
     private ICON_PATH = 'icons/';
     private LOGO_IMG_NAME = 'logo.png';
+    private MINI_LOGO_IMG_NAME = 'mini-logo.png';
     constructor(
         private store: Store<AppState>,
         private localStorageService: LocalStorageService,
         private componentDefaultSettingDataService: ComponentDefaultSettingDataService,
         private newUrlStateNotificationService: NewUrlStateNotificationService,
     ) {
+        // TODO: Set these configuration in AppComponent init-phase
         this.store.dispatch(new Actions.ChangeTimezone(this.getTimezone()));
         this.store.dispatch(new Actions.ChangeDateFormat(this.getDateFormat()));
         this.store.dispatch(new Actions.ChangeLanguage(this.getLanguage()));
-        this.store.pipe(
-            select(STORE_KEY.APPLICATION_LIST),
-            filter((appList: IApplication[]) => appList.length !== 0),
-            take(1),
-            map((appList: IApplication[]) => {
-                const registeredFavAppList = this.getFavoriteApplicationList();
-
-                return registeredFavAppList.filter((favApp: IApplication) => {
-                    return appList.some((app: IApplication) => app.equals(favApp));
-                });
-            })
-        ).subscribe((filteredFavAppList: IApplication[]) => {
-            this.store.dispatch(new Actions.AddFavoriteApplication(filteredFavAppList));
-        });
     }
     useActiveThreadChart(): Observable<boolean> {
         return this.newUrlStateNotificationService.getConfiguration('showActiveThread');
@@ -86,6 +77,12 @@ export class WebAppSettingDataService {
     isWebhookEnable(): Observable<boolean> {
         return this.newUrlStateNotificationService.getConfiguration('webhookEnable');
     }
+    showMetric(): Observable<boolean> {
+        return this.newUrlStateNotificationService.getConfiguration('showSystemMetric');
+    }
+    showUrlStat(): Observable<boolean> {
+        return this.newUrlStateNotificationService.getConfiguration('showUrlStat');
+    }
     getImagePath(): string {
         return this.IMAGE_PATH;
     }
@@ -98,8 +95,10 @@ export class WebAppSettingDataService {
     getImageExt(): string {
         return this.IMAGE_EXT;
     }
-    getLogoPath(): string {
-        return this.getImagePath() + this.LOGO_IMG_NAME;
+    getLogoPath(mini?: boolean): string {
+        return mini 
+            ? this.getImagePath() + this.MINI_LOGO_IMG_NAME
+            : this.getImagePath() + this.LOGO_IMG_NAME;
     }
     getSystemDefaultInbound(): number {
         return this.componentDefaultSettingDataService.getSystemDefaultInbound();
@@ -143,22 +142,25 @@ export class WebAppSettingDataService {
     private saveFavoriteList(data: any[]): void {
         this.localStorageService.set(WebAppSettingDataService.KEYS.FAVORLIITE_APPLICATION_LIST, JSON.stringify(data));
     }
-    addFavoriteApplication(application: IApplication): void {
+    addFavoriteApplication(application: IApplication): Observable<IApplication> {
         this.saveFavoriteList([...this.loadFavoriteList(), {
             applicationName: application.getApplicationName(),
             serviceType: application.getServiceType(),
             code: application.getCode()
         }]);
-        this.store.dispatch(new Actions.AddFavoriteApplication([application]));
+
+        return of(application);
     }
-    removeFavoriteApplication(application: IApplication): void {
+    removeFavoriteApplication(application: IApplication): Observable<IApplication> {
         const removedList = this.getFavoriteApplicationList().filter((app: IApplication) => {
             return !app.equals(application);
         });
+
         this.saveFavoriteList(removedList);
-        this.store.dispatch(new Actions.RemoveFavoriteApplication([application]));
+
+        return of(application);
     }
-    private getFavoriteApplicationList(): IApplication[] {
+    getFavoriteApplicationList(): IApplication[] {
         return this.loadFavoriteList().map(({applicationName, serviceType, code}) => {
             return new Application(applicationName, serviceType, code);
         });
@@ -237,12 +239,6 @@ export class WebAppSettingDataService {
             return this.IMAGE_PATH + name + this.IMAGE_EXT;
         };
     }
-    setChartLayoutOption(chartNumPerRow: number): void {
-        this.localStorageService.set(WebAppSettingDataService.KEYS.CHART_NUM_PER_ROW, chartNumPerRow);
-    }
-    getChartLayoutOption(): number {
-        return this.localStorageService.get<number>(WebAppSettingDataService.KEYS.CHART_NUM_PER_ROW) || this.getSystemDefaultChartLayoutOption();
-    }
     getChartRefreshInterval(key: string): number {
         return this.getSystemDefaultChartRefreshInterval(key);
     }
@@ -274,6 +270,19 @@ export class WebAppSettingDataService {
     setLanguage(value: string): void {
         this.localStorageService.set(WebAppSettingDataService.KEYS.LANGUAGE, value);
     }
+    setTheme(theme: string): void {
+        this.localStorageService.set(WebAppSettingDataService.KEYS.THEME, theme);
+    }
+    getTheme(): Theme {
+        return this.localStorageService.get(WebAppSettingDataService.KEYS.THEME) || Theme.Light;
+    }
+
+    setSideNavBarScale(minimize: boolean): void {
+        this.localStorageService.set(WebAppSettingDataService.KEYS.SIDE_NAV_BAR_SCALE, minimize);
+    }
+    getSideNavBarScale(): boolean {
+        return this.localStorageService.get(WebAppSettingDataService.KEYS.SIDE_NAV_BAR_SCALE) || false;
+    }
     private getLanguage(): string {
         let userLang = this.localStorageService.get<string>(WebAppSettingDataService.KEYS.LANGUAGE);
 
@@ -284,5 +293,19 @@ export class WebAppSettingDataService {
         }
 
         return userLang;
+    }
+    // TODO: set it as object?
+    setExperimentalOption(key: string, value: boolean): void {
+        this.localStorageService.set(key, value);
+    }
+    getExperimentalOption(key: string): boolean {
+        // return this.localStorageService.get<boolean>(key) || false;
+        return this.localStorageService.get<boolean>(key);
+    }
+    getExperimentalConfiguration(): Observable<ExperimentalConfigurationMeta> {
+        return this.newUrlStateNotificationService.getConfiguration('experimental');
+    }
+    getUrlStatFieldNameList(): string[] {
+        return this.componentDefaultSettingDataService.getUrlStatFieldNameList();
     }
 }

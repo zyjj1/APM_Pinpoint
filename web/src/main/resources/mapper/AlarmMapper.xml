@@ -38,6 +38,11 @@
         FROM alarm_rule
         WHERE application_id = #{applicationId}
     </select>
+
+    <select id="selectApplicationId" resultType="string">
+        SELECT DISTINCT(application_id)
+        FROM alarm_rule
+    </select>
     
     <update id="updateRule">
         UPDATE alarm_rule
@@ -58,22 +63,10 @@
         WHERE user_group_id = (SELECT id FROM user_group WHERE number = #{number})
     </update>
     
-    <select id="selectBeforeCheckerResultList" resultType="CheckerResult">
-        SELECT *
-        FROM alarm_history
-        WHERE application_id = #{applicationId}
-    </select>
-
     <delete id="deleteCheckerResult" parameterType="string">
         DELETE
         FROM alarm_history
         WHERE rule_id = #{ruleId}
     </delete>
-    
-    <insert id="insertCheckerResult" parameterType="CheckerResult">
-        INSERT INTO alarm_history (rule_id, application_id, checker_name, detected, sequence_count, timing_count)
-        VALUES
-            (#{ruleId}, #{applicationId}, #{checkerName}, #{detected}, #{sequenceCount}, #{timingCount})
-    </insert>
-    
+
 </mapper>

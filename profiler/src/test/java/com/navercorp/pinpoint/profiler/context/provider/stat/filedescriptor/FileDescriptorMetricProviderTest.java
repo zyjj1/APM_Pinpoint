@@ -16,17 +16,12 @@
 
 package com.navercorp.pinpoint.profiler.context.provider.stat.filedescriptor;
 
-import com.navercorp.pinpoint.bootstrap.config.ProfilerConfig;
 import com.navercorp.pinpoint.common.util.JvmType;
 import com.navercorp.pinpoint.common.util.JvmVersion;
 import com.navercorp.pinpoint.common.util.OsType;
-import org.junit.Assert;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
+import com.navercorp.pinpoint.profiler.context.config.ContextConfig;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import static org.mockito.Mockito.mock;
 
@@ -41,27 +36,27 @@ public class FileDescriptorMetricProviderTest {
 
     @Test
     public void testOracle_LINUX() {
-        ProfilerConfig config = mock(ProfilerConfig.class);
+        ContextConfig config = mock(ContextConfig.class);
         FileDescriptorMetricProvider fileDescriptorMetricProvider = new FileDescriptorMetricProvider(config);
 
         String metricClassName = fileDescriptorMetricProvider.getMetricClassName(OsType.LINUX, JvmVersion.JAVA_6, JvmType.ORACLE);
-        Assert.assertEquals(ORACLE_FILE_DESCRIPTOR_METRIC, metricClassName);
+        Assertions.assertEquals(ORACLE_FILE_DESCRIPTOR_METRIC, metricClassName);
 
         String metricClassName2 = fileDescriptorMetricProvider.getMetricClassName(OsType.AIX, JvmVersion.JAVA_6, JvmType.ORACLE);
-        Assert.assertEquals(ORACLE_FILE_DESCRIPTOR_METRIC, metricClassName2);
+        Assertions.assertEquals(ORACLE_FILE_DESCRIPTOR_METRIC, metricClassName2);
 
         String metricClassName3 = fileDescriptorMetricProvider.getMetricClassName(OsType.BSD, JvmVersion.JAVA_6, JvmType.ORACLE);
-        Assert.assertEquals(ORACLE_FILE_DESCRIPTOR_METRIC, metricClassName3);
+        Assertions.assertEquals(ORACLE_FILE_DESCRIPTOR_METRIC, metricClassName3);
 
     }
 
     @Test
     public void testIBM_SOLARIS() {
-        ProfilerConfig config = mock(ProfilerConfig.class);
+        ContextConfig config = mock(ContextConfig.class);
         FileDescriptorMetricProvider fileDescriptorMetricProvider = new FileDescriptorMetricProvider(config);
 
         String metricClassName = fileDescriptorMetricProvider.getMetricClassName(OsType.SOLARIS, JvmVersion.JAVA_9, JvmType.IBM);
-        Assert.assertEquals(IBM_FILE_DESCRIPTOR_METRIC, metricClassName);
+        Assertions.assertEquals(IBM_FILE_DESCRIPTOR_METRIC, metricClassName);
     }
 
 

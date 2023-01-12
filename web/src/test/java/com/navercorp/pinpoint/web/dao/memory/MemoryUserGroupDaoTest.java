@@ -1,17 +1,18 @@
 package com.navercorp.pinpoint.web.dao.memory;
 
-import static org.junit.Assert.*;
-
-import org.junit.Test;
-
+import com.navercorp.pinpoint.web.dao.UserDao;
 import com.navercorp.pinpoint.web.vo.UserGroup;
 import com.navercorp.pinpoint.web.vo.UserGroupMember;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.mock;
 
 public class MemoryUserGroupDaoTest {
 
     @Test
     public void selectUserGroupByUserId() {
-        MemoryUserGroupDao userGroupDao = new MemoryUserGroupDao();
+        MemoryUserGroupDao userGroupDao = new MemoryUserGroupDao(mock(UserDao.class));
         userGroupDao.createUserGroup(new UserGroup("1", "userGroup1"));
         userGroupDao.createUserGroup(new UserGroup("2", "userGroup2"));
         userGroupDao.insertMember(new UserGroupMember("userGroup1", "user1"));
@@ -22,7 +23,7 @@ public class MemoryUserGroupDaoTest {
     
     @Test
     public void selectUserGroupByUserGroupId() {
-        MemoryUserGroupDao userGroupDao = new MemoryUserGroupDao();
+        MemoryUserGroupDao userGroupDao = new MemoryUserGroupDao(mock(UserDao.class));
         userGroupDao.createUserGroup(new UserGroup("1", "userGroup1"));
         userGroupDao.createUserGroup(new UserGroup("2", "userGroup2"));
         userGroupDao.insertMember(new UserGroupMember("userGroup1", "user1"));

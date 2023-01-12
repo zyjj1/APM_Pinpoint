@@ -16,14 +16,13 @@
 
 package com.navercorp.pinpoint.test.plugin;
 
+import com.navercorp.pinpoint.common.annotations.VisibleForTesting;
+import com.navercorp.pinpoint.common.util.SystemProperty;
 import com.navercorp.pinpoint.test.plugin.util.ArrayUtils;
 import com.navercorp.pinpoint.test.plugin.util.CodeSourceUtils;
-import com.navercorp.pinpoint.test.plugin.util.TLSOption;
-import com.navercorp.pinpoint.test.plugin.util.TestLogger;
 import com.navercorp.pinpoint.test.plugin.util.StringUtils;
+import com.navercorp.pinpoint.test.plugin.util.TestLogger;
 import com.navercorp.pinpoint.test.plugin.util.TestPluginVersion;
-import org.eclipse.aether.resolution.ArtifactResolutionException;
-import org.eclipse.aether.resolution.DependencyResolutionException;
 import org.junit.internal.runners.statements.RunAfters;
 import org.junit.internal.runners.statements.RunBefores;
 import org.junit.runner.Runner;
@@ -37,12 +36,12 @@ import java.io.File;
 import java.lang.management.ManagementFactory;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 
 public abstract class AbstractPinpointPluginTestSuite extends Suite {
@@ -50,29 +49,34 @@ public abstract class AbstractPinpointPluginTestSuite extends Suite {
     private final TaggedLogger logger = TestLogger.getLogger();
 
     private static final int NO_JVM_VERSION = -1;
+    private static final List<String> EMPTY_REPOSITORY_URLS = new ArrayList<>();
 
     private final List<String> requiredLibraries;
     private final List<String> mavenDependencyLibraries;
+    private final List<String> repositoryUrls;
     private final String testClassLocation;
 
     private final String agentJar;
     private final String profile;
     private final String configFile;
-    private final String[] jvmArguments;
+    private final String logLocationConfig;
+    private final List<String> jvmArguments;
     private final int[] jvmVersions;
     private final boolean debug;
 
     private final List<String> importPluginIds;
 
-    public AbstractPinpointPluginTestSuite(Class<?> testClass) throws InitializationError, ArtifactResolutionException, DependencyResolutionException {
-        super(testClass, Collections.<Runner>emptyList());
-        TLSOption.applyTLSv12();
+    public AbstractPinpointPluginTestSuite(Class<?> testClass) throws InitializationError {
+        super(testClass, Collections.emptyList());
 
         PinpointAgent agent = testClass.getAnnotation(PinpointAgent.class);
         this.agentJar = resolveAgentPath(agent);
 
         PinpointConfig config = testClass.getAnnotation(PinpointConfig.class);
         this.configFile = config == null ? null : resolveConfigFileLocation(config.value());
+
+        PinpointLogLocationConfig logLocationConfig = testClass.getAnnotation(PinpointLogLocationConfig.class);
+        this.logLocationConfig = logLocationConfig == null ? null : resolveConfigFileLocation(logLocationConfig.value());
 
         PinpointProfile profile = testClass.getAnnotation(PinpointProfile.class);
         this.profile = resolveProfile(profile);
@@ -86,26 +90,29 @@ public abstract class AbstractPinpointPluginTestSuite extends Suite {
         ImportPlugin importPlugin = testClass.getAnnotation(ImportPlugin.class);
         this.importPluginIds = getImportPlugin(importPlugin);
 
-        List<ClassLoaderLib> classLoaderLibs = collectLib(getClass().getClassLoader());
-        if (logger.isDebugEnabled()) {
-            for (ClassLoaderLib classLoaderLib : classLoaderLibs) {
-                logger.debug("classLoader:{}", classLoaderLib.getClassLoader());
-                for (URL lib : classLoaderLib.getLibs()) {
-                    logger.debug("-> {}", classLoaderLib.getClassLoader(), lib);
-                }
-            }
-        }
+        Repository repository = testClass.getAnnotation(Repository.class);
+        this.repositoryUrls = getRepository(repository);
 
-        this.requiredLibraries = filterLib(classLoaderLibs, new LibraryFilter(PluginClassLoading.REQUIRED_CLASS_PATHS));
+        List<String> libs = collectLibs(getClass().getClassLoader());
+
+        final LibraryFilter requiredLibraryFilter = new LibraryFilter(
+                LibraryFilter.createContainsMatcher(PluginClassLoading.getContainsCheckClassPath()),
+                LibraryFilter.createGlobMatcher(PluginClassLoading.getGlobMatchesCheckClassPath()));
+
+        this.requiredLibraries = filterLibs(libs, requiredLibraryFilter);
         if (logger.isDebugEnabled()) {
             for (String requiredLibrary : requiredLibraries) {
                 logger.debug("requiredLibraries :{}", requiredLibrary);
             }
         }
-        this.mavenDependencyLibraries = filterLib(classLoaderLibs, new LibraryFilter(PluginClassLoading.MAVEN_DEPENDENCY_CLASS_PATHS));
+
+        final LibraryFilter mavenDependencyLibraryFilter = new LibraryFilter(
+                LibraryFilter.createContainsMatcher(PluginClassLoading.MAVEN_DEPENDENCY_CLASS_PATHS));
+
+        this.mavenDependencyLibraries = filterLibs(libs, mavenDependencyLibraryFilter);
         if (logger.isDebugEnabled()) {
             for (String mavenDependencyLibrary : mavenDependencyLibraries) {
-                logger.debug("mavenDependencyLibraries :{}", mavenDependencyLibrary);
+                logger.debug("mavenDependencyLibraries: {}", mavenDependencyLibrary);
             }
         }
         this.testClassLocation = resolveTestClassLocation(testClass);
@@ -123,11 +130,18 @@ public abstract class AbstractPinpointPluginTestSuite extends Suite {
         return Arrays.asList(ids);
     }
 
-    private String[] getJvmArguments(JvmArgument jvmArgument) {
-        if (jvmArgument == null) {
-            return new String[0];
+    private List<String> getRepository(Repository repository) {
+        if (repository == null) {
+            return EMPTY_REPOSITORY_URLS;
         }
-        return jvmArgument.value();
+        return Arrays.asList(repository.value());
+    }
+
+    private List<String> getJvmArguments(JvmArgument jvmArgument) {
+        if (jvmArgument == null) {
+            return Collections.emptyList();
+        }
+        return Arrays.asList(jvmArgument.value());
     }
 
     protected String getJavaExecutable(int version) {
@@ -166,76 +180,86 @@ public abstract class AbstractPinpointPluginTestSuite extends Suite {
         return toPathString(testClassLocation);
     }
 
-    private static class ClassLoaderLib {
-        private final ClassLoader cl;
-        private final List<URL> libs;
-
-        public ClassLoaderLib(ClassLoader cl, List<URL> libs) {
-            this.cl = cl;
-            this.libs = libs;
+    private List<String> filterLibs(List<String> classPaths, LibraryFilter classPathFilter) {
+        final Set<String> result = new LinkedHashSet<>();
+        for (String classPath: classPaths) {
+            if (classPathFilter.filter(classPath)) {
+                result.add(classPath);
+            }
         }
-
-        public ClassLoader getClassLoader() {
-            return cl;
-        }
-
-        public List<URL> getLibs() {
-            return libs;
-        }
+        return new ArrayList<>(result);
     }
 
-    private List<String> filterLib(List<ClassLoaderLib> classLoaderLibs, LibraryFilter classPathFilter) {
-        Set<String> result = new HashSet<>();
-        for (ClassLoaderLib classLoaderLib : classLoaderLibs) {
-            List<URL> libs = classLoaderLib.getLibs();
-            for (URL lib : libs) {
-                final String filterLibs = classPathFilter.filter(lib);
-                if (filterLibs != null) {
-                    result.add(filterLibs);
+    private List<String> collectLibs(ClassLoader sourceCl) {
+        List<String> result = new ArrayList<>();
+        final ClassLoader termCl = ClassLoader.getSystemClassLoader().getParent();
+        for (ClassLoader cl : iterateClassLoaderChain(sourceCl, termCl)) {
+            final List<String> libs = extractLibrariesFromClassLoader(cl);
+            if (libs != null) {
+                result.addAll(libs);
+                if (logger.isDebugEnabled()) {
+                    logger.debug("classLoader: {}", cl);
+                    for (String lib : libs) {
+                        logger.debug("  -> {}", lib);
+                    }
                 }
             }
         }
-        List<String> libs = new ArrayList<>(result);
-        Collections.sort(libs);
-        return libs;
+        return result;
     }
 
-    private List<ClassLoaderLib> collectLib(ClassLoader cl) {
-        List<ClassLoaderLib> libs = new ArrayList<>();
-        while (cl != null) {
-            if (cl instanceof URLClassLoader) {
-                URLClassLoader ucl = ((URLClassLoader) cl);
-                URL[] urLs = ucl.getURLs();
-                libs.add(new ClassLoaderLib(cl, Arrays.asList(urLs)));
+    private static Iterable<ClassLoader> iterateClassLoaderChain(ClassLoader src, ClassLoader term) {
+        final List<ClassLoader> classLoaders = new ArrayList<>(8);
+        ClassLoader cl = src;
+        while (cl != term) {
+            classLoaders.add(cl);
+            if (cl == Object.class.getClassLoader()) {
+                break;
             }
-
             cl = cl.getParent();
         }
-        return libs;
+        return classLoaders;
     }
 
-    public static class LibraryFilter {
-        private final String[] paths;
-
-        public LibraryFilter(String[] paths) {
-            this.paths = Objects.requireNonNull(paths, "paths");
+    private static List<String> extractLibrariesFromClassLoader(ClassLoader cl) {
+        if (cl instanceof URLClassLoader) {
+            return extractLibrariesFromURLClassLoader((URLClassLoader) cl);
         }
-
-        public String filter(URL url) {
-            if (include(url.getFile())) {
-                return toPathString(url);
-            }
-            return null;
+        if (cl == ClassLoader.getSystemClassLoader()) {
+            return extractLibrariesFromSystemClassLoader();
         }
+        return null;
+    }
 
-        private boolean include(String filePath) {
-            for (String required : paths) {
-                if (filePath.contains(required)) {
-                    return true;
-                }
-            }
-            return false;
+    private static List<String> extractLibrariesFromURLClassLoader(URLClassLoader cl) {
+        final URL[] urls = cl.getURLs();
+        final List<String> paths = new ArrayList<>(urls.length);
+        for (URL url: urls) {
+            paths.add(normalizePath(toPathString(url)));
         }
+        return paths;
+    }
+
+    private static List<String> extractLibrariesFromSystemClassLoader() {
+        final String classPath = SystemProperty.INSTANCE.getProperty("java.class.path");
+        if (StringUtils.isEmpty(classPath)) {
+            return Collections.emptyList();
+        }
+        final List<String> paths = Arrays.asList(classPath.split(":"));
+        return normalizePaths(paths);
+    }
+
+    @VisibleForTesting
+    static String normalizePath(String classPath) {
+        return Paths.get(classPath).toAbsolutePath().normalize().toString();
+    }
+
+    private static List<String> normalizePaths(List<String> classPaths) {
+        final List<String> result = new ArrayList<>(classPaths.size());
+        for (String cp: classPaths) {
+            result.add(normalizePath(cp));
+        }
+        return result;
     }
 
     private static String toPathString(URL url) {
@@ -334,7 +358,7 @@ public abstract class AbstractPinpointPluginTestSuite extends Suite {
 
     @Override
     protected List<Runner> getChildren() {
-        List<Runner> runners = new ArrayList<Runner>();
+        List<Runner> runners = new ArrayList<>();
 
         try {
             for (int ver : jvmVersions) {
@@ -348,7 +372,7 @@ public abstract class AbstractPinpointPluginTestSuite extends Suite {
                 }
 
                 PluginTestContext context = new PluginTestContext(agentJar, profile,
-                        configFile, requiredLibraries, mavenDependencyLibraries,
+                        configFile, logLocationConfig, requiredLibraries, mavenDependencyLibraries, repositoryUrls,
                         getTestClass().getJavaClass(), testClassLocation,
                         jvmArguments, debug, ver, javaExe, importPluginIds);
 

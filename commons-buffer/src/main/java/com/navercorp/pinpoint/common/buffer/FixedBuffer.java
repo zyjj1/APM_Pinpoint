@@ -25,7 +25,6 @@ import java.nio.ByteBuffer;
  * @author emeroad
  */
 public class FixedBuffer implements Buffer {
-    protected static final int NULL = -1;
     protected byte[] buffer;
     protected int offset;
 
@@ -544,6 +543,11 @@ public class FixedBuffer implements Buffer {
         } catch (UnsupportedEncodingException ue) {
             return new String(buffer, offset, size, UTF8_CHARSET);
         }
+    }
+
+    @Override
+    public void setByte(int offset, byte value) {
+        this.buffer[offset] = value;
     }
 
     /**

@@ -44,8 +44,8 @@ public class TransformClassLoader extends ClassLoader {
 
     private final Logger logger = Logger.getLogger(TransformClassLoader.class.getName());
 
-    private final Set<String> notDefinedClass = new CopyOnWriteArraySet<String>();
-    private final List<String> notDefinedPackages = new CopyOnWriteArrayList<String>();
+    private final Set<String> notDefinedClass = new CopyOnWriteArraySet<>();
+    private final List<String> notDefinedPackages = new CopyOnWriteArrayList<>();
 
     private final static ProtectionDomain DEFAULT_DOMAIN = (ProtectionDomain) AccessController.doPrivileged(new PrivilegedAction() {
         public Object run() {
@@ -134,7 +134,7 @@ public class TransformClassLoader extends ClassLoader {
     /**
      * Requests the class loader to load a class.
      */
-    protected Class loadClass(String name, boolean resolve)
+    protected Class<?> loadClass(String name, boolean resolve)
             throws ClassFormatError, ClassNotFoundException {
 
         synchronized (getClassLoadingLock(name)) {
@@ -198,7 +198,7 @@ public class TransformClassLoader extends ClassLoader {
             if (getPackage(pname) == null)
                 try {
                     definePackage(pname, null, null, null, null, null, null, null);
-                } catch (IllegalArgumentException e) {
+                } catch (IllegalArgumentException ignored) {
                     // ignore.  maybe the package object for the same
                     // name has been created just right away.
                 }

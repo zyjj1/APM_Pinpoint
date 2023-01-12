@@ -21,16 +21,15 @@ import com.navercorp.pinpoint.bootstrap.context.Header;
 import com.navercorp.pinpoint.bootstrap.context.Trace;
 import com.navercorp.pinpoint.bootstrap.context.TraceContext;
 import com.navercorp.pinpoint.bootstrap.context.TraceId;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyShort;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-
-import static org.junit.Assert.*;
 
 /**
  * @author jaehong.kim
@@ -55,12 +54,13 @@ public class RequestWrapperReaderTest {
         when(traceContext.disableSampling()).thenReturn(disableTrace);
         when(traceContext.continueTraceObject(any(TraceId.class))).thenReturn(continueTrace);
         when(traceContext.newTraceObject()).thenReturn(newTrace);
+        when(traceContext.newTraceObject(null)).thenReturn(newTrace);
         when(traceContext.getProfilerConfig()).thenReturn(new DefaultProfilerConfig());
 
         TraceId traceId = mock(TraceId.class);
         when(traceContext.createTraceId(anyString(), anyLong(), anyLong(), anyShort())).thenReturn(traceId);
         RequestAdaptor<ServerRequestWrapper> serverRequestWrapperAdaptor = new ServerRequestWrapperAdaptor();
-        final RequestTraceReader<ServerRequestWrapper> reader = new RequestTraceReader<ServerRequestWrapper>(traceContext, serverRequestWrapperAdaptor);
+        final RequestTraceReader<ServerRequestWrapper> reader = new RequestTraceReader<>(traceContext, serverRequestWrapperAdaptor);
 
         // sampling flag is true
         ServerRequestWrapper samplingFlagServerRequestWrapper = mock(ServerRequestWrapper.class);

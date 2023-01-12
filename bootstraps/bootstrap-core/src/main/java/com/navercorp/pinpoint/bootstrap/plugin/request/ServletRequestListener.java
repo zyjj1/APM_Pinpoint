@@ -28,7 +28,6 @@ import com.navercorp.pinpoint.bootstrap.plugin.http.HttpStatusCodeRecorder;
 import com.navercorp.pinpoint.bootstrap.plugin.proxy.ProxyRequestRecorder;
 import com.navercorp.pinpoint.bootstrap.plugin.request.method.ServletSyncMethodDescriptor;
 import com.navercorp.pinpoint.bootstrap.plugin.request.util.ParameterRecorder;
-import com.navercorp.pinpoint.bootstrap.plugin.uri.UriStatRecorder;
 import com.navercorp.pinpoint.common.trace.ServiceType;
 
 import java.util.Objects;
@@ -56,7 +55,7 @@ public class ServletRequestListener<REQ> {
 
     private final ProxyRequestRecorder<REQ> proxyRequestRecorder;
 
-    private final UriStatRecorder<REQ> uriStatRecorder;
+    private final boolean recordStatusCode;
 
     public ServletRequestListener(final ServiceType serviceType,
                                   final TraceContext traceContext,
@@ -67,7 +66,7 @@ public class ServletRequestListener<REQ> {
                                   final ProxyRequestRecorder<REQ> proxyRequestRecorder,
                                   final ServerRequestRecorder<REQ> serverRequestRecorder,
                                   final HttpStatusCodeRecorder httpStatusCodeRecorder,
-                                  final UriStatRecorder<REQ> uriStatRecorder) {
+                                  final boolean  recordStatusCode) {
         this.serviceType = Objects.requireNonNull(serviceType, "serviceType");
         this.traceContext = Objects.requireNonNull(traceContext, "traceContext");
         this.requestAdaptor = Objects.requireNonNull(requestAdaptor, "requestAdaptor");
@@ -84,7 +83,7 @@ public class ServletRequestListener<REQ> {
 
         this.httpStatusCodeRecorder = Objects.requireNonNull(httpStatusCodeRecorder, "httpStatusCodeRecorder");
 
-        this.uriStatRecorder = Objects.requireNonNull(uriStatRecorder, "uriStatRecorder");
+        this.recordStatusCode = recordStatusCode;
 
         this.traceContext.cacheApi(SERVLET_SYNC_METHOD_DESCRIPTOR);
     }
@@ -135,6 +134,11 @@ public class ServletRequestListener<REQ> {
         return trace;
     }
 
+    /**
+     * @param request request
+     * @param throwable error
+     * @param statusCode status code
+     */
     public void destroyed(REQ request, final Throwable throwable, final int statusCode) {
         if (isDebug) {
             logger.debug("Destroyed requestEvent. request={}, throwable={}, statusCode={}", request, throwable, statusCode);
@@ -145,41 +149,29 @@ public class ServletRequestListener<REQ> {
             return;
         }
 
-        final String rpcName = requestAdaptor.getRpcName(request);
+//        final String rpcName = requestAdaptor.getRpcName(request);
+
+        if (this.recordStatusCode) {
+            this.httpStatusCodeRecorder.record(trace.getSpanRecorder(), statusCode);
+        }
 
         // TODO STATDISABLE this logic was added to disable statistics tracing
         if (!trace.canSampled()) {
             traceContext.removeTraceObject();
             trace.close();
-            boolean status = isNotFailedStatus(statusCode);
-            uriStatRecorder.record(request, rpcName, status, trace.getStartTime(), System.currentTimeMillis());
             return;
         }
 
         try {
             final SpanEventRecorder recorder = trace.currentSpanEventRecorder();
             recorder.recordException(throwable);
-            this.httpStatusCodeRecorder.record(trace.getSpanRecorder(), statusCode);
             // Must be executed in destroyed()
             this.parameterRecorder.record(recorder, request, throwable);
         } finally {
             trace.traceBlockEnd();
             this.traceContext.removeTraceObject();
             trace.close();
-            boolean status = isNotFailedStatus(statusCode);
-            uriStatRecorder.record(request, rpcName, status, trace.getStartTime(), System.currentTimeMillis());
         }
-    }
-
-    public static boolean isNotFailedStatus(int statusCode) {
-        int statusPrefix = statusCode / 100;
-
-        // 2 : success. 3 : redirect, 1: information
-        if (statusPrefix == 2 || statusPrefix == 3 || statusPrefix == 1) {
-            return true;
-        }
-
-        return false;
     }
 
 }

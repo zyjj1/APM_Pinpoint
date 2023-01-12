@@ -15,6 +15,8 @@
  */
 package com.navercorp.pinpoint.profiler.instrument;
 
+import com.google.inject.Provider;
+import com.google.inject.util.Providers;
 import com.navercorp.pinpoint.bootstrap.config.ProfilerConfig;
 import com.navercorp.pinpoint.bootstrap.context.TraceContext;
 import com.navercorp.pinpoint.bootstrap.instrument.ClassFilters;
@@ -22,7 +24,6 @@ import com.navercorp.pinpoint.bootstrap.instrument.InstrumentContext;
 import com.navercorp.pinpoint.bootstrap.instrument.InstrumentMethod;
 import com.navercorp.pinpoint.bootstrap.instrument.MethodFilters;
 import com.navercorp.pinpoint.bootstrap.plugin.RequestRecorderFactory;
-import com.navercorp.pinpoint.bootstrap.plugin.uri.UriStatRecorderFactory;
 import com.navercorp.pinpoint.profiler.context.monitor.DataSourceMonitorRegistryService;
 import com.navercorp.pinpoint.profiler.context.monitor.metric.CustomMetricRegistryService;
 import com.navercorp.pinpoint.profiler.instrument.interceptor.InterceptorDefinitionFactory;
@@ -37,59 +38,15 @@ import com.navercorp.pinpoint.profiler.instrument.mock.accessor.ObjectArrayAcces
 import com.navercorp.pinpoint.profiler.instrument.mock.accessor.ObjectArraysAccessor;
 import com.navercorp.pinpoint.profiler.instrument.mock.accessor.PublicStrAccessor;
 import com.navercorp.pinpoint.profiler.instrument.mock.accessor.ThrowExceptionAccessor;
-import com.navercorp.pinpoint.profiler.instrument.mock.getter.FieldDefaultStaticFinalStrGetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.getter.FieldDefaultStaticStrGetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.getter.FieldDefaultStrGetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.getter.FieldEnumGetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.getter.FieldIntArrayGetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.getter.FieldIntGetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.getter.FieldMapGetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.getter.FieldObjectArrayGetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.getter.FieldObjectArraysGetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.getter.FieldObjectGetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.getter.FieldObjectMapGetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.getter.FieldPrivateStaticFinalStrGetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.getter.FieldPrivateStaticStrGetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.getter.FieldPrivateStrGetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.getter.FieldProtectedStaticFinalStrGetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.getter.FieldProtectedStaticStrGetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.getter.FieldProtectedStrGetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.getter.FieldPublicStaticFinalStrGetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.getter.FieldPublicStaticStrGetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.getter.FieldPublicStrGetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.getter.FieldStrMapGetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.getter.FieldTransientIntGetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.getter.FieldVolatileIntGetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.getter.FieldWildcardMapGetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.setter.FieldDefaultFinalStrSetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.setter.FieldDefaultStaticStrSetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.setter.FieldDefaultStrSetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.setter.FieldEnumSetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.setter.FieldIntArraySetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.setter.FieldIntSetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.setter.FieldMapSetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.setter.FieldObjectArraySetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.setter.FieldObjectArraysSetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.setter.FieldObjectMapSetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.setter.FieldObjectSetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.setter.FieldPrivateStrSetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.setter.FieldProtectedStrSetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.setter.FieldPublicFinalStrSetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.setter.FieldPublicStrSetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.setter.FieldStrMapSetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.setter.FieldTransientIntSetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.setter.FieldVolatileIntSetter;
-import com.navercorp.pinpoint.profiler.instrument.mock.setter.FieldWildcardMapSetter;
+import com.navercorp.pinpoint.profiler.instrument.mock.getter.*;
+import com.navercorp.pinpoint.profiler.instrument.mock.setter.*;
 import com.navercorp.pinpoint.profiler.interceptor.factory.ExceptionHandlerFactory;
 import com.navercorp.pinpoint.profiler.interceptor.registry.DefaultInterceptorRegistryBinder;
 import com.navercorp.pinpoint.profiler.interceptor.registry.InterceptorRegistryBinder;
 import com.navercorp.pinpoint.profiler.metadata.ApiMetaDataService;
 import com.navercorp.pinpoint.profiler.objectfactory.ObjectBinderFactory;
-
-import com.google.inject.Provider;
-import com.google.inject.util.Providers;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.objectweb.asm.tree.ClassNode;
@@ -97,13 +54,13 @@ import org.objectweb.asm.tree.ClassNode;
 import java.io.InputStream;
 import java.util.List;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -124,17 +81,17 @@ public class ASMClassTest {
 
     private final ExceptionHandlerFactory exceptionHandlerFactory = new ExceptionHandlerFactory(false);
     private final RequestRecorderFactory requestRecorderFactory = mock(RequestRecorderFactory.class);
-    private final Provider<UriStatRecorderFactory> uriStatRecorderFactoryProvider = Providers.of(mock(UriStatRecorderFactory.class));
 
-    private final ObjectBinderFactory objectBinderFactory = new ObjectBinderFactory(profilerConfig, traceContextProvider, dataSourceMonitorRegistryService, customMetricRegistryService, apiMetaDataService, exceptionHandlerFactory,
-            requestRecorderFactory, uriStatRecorderFactoryProvider);
+    private final ObjectBinderFactory objectBinderFactory = new ObjectBinderFactory(profilerConfig, traceContextProvider, dataSourceMonitorRegistryService,
+            customMetricRegistryService, apiMetaDataService, exceptionHandlerFactory, requestRecorderFactory);
     private final ScopeFactory scopeFactory = new ScopeFactory();
     private final InterceptorDefinitionFactory interceptorDefinitionFactory = new InterceptorDefinitionFactory();
 
     private final EngineComponent engineComponent = new DefaultEngineComponent(objectBinderFactory, interceptorRegistryBinder, interceptorDefinitionFactory, apiMetaDataService, scopeFactory);
 
+    private final ASMClassNodeLoader loader = new ASMClassNodeLoader();
 
-    @Before
+    @BeforeEach
     public void setUp() {
 
         when(pluginContext.injectClass(any(ClassLoader.class), any(String.class))).thenAnswer(new Answer<Class<?>>() {
@@ -154,7 +111,7 @@ public class ASMClassTest {
             public InputStream answer(InvocationOnMock invocation) throws Throwable {
                 ClassLoader loader = (ClassLoader) invocation.getArguments()[0];
                 String name = (String) invocation.getArguments()[1];
-                if(loader == null) {
+                if (loader == null) {
                     loader = ClassLoader.getSystemClassLoader();
                 }
 
@@ -266,7 +223,7 @@ public class ASMClassTest {
         assertEquals("ArgsClass", constructors.get(0).getName());
 
         assertEquals("ArgsClass", constructors.get(1).getName());
-        assertArrayEquals(new String[] {"int"}, constructors.get(1).getParameterTypes());
+        assertArrayEquals(new String[]{"int"}, constructors.get(1).getParameterTypes());
     }
 
     @Test
@@ -376,14 +333,14 @@ public class ASMClassTest {
         try {
             clazz.addDelegatorMethod("extended");
             fail("skip throw exception.");
-        } catch(Exception ignored) {
+        } catch (Exception ignored) {
         }
 
         // not exist.
         try {
             clazz.addDelegatorMethod("notExist");
             fail("skip throw exception.");
-        } catch(Exception ignored) {
+        } catch (Exception ignored) {
         }
 
         clazz.addDelegatorMethod("getInstance");
@@ -593,7 +550,7 @@ public class ASMClassTest {
             clazz.addSetter(FieldDefaultStaticStrSetter.class, "defaultStaticStr");
             assertNotNull(clazz.getDeclaredMethod("_$PINPOINT$_setDefaultStaticStr", "java.lang.String"));
             fail("can't throw exception");
-        } catch(Exception ignored) {
+        } catch (Exception ignored) {
         }
 
         try {
@@ -601,7 +558,7 @@ public class ASMClassTest {
             clazz.addSetter(FieldDefaultFinalStrSetter.class, "defaultFinalStr");
             assertNotNull(clazz.getDeclaredMethod("_$PINPOINT$_setDefaultFinalStr", "java.lang.String"));
             fail("can't throw exception");
-        } catch(Exception ignored) {
+        } catch (Exception ignored) {
         }
 
         clazz = getClass("com.navercorp.pinpoint.profiler.instrument.mock.FieldClass");
@@ -621,7 +578,7 @@ public class ASMClassTest {
             clazz.addSetter(FieldPublicFinalStrSetter.class, "publicFinalStr");
             assertNotNull(clazz.getDeclaredMethod("_$PINPOINT$_setPublicFinalStr", "java.lang.String"));
             fail("can't throw exception");
-        } catch(Exception ignored) {
+        } catch (Exception ignored) {
         }
 
         // removeFinal is true
@@ -677,7 +634,7 @@ public class ASMClassTest {
     @Test
     public void isInterceptorable() throws Exception {
         ASMClass clazz = getClass("com.navercorp.pinpoint.profiler.instrument.mock.BaseInterface");
-        assertFalse(clazz.isInterceptable());
+        assertTrue(clazz.isInterceptable());
 
         clazz = getClass("com.navercorp.pinpoint.profiler.instrument.mock.BaseClass");
         assertTrue(clazz.isInterceptable());
@@ -691,7 +648,7 @@ public class ASMClassTest {
 
 
     private ASMClass getClass(final String targetClassName) throws Exception {
-        ClassNode classNode = ASMClassNodeLoader.get(targetClassName);
+        ClassNode classNode = loader.get(targetClassName);
         ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
         return new ASMClass(engineComponent, pluginContext, classLoader, getClass().getProtectionDomain(), classNode);
     }

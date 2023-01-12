@@ -8,10 +8,12 @@ import { ConfigurationFavoriteContainerComponent } from 'app/core/components/con
 import { ConfigurationInspectorChartManagerContainerComponent } from 'app/core/components/configuration-inspector-chart-manager/configuration-inspector-chart-manager-container.component';
 import { ConfigurationUserGroupContainerComponent } from 'app/core/components/configuration-user-group/configuration-user-group-container.component';
 import { ConfigurationAlarmContainerComponent } from 'app/core/components/configuration-alarm/configuration-alarm-container.component';
+import { ConfigurationWebhookContainerComponent } from 'app/core/components/configuration-webhook/configuration-webhook-container.component';
 import { ConfigurationInstallationContainerComponent } from 'app/core/components/configuration-installation/configuration-installation-container.component';
 import { ConfigurationHelpContainerComponent } from 'app/core/components/configuration-help/configuration-help-container.component';
 import { ConfigurationAgentStatisticContainerComponent } from 'app/core/components/configuration-agent-statistic/configuration-agent-statistic-container.component';
 import { ConfigurationAgentManagementContainerComponent } from 'app/core/components/configuration-agent-management/configuration-agent-management-container.component';
+import { ConfigurationExperimentalContainerComponent } from 'app/core/components/configuration-experimental/configuration-experimental-container.component';
 
 const routes: Routes = [
     {
@@ -47,12 +49,20 @@ const routes: Routes = [
                 component: ConfigurationAlarmContainerComponent
             },
             {
+                path: UrlPathId.WEBHOOK,
+                component: ConfigurationWebhookContainerComponent
+            },
+            {
                 path: UrlPathId.INSTALLATION,
                 component: ConfigurationInstallationContainerComponent
             },
             {
                 path: UrlPathId.HELP,
                 component: ConfigurationHelpContainerComponent
+            },
+            {
+                path: UrlPathId.EXPERIMENTAL,
+                component: ConfigurationExperimentalContainerComponent
             },
             {
                 path: '',

@@ -27,9 +27,8 @@ import com.navercorp.pinpoint.grpc.Header;
 import com.navercorp.pinpoint.grpc.server.lifecycle.PingSession;
 import com.navercorp.pinpoint.grpc.server.lifecycle.PingSessionRegistry;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import java.util.Collection;
 import java.util.Objects;
@@ -38,12 +37,11 @@ import java.util.Objects;
  * @author jaehong.kim
  */
 public class KeepAliveService {
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
     private final AgentEventAsyncTaskService agentEventAsyncTask;
     private final AgentLifeCycleAsyncTaskService agentLifeCycleAsyncTask;
     private final PingSessionRegistry pingSessionRegistry;
 
-    @Autowired
     public KeepAliveService(AgentEventAsyncTaskService agentEventAsyncTask,
                             AgentLifeCycleAsyncTaskService agentLifeCycleAsyncTask,
                             PingSessionRegistry pingSessionRegistry) {
@@ -99,7 +97,7 @@ public class KeepAliveService {
             this.agentLifeCycleAsyncTask.handleLifeCycleEvent(agentProperty , pingTimestamp, agentLifeCycleState, eventIdentifier);
             this.agentEventAsyncTask.handleEvent(agentProperty, pingTimestamp, agentEventType);
         } catch (Exception e) {
-            logger.warn("Failed to update state. closeState:{} lifeCycle={} {}/{}", closeState, pingSession, agentLifeCycleState, agentEventType);
+            logger.warn("Failed to update state. closeState:{} lifeCycle={} {}/{}", closeState, pingSession, agentLifeCycleState, agentEventType, e);
         }
     }
 
@@ -115,7 +113,7 @@ public class KeepAliveService {
             final AgentProperty agentProperty = newChannelProperties(header, pingSession.getServiceType());
             this.agentLifeCycleAsyncTask.handlePingEvent(agentProperty);
         } catch (Exception e) {
-            logger.warn("Failed to update state. ping session={}", pingSession);
+            logger.warn("Failed to update state. ping session={}", pingSession, e);
         }
     }
 

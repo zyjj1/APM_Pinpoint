@@ -16,12 +16,12 @@
 
 package com.navercorp.pinpoint.web.applicationmap.histogram;
 
+import com.navercorp.pinpoint.common.server.util.time.Range;
 import com.navercorp.pinpoint.web.view.AgentResponseTimeViewModelList;
-import com.navercorp.pinpoint.web.view.ResponseTimeViewModel;
-import com.navercorp.pinpoint.web.vo.*;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.navercorp.pinpoint.web.view.TimeViewModel;
+import com.navercorp.pinpoint.web.vo.Application;
+import com.navercorp.pinpoint.web.vo.ResponseTime;
+import com.navercorp.pinpoint.web.vo.ResponseTimeStatics;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -38,8 +38,6 @@ import java.util.Objects;
  * @author emeroad
  */
 public class NodeHistogram {
-
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     private final Application application;
 
@@ -113,13 +111,12 @@ public class NodeHistogram {
         return map;
     }
 
-    public List<ResponseTimeViewModel> getApplicationTimeHistogram() {
-        return applicationTimeHistogram.createViewModel();
+    public List<TimeViewModel> getApplicationTimeHistogram(TimeHistogramFormat timeHistogramFormat) {
+        return applicationTimeHistogram.createViewModel(timeHistogramFormat);
     }
 
-
-    public AgentResponseTimeViewModelList getAgentTimeHistogram() {
-        return new AgentResponseTimeViewModelList(agentTimeHistogram.createViewModel());
+    public AgentResponseTimeViewModelList getAgentTimeHistogram(TimeHistogramFormat timeHistogramFormat) {
+        return new AgentResponseTimeViewModelList(agentTimeHistogram.createViewModel(timeHistogramFormat));
     }
 
     public void setAgentTimeHistogram(AgentTimeHistogram agentTimeHistogram) {

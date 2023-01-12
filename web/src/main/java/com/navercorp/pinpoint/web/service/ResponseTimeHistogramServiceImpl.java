@@ -16,16 +16,16 @@
 
 package com.navercorp.pinpoint.web.service;
 
+import com.navercorp.pinpoint.common.server.util.time.Range;
 import com.navercorp.pinpoint.common.trace.ServiceType;
 import com.navercorp.pinpoint.web.applicationmap.appender.histogram.DefaultNodeHistogramFactory;
 import com.navercorp.pinpoint.web.applicationmap.appender.histogram.NodeHistogramFactory;
 import com.navercorp.pinpoint.web.applicationmap.appender.histogram.datasource.MapResponseNodeHistogramDataSource;
 import com.navercorp.pinpoint.web.applicationmap.appender.histogram.datasource.WasNodeHistogramDataSource;
-import com.navercorp.pinpoint.web.applicationmap.appender.server.DefaultServerInstanceListFactory;
-import com.navercorp.pinpoint.web.applicationmap.appender.server.ServerInstanceListFactory;
-import com.navercorp.pinpoint.web.applicationmap.appender.server.StatisticsServerInstanceListFactory;
-import com.navercorp.pinpoint.web.applicationmap.appender.server.datasource.AgentInfoServerInstanceListDataSource;
-import com.navercorp.pinpoint.web.applicationmap.appender.server.datasource.ServerInstanceListDataSource;
+import com.navercorp.pinpoint.web.applicationmap.appender.server.DefaultServerGroupListFactory;
+import com.navercorp.pinpoint.web.applicationmap.appender.server.ServerGroupListFactory;
+import com.navercorp.pinpoint.web.applicationmap.appender.server.StatisticsServerGroupListFactory;
+import com.navercorp.pinpoint.web.applicationmap.appender.server.datasource.ServerGroupListDataSource;
 import com.navercorp.pinpoint.web.applicationmap.histogram.NodeHistogram;
 import com.navercorp.pinpoint.web.applicationmap.link.CreateType;
 import com.navercorp.pinpoint.web.applicationmap.link.Link;
@@ -34,30 +34,29 @@ import com.navercorp.pinpoint.web.applicationmap.link.LinkList;
 import com.navercorp.pinpoint.web.applicationmap.link.LinkListFactory;
 import com.navercorp.pinpoint.web.applicationmap.link.LinkType;
 import com.navercorp.pinpoint.web.applicationmap.nodes.Node;
+import com.navercorp.pinpoint.web.applicationmap.nodes.NodeHistogramSummary;
 import com.navercorp.pinpoint.web.applicationmap.nodes.NodeList;
 import com.navercorp.pinpoint.web.applicationmap.nodes.NodeListFactory;
 import com.navercorp.pinpoint.web.applicationmap.nodes.NodeType;
-import com.navercorp.pinpoint.web.applicationmap.nodes.ServerInstanceList;
+import com.navercorp.pinpoint.web.applicationmap.nodes.ServerGroupList;
 import com.navercorp.pinpoint.web.applicationmap.rawdata.AgentHistogramList;
 import com.navercorp.pinpoint.web.applicationmap.rawdata.LinkData;
 import com.navercorp.pinpoint.web.applicationmap.rawdata.LinkDataDuplexMap;
 import com.navercorp.pinpoint.web.applicationmap.rawdata.LinkDataMap;
 import com.navercorp.pinpoint.web.dao.MapResponseDao;
-import com.navercorp.pinpoint.web.service.map.processor.ApplicationFilter;
-import com.navercorp.pinpoint.web.service.map.processor.DestinationApplicationFilter;
-import com.navercorp.pinpoint.web.service.map.processor.LinkDataMapProcessor;
 import com.navercorp.pinpoint.web.service.map.LinkSelector;
 import com.navercorp.pinpoint.web.service.map.LinkSelectorFactory;
 import com.navercorp.pinpoint.web.service.map.LinkSelectorType;
+import com.navercorp.pinpoint.web.service.map.processor.ApplicationFilter;
+import com.navercorp.pinpoint.web.service.map.processor.DestinationApplicationFilter;
+import com.navercorp.pinpoint.web.service.map.processor.LinkDataMapProcessor;
 import com.navercorp.pinpoint.web.service.map.processor.SourceApplicationFilter;
 import com.navercorp.pinpoint.web.view.ApplicationTimeHistogramViewModel;
-import com.navercorp.pinpoint.web.applicationmap.nodes.NodeHistogramSummary;
 import com.navercorp.pinpoint.web.vo.Application;
 import com.navercorp.pinpoint.web.vo.LinkKey;
-import com.navercorp.pinpoint.web.vo.Range;
 import com.navercorp.pinpoint.web.vo.ResponseTime;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
@@ -71,29 +70,29 @@ import java.util.Objects;
 @Service
 public class ResponseTimeHistogramServiceImpl implements ResponseTimeHistogramService {
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
 
     private final LinkSelectorFactory linkSelectorFactory;
 
-    private final AgentInfoService agentInfoService;
+    private final ServerInstanceDatasourceService serverInstanceDatasourceService;
 
     private final MapResponseDao mapResponseDao;
 
-    private final ApplicationFactory applicationFactory;
 
-    public ResponseTimeHistogramServiceImpl(LinkSelectorFactory linkSelectorFactory, AgentInfoService agentInfoService, MapResponseDao mapResponseDao, ApplicationFactory applicationFactory) {
+    public ResponseTimeHistogramServiceImpl(LinkSelectorFactory linkSelectorFactory,
+                                            ServerInstanceDatasourceService serverInstanceDatasourceService,
+                                            MapResponseDao mapResponseDao) {
         this.linkSelectorFactory = Objects.requireNonNull(linkSelectorFactory, "linkSelectorFactory");
-        this.agentInfoService = Objects.requireNonNull(agentInfoService, "agentInfoService");
+        this.serverInstanceDatasourceService = Objects.requireNonNull(serverInstanceDatasourceService, "serverInstanceDatasourceService");
         this.mapResponseDao = Objects.requireNonNull(mapResponseDao, "mapResponseDao");
-        this.applicationFactory = Objects.requireNonNull(applicationFactory, "applicationFactory");
     }
 
-    private ServerInstanceListFactory createServerInstanceListFactory(ResponseTimeHistogramServiceOption option) {
-        if (option.isUseStatisticsServerInstanceList()) {
-            return new StatisticsServerInstanceListFactory();
+    private ServerGroupListFactory createServerGroupListFactory(ResponseTimeHistogramServiceOption option) {
+        ServerGroupListDataSource serverGroupListDataSource = serverInstanceDatasourceService.getServerGroupListDataSource();
+        if (option.isUseStatisticsAgentState()) {
+            return new StatisticsServerGroupListFactory(serverGroupListDataSource);
         }
-        ServerInstanceListDataSource serverInstanceListDataSource = new AgentInfoServerInstanceListDataSource(agentInfoService);
-        return new DefaultServerInstanceListFactory(serverInstanceListDataSource);
+        return new DefaultServerGroupListFactory(serverGroupListDataSource);
     }
 
     private NodeHistogramFactory createNodeHistogramFactory() {
@@ -116,35 +115,35 @@ public class ResponseTimeHistogramServiceImpl implements ResponseTimeHistogramSe
         List<Application> destinationApplications = option.getToApplications();
 
         final NodeHistogramFactory nodeHistogramFactory = createNodeHistogramFactory();
-        final ServerInstanceListFactory serverInstanceListFactory = createServerInstanceListFactory(option);
+        final ServerGroupListFactory serverGroupListFactory = createServerGroupListFactory(option);
 
         if (applicationServiceType.isWas()) {
             NodeHistogram nodeHistogram = nodeHistogramFactory.createWasNodeHistogram(option.getApplication(), option.getRange());
             node.setNodeHistogram(nodeHistogram);
-            ServerInstanceList serverInstanceList = serverInstanceListFactory.createWasNodeInstanceList(node, option.getRange().getTo());
-            return new NodeHistogramSummary(serverInstanceList, nodeHistogram);
+            ServerGroupList serverGroupList = serverGroupListFactory.createWasNodeInstanceList(node, option.getRange().getToInstant());
+            return new NodeHistogramSummary(serverGroupList, nodeHistogram);
         } else if (applicationServiceType.isTerminal() || applicationServiceType.isUnknown() || applicationServiceType.isAlias()) {
             if (sourceApplications.isEmpty()) {
-                return createEmptyNodeHistogramSummary(serverInstanceListFactory, option.getApplication(), option.getRange());
+                return createEmptyNodeHistogramSummary(serverGroupListFactory, option.getApplication(), option.getRange());
             }
             LinkDataMapProcessor destinationApplicationFilter = new DestinationApplicationFilter(option.getApplication());
             LinkSelector linkSelector = linkSelectorFactory.createLinkSelector(LinkSelectorType.UNIDIRECTIONAL, destinationApplicationFilter, LinkDataMapProcessor.NO_OP);
             LinkDataDuplexMap linkDataDuplexMap = linkSelector.select(sourceApplications, option.getRange(), 1, 0);
 
-            ServerInstanceList serverInstanceList = serverInstanceListFactory.createEmptyNodeInstanceList();
+            ServerGroupList serverGroupList = serverGroupListFactory.createEmptyNodeInstanceList();
             if (applicationServiceType.isTerminal() || applicationServiceType.isAlias()) {
-                serverInstanceList = serverInstanceListFactory.createTerminalNodeInstanceList(node, linkDataDuplexMap);
+                serverGroupList = serverGroupListFactory.createTerminalNodeInstanceList(node, linkDataDuplexMap);
             }
 
             NodeList nodeList = NodeListFactory.createNodeList(NodeType.DETAILED, linkDataDuplexMap);
             LinkList linkList = LinkListFactory.createLinkList(LinkType.DETAILED, nodeList, linkDataDuplexMap, option.getRange());
             NodeHistogram nodeHistogram = nodeHistogramFactory.createTerminalNodeHistogram(option.getApplication(), option.getRange(), linkList);
-            return new NodeHistogramSummary(serverInstanceList, nodeHistogram);
+            return new NodeHistogramSummary(serverGroupList, nodeHistogram);
         } else if (applicationServiceType.isQueue()) {
             LinkDataMapProcessor destinationApplicationFilter = new DestinationApplicationFilter(option.getApplication());
             if (sourceApplications.isEmpty()) {
                 if (destinationApplications.isEmpty()) {
-                    return createEmptyNodeHistogramSummary(serverInstanceListFactory, option.getApplication(), option.getRange());
+                    return createEmptyNodeHistogramSummary(serverGroupListFactory, option.getApplication(), option.getRange());
                 }
                 // Retrieve callers
                 LinkDataMapProcessor applicationFilter = new ApplicationFilter(option.getApplication());
@@ -160,35 +159,35 @@ public class ResponseTimeHistogramServiceImpl implements ResponseTimeHistogramSe
             LinkSelector linkSelector = linkSelectorFactory.createLinkSelector(LinkSelectorType.UNIDIRECTIONAL, destinationApplicationFilter, LinkDataMapProcessor.NO_OP);
             LinkDataDuplexMap linkDataDuplexMap = linkSelector.select(sourceApplications, option.getRange(), 1, 0);
 
-            ServerInstanceList serverInstanceList = serverInstanceListFactory.createQueueNodeInstanceList(node, linkDataDuplexMap);
+            ServerGroupList serverGroupList = serverGroupListFactory.createQueueNodeInstanceList(node, linkDataDuplexMap);
 
             NodeList nodeList = NodeListFactory.createNodeList(NodeType.DETAILED, linkDataDuplexMap);
             LinkList linkList = LinkListFactory.createLinkList(LinkType.DETAILED, nodeList, linkDataDuplexMap, option.getRange());
             NodeHistogram nodeHistogram = nodeHistogramFactory.createQueueNodeHistogram(option.getApplication(), option.getRange(), linkList);
-            return new NodeHistogramSummary(serverInstanceList, nodeHistogram);
+            return new NodeHistogramSummary(serverGroupList, nodeHistogram);
         } else if (applicationServiceType.isUser()) {
             if (destinationApplications.isEmpty()) {
-                return createEmptyNodeHistogramSummary(serverInstanceListFactory, option.getApplication(), option.getRange());
+                return createEmptyNodeHistogramSummary(serverGroupListFactory, option.getApplication(), option.getRange());
             }
             LinkDataMapProcessor sourceApplicationFilter = new SourceApplicationFilter(option.getApplication());
             LinkSelector linkSelector = linkSelectorFactory.createLinkSelector(LinkSelectorType.UNIDIRECTIONAL, LinkDataMapProcessor.NO_OP, sourceApplicationFilter);
             LinkDataDuplexMap linkDataDuplexMap = linkSelector.select(destinationApplications, option.getRange(), 0, 1);
 
-            ServerInstanceList serverInstanceList = serverInstanceListFactory.createUserNodeInstanceList();
+            ServerGroupList serverGroupList = serverGroupListFactory.createUserNodeInstanceList();
 
             NodeList nodeList = NodeListFactory.createNodeList(NodeType.DETAILED, linkDataDuplexMap);
             LinkList linkList = LinkListFactory.createLinkList(LinkType.DETAILED, nodeList, linkDataDuplexMap, option.getRange());
             NodeHistogram nodeHistogram = nodeHistogramFactory.createUserNodeHistogram(option.getApplication(), option.getRange(), linkList);
-            return new NodeHistogramSummary(serverInstanceList, nodeHistogram);
+            return new NodeHistogramSummary(serverGroupList, nodeHistogram);
         } else {
-            return createEmptyNodeHistogramSummary(serverInstanceListFactory, option.getApplication(), option.getRange());
+            return createEmptyNodeHistogramSummary(serverGroupListFactory, option.getApplication(), option.getRange());
         }
     }
 
-    private NodeHistogramSummary createEmptyNodeHistogramSummary(ServerInstanceListFactory serverInstanceListFactory, Application application, Range range) {
-        ServerInstanceList serverInstanceList = serverInstanceListFactory.createEmptyNodeInstanceList();
+    private NodeHistogramSummary createEmptyNodeHistogramSummary(ServerGroupListFactory serverGroupListFactory, Application application, Range range) {
+        ServerGroupList serverGroupList = serverGroupListFactory.createEmptyNodeInstanceList();
         NodeHistogram emptyNodeHistogram = new NodeHistogram(application, range);
-        return new NodeHistogramSummary(serverInstanceList, emptyNodeHistogram);
+        return new NodeHistogramSummary(serverGroupList, emptyNodeHistogram);
     }
 
     @Override

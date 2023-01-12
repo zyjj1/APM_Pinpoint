@@ -25,6 +25,8 @@ import java.nio.charset.StandardCharsets;
  */
 public interface Buffer {
 
+    int NULL = -1;
+
     int BOOLEAN_FALSE = 0;
     int BOOLEAN_TRUE = 1;
 
@@ -175,6 +177,8 @@ public interface Buffer {
     String read2PrefixedString();
 
     String read4PrefixedString();
+
+    void setByte(int offset, byte value);
 
     byte[] getBuffer();
 

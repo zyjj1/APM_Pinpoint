@@ -20,7 +20,7 @@ import com.navercorp.pinpoint.common.hbase.bo.ColumnGetCount;
 import com.navercorp.pinpoint.common.profiler.util.TransactionId;
 import com.navercorp.pinpoint.common.server.bo.SpanBo;
 import com.navercorp.pinpoint.web.filter.Filter;
-import com.navercorp.pinpoint.web.vo.Range;
+import com.navercorp.pinpoint.common.server.util.time.Range;
 
 import java.util.Collections;
 import java.util.List;
@@ -30,24 +30,25 @@ import java.util.Objects;
  * @author jaehong.kim
  */
 public class FilteredMapServiceOption {
-    private List<TransactionId> transactionIdList;
-    private Range originalRange;
-    private Range scanRange;
-    private int xGroupUnit;
-    private int yGroupUnit;
-    private Filter<List<SpanBo>> filter;
-    private int version;
-    private boolean useStatisticsServerInstanceList;
-    private ColumnGetCount columnGetCount;
+    private final List<TransactionId> transactionIdList;
+    private final Range originalRange;
+    private final Range scanRange;
+    private final int xGroupUnit;
+    private final int yGroupUnit;
+    private final Filter<List<SpanBo>> filter;
+    private final int version;
+    private final boolean useStatisticsAgentState;
+    private final ColumnGetCount columnGetCount;
 
     public FilteredMapServiceOption(final Builder builder) {
         this.transactionIdList = builder.transactionIdList;
         this.originalRange = builder.originalRange;
+        this.scanRange = null;
         this.xGroupUnit = builder.xGroupUnit;
         this.yGroupUnit = builder.yGroupUnit;
         this.filter = builder.filter;
         this.version = builder.version;
-        this.useStatisticsServerInstanceList = builder.useStatisticsServerInstanceList;
+        this.useStatisticsAgentState = builder.useStatisticsAgentState;
         this.columnGetCount = builder.columnGetCount;
     }
 
@@ -79,8 +80,8 @@ public class FilteredMapServiceOption {
         return version;
     }
 
-    public boolean isUseStatisticsServerInstanceList() {
-        return useStatisticsServerInstanceList;
+    public boolean isUseStatisticsAgentState() {
+        return useStatisticsAgentState;
     }
 
     public ColumnGetCount getColumnGetCount() {
@@ -97,7 +98,7 @@ public class FilteredMapServiceOption {
         sb.append(", yGroupUnit=").append(yGroupUnit);
         sb.append(", filter=").append(filter);
         sb.append(", version=").append(version);
-        sb.append(", useStatisticsServerInstanceList=").append(useStatisticsServerInstanceList);
+        sb.append(", useStatisticsAgentState=").append(useStatisticsAgentState);
         sb.append('}');
         return sb.toString();
     }
@@ -105,36 +106,34 @@ public class FilteredMapServiceOption {
     public static class Builder {
         private List<TransactionId> transactionIdList;
         private Range originalRange;
-        private Range scanRange;
         private int xGroupUnit;
         private int yGroupUnit;
         private Filter<List<SpanBo>> filter;
         private int version;
         private ColumnGetCount columnGetCount;
 
-        private boolean useStatisticsServerInstanceList;
+        private boolean useStatisticsAgentState;
 
         public Builder(TransactionId transactionId, int version, ColumnGetCount columnGetCount) {
             Objects.requireNonNull(transactionId, "transactionId");
             this.transactionIdList = Collections.singletonList(transactionId);
             this.version = version;
             this.columnGetCount = columnGetCount;
-            this.originalRange = Range.newRange(-1, -1);
+            this.originalRange = Range.between(-1, -1);
             this.filter = Filter.acceptAllFilter();
         }
 
-        public Builder(List<TransactionId> transactionIdList, Range originalRange, Range scanRange, int xGroupUnit, int yGroupUnit, Filter<List<SpanBo>> filter, int version) {
+        public Builder(List<TransactionId> transactionIdList, Range originalRange, int xGroupUnit, int yGroupUnit, Filter<List<SpanBo>> filter, int version) {
             this.transactionIdList = Objects.requireNonNull(transactionIdList, "transactionIdList");
             this.filter = Objects.requireNonNull(filter, "filter");
             this.originalRange = originalRange;
-            this.scanRange = scanRange;
             this.xGroupUnit = xGroupUnit;
             this.yGroupUnit = yGroupUnit;
             this.version = version;
         }
 
-        public Builder setUseStatisticsServerInstanceList(boolean useStatisticsServerInstanceList) {
-            this.useStatisticsServerInstanceList = useStatisticsServerInstanceList;
+        public Builder setUseStatisticsAgentState(boolean useStatisticsAgentState) {
+            this.useStatisticsAgentState = useStatisticsAgentState;
             return this;
         }
 

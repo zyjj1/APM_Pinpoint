@@ -33,8 +33,8 @@ import com.navercorp.pinpoint.profiler.instrument.classloading.ClassInjector;
 import com.navercorp.pinpoint.profiler.instrument.scanner.ClassScannerFactory;
 import com.navercorp.pinpoint.profiler.instrument.scanner.Scanner;
 import com.navercorp.pinpoint.profiler.util.JavaAssistUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import java.io.InputStream;
 import java.security.ProtectionDomain;
@@ -44,13 +44,13 @@ import java.security.ProtectionDomain;
  */
 public class PluginInstrumentContext implements InstrumentContext {
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
     private final ProfilerConfig profilerConfig;
     private final InstrumentEngine instrumentEngine;
     private final DynamicTransformTrigger dynamicTransformTrigger;
     private final ClassInjector classInjector;
 
-    private final Pool<String, InterceptorScope> interceptorScopePool = new ConcurrentPool<String, InterceptorScope>(new InterceptorScopeFactory());
+    private final Pool<String, InterceptorScope> interceptorScopePool = new ConcurrentPool<>(new InterceptorScopeFactory());
 
     private final ClassFileTransformerLoader transformerRegistry;
 
@@ -66,9 +66,8 @@ public class PluginInstrumentContext implements InstrumentContext {
 
     @Override
     public InstrumentClass getInstrumentClass(ClassLoader classLoader, String className, ProtectionDomain protectionDomain, byte[] classFileBuffer) {
-        if (className == null) {
-            throw new NullPointerException("className");
-        }
+        Objects.requireNonNull(className, "className");
+
         try {
             final InstrumentEngine instrumentEngine = getInstrumentEngine();
             return instrumentEngine.getClass(this, classLoader, className, protectionDomain, classFileBuffer);
@@ -80,9 +79,7 @@ public class PluginInstrumentContext implements InstrumentContext {
 
     @Override
     public boolean exist(ClassLoader classLoader, String className, ProtectionDomain protectionDomain) {
-        if (className == null) {
-            throw new NullPointerException("className");
-        }
+        Objects.requireNonNull(className, "className");
 
         final String jvmClassName = JavaAssistUtils.javaClassNameToJvmResourceName(className);
 
@@ -156,9 +153,7 @@ public class PluginInstrumentContext implements InstrumentContext {
 
     @Override
     public <T> Class<? extends T> injectClass(ClassLoader targetClassLoader, String className) {
-        if (className == null) {
-            throw new NullPointerException("className");
-        }
+        Objects.requireNonNull(className, "className");
 
         return classInjector.injectClass(targetClassLoader, className);
     }
@@ -175,9 +170,7 @@ public class PluginInstrumentContext implements InstrumentContext {
 
     @Override
     public InterceptorScope getInterceptorScope(String name) {
-        if (name == null) {
-            throw new NullPointerException("name");
-        }
+        Objects.requireNonNull(name, "name");
 
         return interceptorScopePool.get(name);
     }

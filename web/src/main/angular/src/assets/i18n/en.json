@@ -16,14 +16,24 @@
         "SELECT_YOUR_APP": "Select your application",
         "INPUT_APP_NAME_PLACE_HOLDER": "Input application name",
         "EMPTY": "The list is empty.",
-        "EMPTY_ON_SEARCH": "We couldn't find anything."
+        "EMPTY_ON_SEARCH": "We couldn't find anything.",
+        "CHART_INTERACTION_GUIDE_MESSAGE": "* You can zoom in on the chart by dragging the mouse."
     },
     "MAIN": {
         "FAVORITE_APP_LIST": "Favorite List",
-        "APP_LIST": "Application List"
+        "APP_LIST": "Application List",
+        "VISIBILITY_HIDDEN": "The page has been deactivated. <br>You may want to refresh to back on it."
+    },
+    "METRIC": {
+        "HOST_GROUP_LIST": "Host-Group List",
+        "SELECT_HOST_GROUP": "Select your host-group",
+        "INPUT_HOST_GROUP_NAME_PLACE_HOLDER": "Input host-group name"
+    },
+    "URL_STAT": {
+        "SELECT_URL_INFO": "Select a URL info below"
     },
     "INSPECTOR": {
-        "APPLICATION_INSPECTOR_USAGE_GUIDE_MESSAGE": "[TEXT]:{value=Application Inspector is not enabled.<br> To enable Application Inspector, please refer to}|[LINK]:{href=https://github.com/naver/pinpoint/blob/master/doc/application-inspector.md\\target=blank\\style=color:#428bca\\linkText=this link}",
+        "APPLICATION_INSPECTOR_USAGE_GUIDE_MESSAGE": "[TEXT]:{value=Application Inspector is not enabled.<br> To enable Application Inspector, please refer to}|[LINK]:{href=https://pinpoint-apm.gitbook.io/pinpoint/documents/application-inspector\\target=blank\\style=color:#428bca\\linkText=this link}",
         "APPLICAITION_NAME_ISSUE": {
             "ISSUE_MESSAGE": "The agent is currently registered under !{1} due to the following:",
             "ISSUE_CAUSES": [
@@ -34,8 +44,7 @@
                 "For case 1, you should delete the mapping between !{0} and !{1}.",
 				"For case 2, the agent id of the duplicate agent must change."
             ]
-        },
-        "CHART_INTERACTION_GUIDE_MESSAGE": "* You can zoom in on the chart by dragging the mouse."
+        }
     },
     "TRANSACTION_LIST": {
         "SELECT_TRANSACTION": "Select your transaction",
@@ -91,6 +100,15 @@
         },
         "ALARM": {
             "EMPTY": "No registered alarm."
+        },
+        "EXPERIMENTAL": {
+            "DESC": "* You may try the experimental features."
+        },
+        "WEBHOOK": {
+            "URL": "url",
+            "URL_VALIDATION": "Please enter the Url correctly.",
+            "ALIAS": "If empty, it is set to the entered Url.",
+            "MAX_LENGTH": "You can enter up to 256 characters."
         }
     },
     "TRANSACTION": {
@@ -437,6 +455,17 @@
                         }]
                     }]
                 }],
+                "APDEX_SCORE": [{
+                    "TITLE": "Apdex Score",
+                    "DESC": "Shows status of the agent's Apdex Score",
+                    "CATEGORY": [{
+                        "TITLE": "Legend",
+                        "ITEMS": [{
+                            "NAME": "Apdex Score",
+                            "DESC": "Agent's Apdex Score"
+                        }]
+                    }]
+                }],
                 "TPS": [{
                     "TITLE": "Transactions Per Second",
                     "DESC": "Transactions received by the server per second",
@@ -555,7 +584,7 @@
                 }],
                 "MAPPED_BUFFER_COUNT": [{
                     "TITLE": "Mapped Buffer",
-                    "DESC": "Shows the status of agent's Mapped buffer.",
+                    "DESC": "Shows the status of agent's mapped buffer.",
                     "CATEGORY": [{
                         "TITLE": "Legend",
                         "ITEMS": [{
@@ -566,7 +595,7 @@
                 }],
                 "MAPPED_BUFFER_MEMORY": [{
                     "TITLE": "Mapped Buffer Memory",
-                    "DESC": "Shows the status of agent's used Mapped buffer memory.",
+                    "DESC": "Shows the status of agent's used mapped buffer memory.",
                     "CATEGORY": [{
                         "TITLE": "Legend",
                         "ITEMS": [{
@@ -675,6 +704,23 @@
                         }, {
                             "NAME": "Max",
                             "DESC": "Largest system CPU usage of agents"
+                        }]
+                    }]
+                }],
+                "APDEX_SCORE": [{
+                    "TITLE": "Apdex Score",
+                    "DESC": "Apdex Score of the agents and the application",
+                    "CATEGORY": [{
+                        "TITLE": "Legend",
+                        "ITEMS": [{
+                            "NAME": "Min",
+                            "DESC": "Min Apdex Score among the agents"
+                        }, {
+                            "NAME": "Avg",
+                            "DESC": "Apdex Score of the application"
+                        }, {
+                            "NAME": "Max",
+                            "DESC": "Max Apdex Score among the agents"
                         }]
                     }]
                 }],
@@ -937,6 +983,27 @@
                 },{
                     "NAME": "FILE DESCRIPTOR COUNT",
                     "DESC": "Sends an alarm when the number of open file descriptors exceeds the configured threshold."
+                }]
+            }]
+        }],
+        "APDEX_SCORE": [{
+            "TITLE": "Apdex Score",
+            "CATEGORY": [{
+                "ITEMS": [{
+                    "DESC": "[ICON]:{className=fa-smile-beam\\style=font-size:15px;color:var(--status-success);\\value=Excellent}|[TEXT]:{value=&nbsp;&nbsp;Excellent}",
+                    "NAME": "0.94 ~ 1.00"
+                }, {
+                    "DESC": "[ICON]:{className=fa-smile\\style=font-size:15px;color:var(--status-good);}|[TEXT]:{value=&nbsp;&nbsp;Good}",
+                    "NAME": "0.85 ~ 0.94"
+                }, {
+                    "DESC": "[ICON]:{className=fa-meh\\style=font-size:15px;}|[TEXT]:{value=&nbsp;&nbsp;Fair}",
+                    "NAME": "0.7 ~ 0.85"
+                }, {
+                    "DESC": "[ICON]:{className=fa-frown\\style=font-size:15px;color:var(--status-warn);}|[TEXT]:{value=&nbsp;&nbsp;Poor}",
+                    "NAME": "0.5 ~ 0.7"
+                }, {
+                    "DESC": "[ICON]:{className=fa-angry\\style=font-size:15px;color:var(--status-fail);}|[TEXT]:{value=&nbsp;&nbsp;Unacceptable}",
+                    "NAME": "< 0.5"
                 }]
             }]
         }]

@@ -1,24 +1,32 @@
 package com.navercorp.pinpoint.web.filter;
 
 import com.navercorp.pinpoint.common.server.bo.AnnotationBo;
+import com.navercorp.pinpoint.common.server.bo.SpanBo;
 import com.navercorp.pinpoint.common.server.bo.SpanEventBo;
-import com.navercorp.pinpoint.loader.service.AnnotationKeyRegistryService;
-import com.navercorp.pinpoint.loader.service.ServiceTypeRegistryService;
 import com.navercorp.pinpoint.common.trace.AnnotationKey;
 import com.navercorp.pinpoint.common.trace.AnnotationKeyFactory;
 import com.navercorp.pinpoint.common.trace.ServiceType;
-import com.navercorp.pinpoint.common.server.bo.SpanBo;
+import com.navercorp.pinpoint.loader.service.AnnotationKeyRegistryService;
+import com.navercorp.pinpoint.loader.service.ServiceTypeRegistryService;
 import com.navercorp.pinpoint.web.TestTraceUtils;
-import org.junit.Assert;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collections;
 
-import static com.navercorp.pinpoint.web.TestTraceUtils.*;
+import static com.navercorp.pinpoint.web.TestTraceUtils.BACKEND_TYPE_CODE;
+import static com.navercorp.pinpoint.web.TestTraceUtils.BACKEND_TYPE_NAME;
+import static com.navercorp.pinpoint.web.TestTraceUtils.MESSAGE_QUEUE_TYPE_CODE;
+import static com.navercorp.pinpoint.web.TestTraceUtils.MESSAGE_QUEUE_TYPE_NAME;
+import static com.navercorp.pinpoint.web.TestTraceUtils.RPC_TYPE_CODE;
+import static com.navercorp.pinpoint.web.TestTraceUtils.TOMCAT_TYPE_NAME;
+import static com.navercorp.pinpoint.web.TestTraceUtils.UNKNOWN_TYPE_NAME;
+import static com.navercorp.pinpoint.web.TestTraceUtils.USER_TYPE_NAME;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -30,7 +38,7 @@ public class LinkFilterTest {
     private static final int RPC_ANNOTATION_CODE = -1;
     private static final String RPC_ANNOTATION_NAME = "rpc.url";
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
     private final ServiceTypeRegistryService serviceTypeRegistryService = TestTraceUtils.mockServiceTypeRegistryService();
     private final AnnotationKeyRegistryService annotationKeyRegistryService = mockAnnotationKeyRegistryService();
 
@@ -91,8 +99,8 @@ public class LinkFilterTest {
         spanBoC.setServiceType(tomcatServiceType);
         spanBoC.setAgentId("AGENT_C");
 
-        Assert.assertTrue(linkFilter.include(Arrays.asList(fromSpanBo, toSpanBO)));
-        Assert.assertFalse(linkFilter.include(Arrays.asList(fromSpanBo, spanBoC)));
+        Assertions.assertTrue(linkFilter.include(Arrays.asList(fromSpanBo, toSpanBO)));
+        Assertions.assertFalse(linkFilter.include(Arrays.asList(fromSpanBo, spanBoC)));
 
     }
 
@@ -131,8 +139,8 @@ public class LinkFilterTest {
         spanBoC.setServiceType(tomcatServiceType);
         spanBoC.setAgentId("AGENT_C");
 
-        Assert.assertTrue(linkFilter.include(Arrays.asList(fromSpanBo, toSpanBO)));
-        Assert.assertFalse(linkFilter.include(Arrays.asList(fromSpanBo, spanBoC)));
+        Assertions.assertTrue(linkFilter.include(Arrays.asList(fromSpanBo, toSpanBO)));
+        Assertions.assertFalse(linkFilter.include(Arrays.asList(fromSpanBo, spanBoC)));
     }
 
     @Test
@@ -168,10 +176,10 @@ public class LinkFilterTest {
         appB_appA.setApplicationId("APP_A");
         appB_appA.setApplicationServiceType(tomcat.getCode());
 
-        Assert.assertTrue(linkFilter.include(Collections.singletonList(user_appA)));
-        Assert.assertFalse(linkFilter.include(Collections.singletonList(appA_appB)));
-        Assert.assertFalse(linkFilter.include(Collections.singletonList(appB_appA)));
-        Assert.assertTrue(linkFilter.include(Arrays.asList(user_appA, appA_appB, appB_appA)));
+        Assertions.assertTrue(linkFilter.include(Collections.singletonList(user_appA)));
+        Assertions.assertFalse(linkFilter.include(Collections.singletonList(appA_appB)));
+        Assertions.assertFalse(linkFilter.include(Collections.singletonList(appB_appA)));
+        Assertions.assertTrue(linkFilter.include(Arrays.asList(user_appA, appA_appB, appB_appA)));
     }
 
     private LinkFilter newLinkFilter(FilterDescriptor descriptor, FilterHint hint) {
@@ -205,7 +213,7 @@ public class LinkFilterTest {
         spanBo.setParentSpanId(-1);
         spanBo.setApplicationId("APP_A");
         spanBo.setApplicationServiceType(tomcat.getCode());
-        Assert.assertFalse(linkFilter.include(Collections.singletonList(spanBo)));
+        Assertions.assertFalse(linkFilter.include(Collections.singletonList(spanBo)));
 
         // Accept - has matching rpc span event
         AnnotationBo rpcAnnotation = new AnnotationBo(RPC_ANNOTATION_CODE, rpcUrl);
@@ -214,7 +222,7 @@ public class LinkFilterTest {
         rpcSpanEvent.setDestinationId(rpcHost);
         rpcSpanEvent.setAnnotationBoList(Collections.singletonList(rpcAnnotation));
         spanBo.addSpanEvent(rpcSpanEvent);
-        Assert.assertTrue(linkFilter.include(Collections.singletonList(spanBo)));
+        Assertions.assertTrue(linkFilter.include(Collections.singletonList(spanBo)));
     }
 
     @Test
@@ -244,7 +252,7 @@ public class LinkFilterTest {
         appA_appB.setParentSpanId(1);
         appA_appB.setApplicationId("APP_B");
         appA_appB.setApplicationServiceType(tomcat.getCode());
-        Assert.assertTrue(linkFilter.include(Arrays.asList(user_appA, appA_appB)));
+        Assertions.assertTrue(linkFilter.include(Arrays.asList(user_appA, appA_appB)));
     }
 
     @Test
@@ -274,7 +282,7 @@ public class LinkFilterTest {
         appC_appB.setParentSpanId(1);
         appC_appB.setApplicationId("APP_B");
         appC_appB.setApplicationServiceType(tomcat.getCode());
-        Assert.assertFalse(linkFilter.include(Arrays.asList(user_appC, appC_appB)));
+        Assertions.assertFalse(linkFilter.include(Arrays.asList(user_appC, appC_appB)));
 
         // Reject - toNode different
         SpanBo user_appA = new SpanBo();
@@ -287,7 +295,7 @@ public class LinkFilterTest {
         appA_appC.setParentSpanId(1);
         appA_appC.setApplicationId("APP_C");
         appA_appC.setApplicationServiceType(tomcat.getCode());
-        Assert.assertFalse(linkFilter.include(Arrays.asList(user_appA, appA_appC)));
+        Assertions.assertFalse(linkFilter.include(Arrays.asList(user_appA, appA_appC)));
     }
 
     @Test
@@ -332,11 +340,11 @@ public class LinkFilterTest {
         rpcSpanEvent.setAnnotationBoList(Collections.singletonList(rpcAnnotation));
         fromSpan.addSpanEvent(rpcSpanEvent);
         // Reject - filter hint empty
-        Assert.assertFalse(emptyHintLinkFilter.include(Collections.singletonList(fromSpan)));
+        Assertions.assertFalse(emptyHintLinkFilter.include(Collections.singletonList(fromSpan)));
         // Reject - filter hint does not match
-        Assert.assertFalse(unmatchingHintLinkFilter.include(Collections.singletonList(fromSpan)));
+        Assertions.assertFalse(unmatchingHintLinkFilter.include(Collections.singletonList(fromSpan)));
         // Accept - filter hint matches
-        Assert.assertTrue(matchingHintLinkFilter.include(Collections.singletonList(fromSpan)));
+        Assertions.assertTrue(matchingHintLinkFilter.include(Collections.singletonList(fromSpan)));
 
         // Check rpc url as well
         final String unmatchingUrlPattern = "/other/test/**";
@@ -344,11 +352,11 @@ public class LinkFilterTest {
         // Reject - url pattern does not match
         when(option.getUrlPattern()).thenReturn(unmatchingUrlPattern);
         LinkFilter matchingHintLinkFilterWithUnmatchingUrlPattern = newLinkFilter(descriptor, matchingHint);
-        Assert.assertFalse(matchingHintLinkFilterWithUnmatchingUrlPattern.include(Collections.singletonList(fromSpan)));
+        Assertions.assertFalse(matchingHintLinkFilterWithUnmatchingUrlPattern.include(Collections.singletonList(fromSpan)));
         // Accept - url pattern matches
         when(option.getUrlPattern()).thenReturn(matchingUrlPattern);
         LinkFilter matchingHintLinkFilterWithMatchingUrlPattern = newLinkFilter(descriptor, matchingHint);
-        Assert.assertTrue(matchingHintLinkFilterWithMatchingUrlPattern.include(Collections.singletonList(fromSpan)));
+        Assertions.assertTrue(matchingHintLinkFilterWithMatchingUrlPattern.include(Collections.singletonList(fromSpan)));
     }
 
     @Test
@@ -378,7 +386,7 @@ public class LinkFilterTest {
         spanEventDestinationA.setDestinationId(destinationA);
         spanEventDestinationA.setServiceType(BACKEND_TYPE_CODE);
         matchingSpan.addSpanEvent(spanEventDestinationA);
-        Assert.assertTrue(linkFilter.include(Collections.singletonList(matchingSpan)));
+        Assertions.assertTrue(linkFilter.include(Collections.singletonList(matchingSpan)));
 
         SpanBo unmatchingSpan = new SpanBo();
         unmatchingSpan.setApplicationId("APP_A");
@@ -387,15 +395,15 @@ public class LinkFilterTest {
         spanEventDestinationB.setDestinationId(destinationB);
         spanEventDestinationB.setServiceType(BACKEND_TYPE_CODE);
         unmatchingSpan.addSpanEvent(spanEventDestinationB);
-        Assert.assertFalse(linkFilter.include(Collections.singletonList(unmatchingSpan)));
+        Assertions.assertFalse(linkFilter.include(Collections.singletonList(unmatchingSpan)));
 
-        Assert.assertTrue(linkFilter.include(Arrays.asList(matchingSpan, unmatchingSpan)));
+        Assertions.assertTrue(linkFilter.include(Arrays.asList(matchingSpan, unmatchingSpan)));
 
         SpanBo bothSpan = new SpanBo();
         bothSpan.setApplicationId("APP_A");
         bothSpan.setApplicationServiceType(tomcat.getCode());
         bothSpan.addSpanEventBoList(Arrays.asList(spanEventDestinationA, spanEventDestinationB));
-        Assert.assertTrue(linkFilter.include(Collections.singletonList(bothSpan)));
+        Assertions.assertTrue(linkFilter.include(Collections.singletonList(bothSpan)));
     }
 
     @Test
@@ -425,7 +433,7 @@ public class LinkFilterTest {
         spanEventDestinationA.setDestinationId(messageQueueA);
         spanEventDestinationA.setServiceType(MESSAGE_QUEUE_TYPE_CODE);
         matchingSpan.addSpanEvent(spanEventDestinationA);
-        Assert.assertTrue(linkFilter.include(Collections.singletonList(matchingSpan)));
+        Assertions.assertTrue(linkFilter.include(Collections.singletonList(matchingSpan)));
 
         SpanBo unmatchingSpan = new SpanBo();
         unmatchingSpan.setApplicationId("APP_A");
@@ -434,15 +442,15 @@ public class LinkFilterTest {
         spanEventDestinationB.setDestinationId(messageQueueB);
         spanEventDestinationB.setServiceType(MESSAGE_QUEUE_TYPE_CODE);
         unmatchingSpan.addSpanEvent(spanEventDestinationB);
-        Assert.assertFalse(linkFilter.include(Collections.singletonList(unmatchingSpan)));
+        Assertions.assertFalse(linkFilter.include(Collections.singletonList(unmatchingSpan)));
 
-        Assert.assertTrue(linkFilter.include(Arrays.asList(matchingSpan, unmatchingSpan)));
+        Assertions.assertTrue(linkFilter.include(Arrays.asList(matchingSpan, unmatchingSpan)));
 
         SpanBo bothSpan = new SpanBo();
         bothSpan.setApplicationId("APP_A");
         bothSpan.setApplicationServiceType(tomcat.getCode());
         bothSpan.addSpanEventBoList(Arrays.asList(spanEventDestinationA, spanEventDestinationB));
-        Assert.assertTrue(linkFilter.include(Collections.singletonList(bothSpan)));
+        Assertions.assertTrue(linkFilter.include(Collections.singletonList(bothSpan)));
     }
 
     @Test
@@ -469,17 +477,18 @@ public class LinkFilterTest {
         matchingSpan.setApplicationId("APP_A");
         matchingSpan.setApplicationServiceType(tomcat.getCode());
         matchingSpan.setAcceptorHost(messageQueueA);
-        Assert.assertTrue(linkFilter.include(Collections.singletonList(matchingSpan)));
+        Assertions.assertTrue(linkFilter.include(Collections.singletonList(matchingSpan)));
 
         SpanBo unmatchingSpan = new SpanBo();
         unmatchingSpan.setApplicationId("APP_A");
         unmatchingSpan.setApplicationServiceType(tomcat.getCode());
         unmatchingSpan.setAcceptorHost(messageQueueB);
-        Assert.assertFalse(linkFilter.include(Collections.singletonList(unmatchingSpan)));
+        Assertions.assertFalse(linkFilter.include(Collections.singletonList(unmatchingSpan)));
     }
 
-    private String encodeUrl(String value) {
-        return Base64.encodeBytes(value.getBytes(StandardCharsets.UTF_8));
+    private String encodeUrl(String string) {
+        byte[] encode = Base64.getEncoder().encode(string.getBytes(StandardCharsets.UTF_8));
+        return new String(encode, StandardCharsets.UTF_8);
     }
 
 }

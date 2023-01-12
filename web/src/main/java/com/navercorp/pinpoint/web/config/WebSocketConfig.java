@@ -17,7 +17,11 @@
 package com.navercorp.pinpoint.web.config;
 
 
-import com.navercorp.pinpoint.web.websocket.*;
+import com.navercorp.pinpoint.web.websocket.CustomHandshakeInterceptor;
+import com.navercorp.pinpoint.web.websocket.DefaultWebSocketHandlerDecoratorFactory;
+import com.navercorp.pinpoint.web.websocket.PinpointWebSocketHandler;
+import com.navercorp.pinpoint.web.websocket.PinpointWebSocketHandlerManager;
+import com.navercorp.pinpoint.web.websocket.WebSocketSessionContextPrepareHandshakeInterceptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.util.StringUtils;
@@ -28,8 +32,6 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistra
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
 import org.springframework.web.socket.handler.WebSocketHandlerDecoratorFactory;
 import org.springframework.web.socket.server.support.HttpSessionHandshakeInterceptor;
-
-import java.util.Objects;
 
 /**
  * @author Taejin Koo
@@ -66,7 +68,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
 
             webSocketHandlerRegistration.addInterceptors(new HttpSessionHandshakeInterceptor());
             webSocketHandlerRegistration.addInterceptors(new WebSocketSessionContextPrepareHandshakeInterceptor());
-            if (Objects.nonNull(customHandshakeInterceptor)) {
+            if (customHandshakeInterceptor != null) {
                 webSocketHandlerRegistration.addInterceptors(customHandshakeInterceptor);
             }
             webSocketHandlerRegistration.setAllowedOrigins(allowedOriginArray);

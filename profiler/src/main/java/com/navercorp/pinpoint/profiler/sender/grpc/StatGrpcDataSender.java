@@ -19,7 +19,6 @@ package com.navercorp.pinpoint.profiler.sender.grpc;
 
 import com.google.protobuf.Empty;
 import com.google.protobuf.GeneratedMessageV3;
-import java.util.Objects;
 import com.navercorp.pinpoint.grpc.client.ChannelFactory;
 import com.navercorp.pinpoint.grpc.trace.PAgentStat;
 import com.navercorp.pinpoint.grpc.trace.PAgentStatBatch;
@@ -28,33 +27,37 @@ import com.navercorp.pinpoint.grpc.trace.PCustomMetricMessage;
 import com.navercorp.pinpoint.grpc.trace.PStatMessage;
 import com.navercorp.pinpoint.grpc.trace.StatGrpc;
 import com.navercorp.pinpoint.profiler.context.thrift.MessageConverter;
+import com.navercorp.pinpoint.profiler.monitor.metric.MetricType;
 import com.navercorp.pinpoint.profiler.sender.grpc.stream.ClientStreamingProvider;
 import com.navercorp.pinpoint.profiler.sender.grpc.stream.DefaultStreamTask;
 import com.navercorp.pinpoint.profiler.sender.grpc.stream.StreamExecutorFactory;
 import com.navercorp.pinpoint.profiler.util.NamedRunnable;
 import io.grpc.stub.ClientCallStreamObserver;
 
+import java.util.Objects;
+
 import static com.navercorp.pinpoint.grpc.MessageFormatUtils.debugLog;
 
 /**
  * @author jaehong.kim
  */
-public class StatGrpcDataSender extends GrpcDataSender {
+public class StatGrpcDataSender extends GrpcDataSender<MetricType> {
+    private static final String ID = "StatStream";
 
     private final ReconnectExecutor reconnectExecutor;
 
     private final Reconnector reconnector;
     private final StreamState failState;
     private final StreamExecutorFactory<PStatMessage> streamExecutorFactory;
-    private final String id = "StatStream";
 
-    private volatile StreamTask<PStatMessage> currentStreamTask;
+
+    private volatile StreamTask<MetricType, PStatMessage> currentStreamTask;
 
     private final ClientStreamingService<PStatMessage, Empty> clientStreamService;
 
-    public MessageDispatcher<PStatMessage> dispatcher = new MessageDispatcher<PStatMessage>() {
+    public MessageDispatcher<MetricType, PStatMessage> dispatcher = new MessageDispatcher<MetricType, PStatMessage>() {
         @Override
-        public void onDispatch(ClientCallStreamObserver<PStatMessage> stream, Object data) {
+        public void onDispatch(ClientCallStreamObserver<PStatMessage> stream, MetricType data) {
             final GeneratedMessageV3 message = messageConverter.toMessage(data);
             if (isDebug) {
                 logger.debug("Send message={}", debugLog(message));
@@ -93,13 +96,13 @@ public class StatGrpcDataSender extends GrpcDataSender {
 
     public StatGrpcDataSender(String host, int port,
                               int executorQueueSize,
-                              MessageConverter<GeneratedMessageV3> messageConverter,
+                              MessageConverter<MetricType, GeneratedMessageV3> messageConverter,
                               ReconnectExecutor reconnectExecutor,
                               ChannelFactory channelFactory) {
         super(host, port, executorQueueSize, messageConverter, channelFactory);
 
         this.reconnectExecutor = Objects.requireNonNull(reconnectExecutor, "reconnectExecutor");
-        final Runnable reconnectJob = new NamedRunnable(this.id) {
+        final Runnable reconnectJob = new NamedRunnable(ID) {
             @Override
             public void run() {
                 startStream();
@@ -107,17 +110,17 @@ public class StatGrpcDataSender extends GrpcDataSender {
         };
         this.reconnector = reconnectExecutor.newReconnector(reconnectJob);
         this.failState = new SimpleStreamState(100, 5000);
-        this.streamExecutorFactory = new StreamExecutorFactory<PStatMessage>(executor);
+        this.streamExecutorFactory = new StreamExecutorFactory<>(executor);
 
         ClientStreamingProvider<PStatMessage, Empty> clientStreamProvider = new ClientStreamingProvider<PStatMessage, Empty>() {
             @Override
             public ClientCallStreamObserver<PStatMessage> newStream(ResponseStreamObserver<PStatMessage, Empty> response) {
-                logger.info("newStream {}", id);
+                logger.info("newStream {}", ID);
                 StatGrpc.StatStub statStub = StatGrpc.newStub(managedChannel);
                 return (ClientCallStreamObserver<PStatMessage>) statStub.sendAgentStat(response);
             }
         };
-        this.clientStreamService = new ClientStreamingService<PStatMessage, Empty >(clientStreamProvider, reconnector);
+        this.clientStreamService = new ClientStreamingService<>(clientStreamProvider, reconnector);
 
         reconnectJob.run();
 
@@ -126,7 +129,7 @@ public class StatGrpcDataSender extends GrpcDataSender {
     private void startStream() {
 //        streamTaskManager.closeAllStream();
         try {
-            StreamTask<PStatMessage> streamTask =  new DefaultStreamTask<PStatMessage, Empty>(id, clientStreamService,
+            StreamTask<MetricType, PStatMessage> streamTask =  new DefaultStreamTask<>(ID, clientStreamService,
                     this.streamExecutorFactory, this.queue, this.dispatcher, failState);
             streamTask.start();
             this.currentStreamTask = streamTask;
@@ -148,11 +151,11 @@ public class StatGrpcDataSender extends GrpcDataSender {
             reconnectExecutor.close();
         }
 
-        final StreamTask<PStatMessage> currentStreamTask = this.currentStreamTask;
+        final StreamTask<MetricType, PStatMessage> currentStreamTask = this.currentStreamTask;
         if (currentStreamTask != null) {
             currentStreamTask.stop();
         }
-        logger.info("{} close()", id);
+        logger.info("{} close()", ID);
         release();
     }
 

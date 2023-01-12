@@ -8,9 +8,9 @@ import { ChartType, InspectorChartContainerFactory, IInspectorChartContainer } f
 import { InspectorChartComponent } from './inspector-chart.component';
 import { StoreHelperService, NewUrlStateNotificationService } from 'app/shared/services';
 import { InspectorChartDataService, IInspectorChartData } from './inspector-chart-data.service';
-import { UrlPathId } from 'app/shared/models';
-import { catchError } from 'rxjs/operators';
-import { isThatType } from 'app/core/utils/util';
+import { UrlPathId, UrlQuery } from 'app/shared/models';
+import { catchError, filter } from 'rxjs/operators';
+import { InspectorChartThemeService } from './inspector-chart-theme.service';
 
 export enum Layer {
     LOADING = 'loading',
@@ -28,7 +28,7 @@ export class TransactionViewChartContainerComponent implements OnInit, OnDestroy
     @Input()
     set chartType(chartType: ChartType) {
         this._chartType = chartType;
-        this.chartContainer = InspectorChartContainerFactory.createInspectorChartContainer(chartType, this.inspectorChartDataService);
+        this.chartContainer = InspectorChartContainerFactory.createInspectorChartContainer(chartType, this.inspectorChartDataService, this.inspectorChartThemeService);
     }
 
     get chartType(): ChartType {
@@ -54,6 +54,7 @@ export class TransactionViewChartContainerComponent implements OnInit, OnDestroy
         private storeHelperService: StoreHelperService,
         private newUrlStateNotificationService: NewUrlStateNotificationService,
         private inspectorChartDataService: InspectorChartDataService,
+        private inspectorChartThemeService: InspectorChartThemeService,
         private translateService: TranslateService
     ) {}
 
@@ -117,10 +118,10 @@ export class TransactionViewChartContainerComponent implements OnInit, OnDestroy
     }
 
     private getTimeRange(): number[] {
-        const focusTime = Number(this.newUrlStateNotificationService.getPathValue(UrlPathId.FOCUS_TIMESTAMP));
+        const {collectorAcceptTime} = JSON.parse(this.newUrlStateNotificationService.getQueryValue(UrlQuery.TRANSACTION_INFO));
         const range = 600000;
 
-        return [focusTime - range, focusTime + range];
+        return [collectorAcceptTime - range, collectorAcceptTime + range];
     }
 
     onRetry(): void {
@@ -130,14 +131,14 @@ export class TransactionViewChartContainerComponent implements OnInit, OnDestroy
 
     private getChartData(range: number[]): void {
         this.chartContainer.getData(range).pipe(
-            catchError(() => of(null))
-        ).subscribe((data: IInspectorChartData | AjaxException | null) => {
-            if (data === null || isThatType<AjaxException>(data, 'exception')) {
+            catchError((error: IServerError) => {
                 this.activeLayer = Layer.RETRY;
-                this.setRetryMessage(data);
-            } else {
-                this.setChartConfig(this.makeChartData(data));
-            }
+                this.setRetryMessage(error.message);
+                return of(null);
+            }),
+            filter((data: IInspectorChartData | null) => !!data)
+        ).subscribe((data: IInspectorChartData) => {
+            this.setChartConfig(this.makeChartData(data));
         });
     }
 
@@ -148,8 +149,8 @@ export class TransactionViewChartContainerComponent implements OnInit, OnDestroy
         };
     }
 
-    private setRetryMessage(data: any): void {
-        this.retryMessage = data ? data.exception.message : this.dataFetchFailedText;
+    private setRetryMessage(message: string): void {
+        this.retryMessage = message;
     }
 
     private makeChartData(data: IInspectorChartData): PrimitiveArray[] {

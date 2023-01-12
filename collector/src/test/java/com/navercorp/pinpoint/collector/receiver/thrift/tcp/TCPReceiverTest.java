@@ -16,10 +16,10 @@
 
 package com.navercorp.pinpoint.collector.receiver.thrift.tcp;
 
-import org.junit.Assert;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -28,7 +28,7 @@ import java.net.UnknownHostException;
  * @author emeroad
  */
 public class TCPReceiverTest {
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
 
     @Test
     public void l4ip() throws UnknownHostException {
@@ -40,11 +40,11 @@ public class TCPReceiverTest {
     public void l4ipList() throws UnknownHostException {
         String two = "10.12.13.10,10.12.13.20";
         String[] split = two.split(",");
-        Assert.assertEquals(split.length, 2);
+        Assertions.assertEquals(split.length, 2);
 
         String twoEmpty = "10.12.13.10,";
         String[] splitEmpty = twoEmpty.split(",");
-        Assert.assertEquals(splitEmpty.length, 1);
+        Assertions.assertEquals(splitEmpty.length, 1);
 
     }
 

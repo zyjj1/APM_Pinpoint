@@ -23,8 +23,8 @@ import com.navercorp.pinpoint.bootstrap.context.scope.TraceScope;
 import com.navercorp.pinpoint.common.trace.ServiceType;
 import com.navercorp.pinpoint.common.util.Assert;
 import com.navercorp.pinpoint.profiler.context.id.TraceRoot;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import java.util.Objects;
 
@@ -34,23 +34,25 @@ import java.util.Objects;
 public class DefaultAsyncContext implements AsyncContext {
 
 
-    private static final Logger logger = LoggerFactory.getLogger(DefaultAsyncContext.class);
+    private static final Logger logger = LogManager.getLogger(DefaultAsyncContext.class);
 
     private final TraceRoot traceRoot;
     private final AsyncId asyncId;
+    private final boolean canSampled;
 
     private final AsyncTraceContext asyncTraceContext;
 
     private final int asyncMethodApiId;
 
 
-    public DefaultAsyncContext(AsyncTraceContext asyncTraceContext, TraceRoot traceRoot, AsyncId asyncId, int asyncMethodApiId) {
+    public DefaultAsyncContext(AsyncTraceContext asyncTraceContext, TraceRoot traceRoot, AsyncId asyncId, int asyncMethodApiId, boolean canSampled) {
         this.asyncTraceContext = Objects.requireNonNull(asyncTraceContext, "asyncTraceContext");
         this.traceRoot = Objects.requireNonNull(traceRoot, "traceRoot");
         this.asyncId = Objects.requireNonNull(asyncId, "asyncId");
 
 
         this.asyncMethodApiId = asyncMethodApiId;
+        this.canSampled = canSampled;
     }
 
 
@@ -71,14 +73,14 @@ public class DefaultAsyncContext implements AsyncContext {
             return null;
         }
 
-        return newAsyncTrace(reference);
+        return newAsyncContextTrace(reference);
     }
 
-    private Trace newAsyncTrace(Reference<Trace> reference) {
+    private Trace newAsyncContextTrace(Reference<Trace> reference) {
 //        final int asyncId = this.asyncId.getAsyncId();
 //        final short asyncSequence = this.asyncId.nextAsyncSequence();
         final LocalAsyncId localAsyncId = this.asyncId.nextLocalAsyncId();
-        final Trace asyncTrace = asyncTraceContext.newAsyncTraceObject(traceRoot, localAsyncId);
+        final Trace asyncTrace = asyncTraceContext.newAsyncContextTraceObject(traceRoot, localAsyncId, canSampled);
 
 
         bind(reference, asyncTrace);
@@ -104,10 +106,16 @@ public class DefaultAsyncContext implements AsyncContext {
 
         // first block.
         final SpanEventRecorder recorder = asyncTrace.currentSpanEventRecorder();
-        recorder.recordServiceType(ServiceType.ASYNC);
-        recorder.recordApiId(asyncMethodApiId);
 
-        return asyncTrace;
+        if (recorder != null) {
+            recorder.recordServiceType(ServiceType.ASYNC);
+            recorder.recordApiId(asyncMethodApiId);
+        }
+
+        if (asyncTrace.canSampled()) {
+            return asyncTrace;
+        }
+        return null;
     }
 
     private void bind(Reference<Trace> reference, Trace asyncTrace) {
@@ -132,9 +140,8 @@ public class DefaultAsyncContext implements AsyncContext {
     @Override
     public String toString() {
         return "DefaultAsyncContext{" +
-                "traceRoot=" + traceRoot +
-                ", asyncId=" + asyncId +
+                "asyncId=" + asyncId +
+                ", traceRoot=" + traceRoot +
                 '}';
     }
-
 }

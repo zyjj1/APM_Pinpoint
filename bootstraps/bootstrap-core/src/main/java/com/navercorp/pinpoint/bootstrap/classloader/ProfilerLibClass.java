@@ -17,6 +17,7 @@
 package com.navercorp.pinpoint.bootstrap.classloader;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
  * @author emeroad
@@ -26,18 +27,15 @@ public class ProfilerLibClass implements LibClass {
     private final String[] profilerClass;
 
     public ProfilerLibClass(List<String> profilerClass) {
-        if (profilerClass == null) {
-            throw new NullPointerException("profilerClass");
-        }
+        Objects.requireNonNull(profilerClass, "profilerClass");
 
         this.profilerClass = profilerClass.toArray(new String[0]);
     }
 
     @Override
     public boolean onLoadClass(String clazzName) {
-        final int length = profilerClass.length;
-        for (int i = 0; i < length; i++) {
-            if (clazzName.startsWith(profilerClass[i])) {
+        for (String libClassName : profilerClass) {
+            if (clazzName.startsWith(libClassName)) {
                 return ON_LOAD_CLASS;
             }
         }

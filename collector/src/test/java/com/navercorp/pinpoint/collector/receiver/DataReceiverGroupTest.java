@@ -17,10 +17,10 @@
 package com.navercorp.pinpoint.collector.receiver;
 
 import com.google.common.util.concurrent.MoreExecutors;
-import com.navercorp.pinpoint.collector.config.DataReceiverGroupConfiguration;
 import com.navercorp.pinpoint.collector.receiver.thrift.PinpointServerAcceptorProvider;
 import com.navercorp.pinpoint.collector.receiver.thrift.TCPReceiverBean;
 import com.navercorp.pinpoint.collector.receiver.thrift.UDPReceiverBean;
+import com.navercorp.pinpoint.collector.thrift.config.DataReceiverGroupConfiguration;
 import com.navercorp.pinpoint.common.server.util.AddressFilter;
 import com.navercorp.pinpoint.io.request.ServerRequest;
 import com.navercorp.pinpoint.io.request.ServerResponse;
@@ -35,11 +35,14 @@ import com.navercorp.pinpoint.profiler.sender.UdpDataSender;
 import com.navercorp.pinpoint.rpc.client.DefaultPinpointClientFactory;
 import com.navercorp.pinpoint.rpc.client.PinpointClientFactory;
 import com.navercorp.pinpoint.thrift.dto.TResult;
+import com.navercorp.pinpoint.thrift.io.HeaderTBaseSerializer;
+import com.navercorp.pinpoint.thrift.io.HeaderTBaseSerializerFactory;
+import com.navercorp.pinpoint.thrift.io.SerializerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.thrift.TBase;
-import org.junit.Assert;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.util.SocketUtils;
 
@@ -55,7 +58,7 @@ import static org.mockito.Mockito.when;
  */
 public class DataReceiverGroupTest {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(DataReceiverGroupTest.class);
+    private static final Logger LOGGER = LogManager.getLogger(DataReceiverGroupTest.class);
 
     @Test
     public void receiverGroupTest1() throws Exception {
@@ -68,7 +71,7 @@ public class DataReceiverGroupTest {
 
 
         DataSender<TBase<?, ?>> udpDataSender = null;
-        TcpDataSender tcpDataSender = null;
+        TcpDataSender<TBase<?, ?>> tcpDataSender = null;
         PinpointClientFactory pinpointClientFactory = null;
 
         try {
@@ -78,17 +81,17 @@ public class DataReceiverGroupTest {
             udpDataSender = newUdpDataSender(mockConfig);
 
             pinpointClientFactory = createPinpointClientFactory();
-            tcpDataSender = new TcpDataSender(this.getClass().getName(), "127.0.0.1", mockConfig.getTcpBindPort(), pinpointClientFactory);
+            tcpDataSender = new TcpDataSender<>(this.getClass().getName(), "127.0.0.1", mockConfig.getTcpBindPort(), pinpointClientFactory);
 
             udpDataSender.send(new TResult());
 
             tcpDataSender.send(new TResult());
             tcpDataSender.request(new TResult());
 
-            Assert.assertTrue(tcpDataSender.isConnected());
+            Assertions.assertTrue(tcpDataSender.isConnected());
 
-            Assert.assertTrue(dispatchHandler.getSendLatch().await(1000, TimeUnit.MILLISECONDS));
-            Assert.assertTrue(dispatchHandler.getRequestLatch().await(1000, TimeUnit.MILLISECONDS));
+            Assertions.assertTrue(dispatchHandler.getSendLatch().await(1000, TimeUnit.MILLISECONDS));
+            Assertions.assertTrue(dispatchHandler.getRequestLatch().await(1000, TimeUnit.MILLISECONDS));
         } finally {
             closeDataSender(udpDataSender);
             closeDataSender(tcpDataSender);
@@ -98,11 +101,12 @@ public class DataReceiverGroupTest {
         }
     }
 
-    public UdpDataSender newUdpDataSender(DataReceiverGroupConfiguration mockConfig) {
+    public UdpDataSender<TBase<?, ?>> newUdpDataSender(DataReceiverGroupConfiguration mockConfig) {
         String threadName = this.getClass().getName();
-        MessageConverter<TBase<?, ?>> messageConverter = new BypassMessageConverter<>();
-        final MessageSerializer<ByteMessage> thriftMessageSerializer = new ThriftUdpMessageSerializer(messageConverter, ThriftUdpMessageSerializer.UDP_MAX_PACKET_LENGTH);
-        return new UdpDataSender("127.0.0.1", mockConfig.getUdpBindPort(), threadName, 10, 1000, 1024 * 64 * 100,
+        MessageConverter<TBase<?, ?>, TBase<?, ?>> messageConverter = new BypassMessageConverter<>();
+        SerializerFactory<HeaderTBaseSerializer> serializerFactory = new HeaderTBaseSerializerFactory(ThriftUdpMessageSerializer.UDP_MAX_PACKET_LENGTH);
+        final MessageSerializer<TBase<?, ?>, ByteMessage> thriftMessageSerializer = new ThriftUdpMessageSerializer(messageConverter, serializerFactory.createSerializer());
+        return new UdpDataSender<>("127.0.0.1", mockConfig.getUdpBindPort(), threadName, 10, 1000, 1024 * 64 * 100,
                 thriftMessageSerializer);
     }
 
@@ -110,7 +114,7 @@ public class DataReceiverGroupTest {
         return new PinpointServerAcceptorProvider();
     }
 
-    private <REQ, RES> TCPReceiverBean createTcpReceiverBean(DataReceiverGroupConfiguration mockConfig, DispatchHandler<REQ, RES> dispatchHandler) {
+    private TCPReceiverBean createTcpReceiverBean(DataReceiverGroupConfiguration mockConfig, DispatchHandler<TBase<?, ?>, TBase<?, ?>> dispatchHandler) {
         TCPReceiverBean tcpReceiverBean = new TCPReceiverBean();
         tcpReceiverBean.setBeanName("tcpReceiver");
         tcpReceiverBean.setBindIp(mockConfig.getTcpBindIp());
@@ -122,7 +126,7 @@ public class DataReceiverGroupTest {
         return tcpReceiverBean;
     }
 
-    private <REQ, RES> UDPReceiverBean createUdpReceiverBean(DataReceiverGroupConfiguration mockConfig, DispatchHandler<REQ, RES> dispatchHandler) {
+    private UDPReceiverBean createUdpReceiverBean(DataReceiverGroupConfiguration mockConfig, DispatchHandler<TBase<?, ?>, TBase<?, ?>> dispatchHandler) {
         UDPReceiverBean udpReceiverBean = new UDPReceiverBean();
         udpReceiverBean.setBeanName("udpReceiver");
         udpReceiverBean.setBindIp(mockConfig.getUdpBindIp());
@@ -143,7 +147,7 @@ public class DataReceiverGroupTest {
 
         TCPReceiverBean receiver = createTcpReceiverBean(mockConfig, testDispatchHandler);
         DataSender<TBase<?, ?>> udpDataSender = null;
-        TcpDataSender tcpDataSender = null;
+        TcpDataSender<TBase<?, ?>> tcpDataSender = null;
         PinpointClientFactory pinpointClientFactory = null;
 
         try {
@@ -152,18 +156,18 @@ public class DataReceiverGroupTest {
             udpDataSender = newUdpDataSender(mockConfig);
             udpDataSender.send(new TResult());
 
-            Assert.assertFalse(testDispatchHandler.getSendLatch().await(1000, TimeUnit.MILLISECONDS));
+            Assertions.assertFalse(testDispatchHandler.getSendLatch().await(1000, TimeUnit.MILLISECONDS));
 
             pinpointClientFactory = createPinpointClientFactory();
-            tcpDataSender = new TcpDataSender(this.getClass().getName(), "127.0.0.1", mockConfig.getTcpBindPort(), pinpointClientFactory);
+            tcpDataSender = new TcpDataSender<>(this.getClass().getName(), "127.0.0.1", mockConfig.getTcpBindPort(), pinpointClientFactory);
 
-            Assert.assertTrue(tcpDataSender.isConnected());
+            Assertions.assertTrue(tcpDataSender.isConnected());
 
             tcpDataSender.send(new TResult());
             tcpDataSender.request(new TResult());
 
-            Assert.assertTrue(testDispatchHandler.getSendLatch().await(1000, TimeUnit.MILLISECONDS));
-            Assert.assertTrue(testDispatchHandler.getRequestLatch().await(1000, TimeUnit.MILLISECONDS));
+            Assertions.assertTrue(testDispatchHandler.getSendLatch().await(1000, TimeUnit.MILLISECONDS));
+            Assertions.assertTrue(testDispatchHandler.getRequestLatch().await(1000, TimeUnit.MILLISECONDS));
         } finally {
             closeDataSender(udpDataSender);
             closeDataSender(tcpDataSender);
@@ -179,8 +183,8 @@ public class DataReceiverGroupTest {
         TestDispatchHandler testDispatchHandler = new TestDispatchHandler(1, 1);
 
         UDPReceiverBean receiver = createUdpReceiverBean(mockConfig, testDispatchHandler);
-        DataSender udpDataSender = null;
-        TcpDataSender tcpDataSender = null;
+        DataSender<TBase<?, ?>> udpDataSender = null;
+        TcpDataSender<TBase<?, ?>> tcpDataSender = null;
         PinpointClientFactory pinpointClientFactory = null;
 
         try {
@@ -189,12 +193,12 @@ public class DataReceiverGroupTest {
             udpDataSender = newUdpDataSender(mockConfig);
             udpDataSender.send(new TResult());
 
-            Assert.assertTrue(testDispatchHandler.getSendLatch().await(1000, TimeUnit.MILLISECONDS));
+            Assertions.assertTrue(testDispatchHandler.getSendLatch().await(1000, TimeUnit.MILLISECONDS));
 
             pinpointClientFactory = createPinpointClientFactory();
-            tcpDataSender = new TcpDataSender(this.getClass().getName(), "127.0.0.1", mockConfig.getTcpBindPort(), pinpointClientFactory);
+            tcpDataSender = new TcpDataSender<>(this.getClass().getName(), "127.0.0.1", mockConfig.getTcpBindPort(), pinpointClientFactory);
 
-            Assert.assertFalse(tcpDataSender.isConnected());
+            Assertions.assertFalse(tcpDataSender.isConnected());
         } finally {
             closeDataSender(udpDataSender);
             closeDataSender(tcpDataSender);
@@ -214,7 +218,7 @@ public class DataReceiverGroupTest {
         }
     }
 
-    private void closeDataSender(DataSender dataSender) {
+    private void closeDataSender(DataSender<?> dataSender) {
         try {
             if (dataSender != null) {
                 dataSender.stop();

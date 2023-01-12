@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Store, Action, select } from '@ngrx/store';
-import { Observable, Subject, iif } from 'rxjs';
-import { takeUntil, map, filter, debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { Observable, Subject, iif, pipe } from 'rxjs';
+import { takeUntil, map, debounceTime, distinctUntilChanged, filter, pluck } from 'rxjs/operators';
 
 import {
     AppState,
@@ -10,23 +10,78 @@ import {
     selectTimelineRange,
     selectTimelineSelectedTime,
     selectTimelineSelectionRange
-} from 'app/shared/store';
+} from 'app/shared/store/reducers';
 import { WebAppSettingDataService } from './web-app-setting-data.service';
+import { isEmpty } from 'app/core/utils/util';
+import { applicationList, applicationListError } from 'app/shared/store/selectors/application-list.selector';
+import { favoriteApplicationList, favoriteApplicationListError } from 'app/shared/store/selectors/favorite-application-list.selector';
+import { ErrorType } from 'app/shared/store/reducers/favorite-application-list.reducer';
+import { hostGroupList, hostGroupListError } from 'app/shared/store/selectors/host-group-list.selector';
 
 @Injectable()
 export class StoreHelperService {
     private dateFormatList: string[][];
     constructor(
         private store: Store<AppState>,
-        private webAppSettingDataService: WebAppSettingDataService
+        private webAppSettingDataService: WebAppSettingDataService,
     ) {
         this.dateFormatList = this.webAppSettingDataService.getDateFormatList();
     }
+
     getApplicationList(unsubscribe?: Subject<void>): Observable<IApplication[]> {
-        return this.getObservable(STORE_KEY.APPLICATION_LIST, unsubscribe);
+        return this.store.pipe(select(applicationList));
     }
-    getFavoriteApplicationList(unsubscribe: Subject<void>): Observable<IApplication[]> {
-        return this.getObservable(STORE_KEY.FAVORITE_APPLICATION_LIST, unsubscribe);
+    getApplicationListError(): Observable<IServerError> {
+        const selectError = pipe(
+            select(applicationListError),
+            filter((error: IServerError) => error && !isEmpty(error))
+        );
+
+        return this.store.pipe(selectError);
+    }
+    getFavoriteApplicationList(unsubscribe?: Subject<void>): Observable<IApplication[]> {
+        return this.store.pipe(select(favoriteApplicationList));
+    }
+    getFavoriteApplicationListError(): Observable<IServerError> {
+        const selectError = pipe(
+            select(favoriteApplicationListError),
+            filter((error) => error && !isEmpty(error)),
+            filter(({errorType}) => errorType === ErrorType.GET),
+            pluck('error')
+        );
+
+        return this.store.pipe(selectError);
+    }
+    getFavoriteApplicationAddError(): Observable<IServerError> {
+        const selectError = pipe(
+            select(favoriteApplicationListError),
+            filter((error) => error && !isEmpty(error)),
+            filter(({errorType}) => errorType === ErrorType.ADD),
+            pluck('error')
+        );
+
+        return this.store.pipe(selectError);
+    }
+    getFavoriteApplicationRemoveError(): Observable<IServerError> {
+        const selectError = pipe(
+            select(favoriteApplicationListError),
+            filter((error) => error && !isEmpty(error)),
+            filter(({errorType}) => errorType === ErrorType.REMOVE),
+            pluck('error')
+        );
+
+        return this.store.pipe(selectError);
+    }
+    getHostGroupList(): Observable<string[]> {
+        return this.store.pipe(select(hostGroupList));
+    }
+    getHostGroupListError(): Observable<IServerError> {
+        const selectError = pipe(
+            select(hostGroupListError),
+            filter((error: IServerError) => error && !isEmpty(error))
+        );
+
+        return this.store.pipe(selectError);
     }
     getTimezone(unsubscribe?: Subject<void>): Observable<string> {
         return this.getObservable(STORE_KEY.TIMEZONE, unsubscribe);
@@ -56,17 +111,8 @@ export class StoreHelperService {
     getAgentList(unsubscribe: Subject<void>): Observable<IAgentList> {
         return this.getObservable(STORE_KEY.ADMIN_AGENT_LIST, unsubscribe);
     }
-    getServerAndAgentQuery<T>(unsubscribe: Subject<void>): Observable<T> {
-        return this.getObservable(STORE_KEY.SERVER_AND_AGENT, unsubscribe).pipe(
-            debounceTime(100),
-            distinctUntilChanged()
-        );
-    }
     getAgentSelection(unsubscribe: Subject<void>): Observable<string> {
         return this.getObservable(STORE_KEY.AGENT_SELECTION, unsubscribe);
-    }
-    getAgentSelectionForServerList(unsubscribe: Subject<void>): Observable<IAgentSelection> {
-        return this.getObservable(STORE_KEY.AGENT_SELECTION_FOR_SERVER_LIST, unsubscribe);
     }
     getScatterChartData<T>(unsubscribe: Subject<void>): Observable<T> {
         return this.getObservable(STORE_KEY.SCATTER_CHART, unsubscribe);
@@ -131,7 +177,7 @@ export class StoreHelperService {
     getTransactionViewType(unsubscribe: Subject<void>): Observable<string> {
         return this.getObservable(STORE_KEY.TRANSACTION_VIEW_TYPE, unsubscribe);
     }
-    getObservable(key: string, unsubscribe?: Subject<void>): Observable<any> {
+    getObservable(key: keyof AppState, unsubscribe?: Subject<void>): Observable<any> {
         return iif(
             () => !!unsubscribe,
             this.store.pipe(

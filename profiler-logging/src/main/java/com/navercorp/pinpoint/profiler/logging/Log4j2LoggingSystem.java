@@ -4,15 +4,16 @@ import com.navercorp.pinpoint.bootstrap.BootLogger;
 import com.navercorp.pinpoint.bootstrap.logging.PLogger;
 import com.navercorp.pinpoint.bootstrap.logging.PLoggerBinder;
 import com.navercorp.pinpoint.bootstrap.logging.PLoggerFactory;
-import java.util.Objects;
 import com.navercorp.pinpoint.profiler.logging.jul.JulAdaptorHandler;
 import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.core.Logger;
-import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.LifeCycle;
+import org.apache.logging.log4j.spi.LoggerContext;
 
-import java.io.File;
 import java.net.URI;
-import java.security.CodeSource;
+
+import java.nio.file.Path;
+import java.util.Objects;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 
@@ -20,23 +21,24 @@ public class Log4j2LoggingSystem implements LoggingSystem {
     public static final String CONTEXT_NAME = "pinpoint-agent-logging-context";
 
     public static final String FACTORY_PROPERTY_NAME = "log4j2.loggerContextFactory";
+    public static final String NOLOOKUPS = "log4j2.formatMsgNoLookups";
 
     private static final String[] LOOKUP = {"log4j2-test.xml", "log4j2.xml", "log4j2.properties"};
 
     private LoggerContext loggerContext;
-    private final String profilePath;
+    private final Path profilePath;
 
     private PLoggerBinder binder;
 
 
-    public Log4j2LoggingSystem(String profilePath) {
+    public Log4j2LoggingSystem(Path profilePath) {
         this.profilePath = Objects.requireNonNull(profilePath, "profilePath");
     }
 
     public void start() {
         // log4j init
-        String configLocation = getConfigPath(profilePath);
-        URI uri = newURI(configLocation);
+        Path configLocation = getConfigPath(profilePath);
+        URI uri = configLocation.toUri();
 
         BootLogger bootLogger = BootLogger.getLogger(this.getClass());
         bootLogger.info("logPath:" + uri);
@@ -80,19 +82,15 @@ public class Log4j2LoggingSystem implements LoggingSystem {
 
 
     private Logger getLoggerContextLogger() {
-        return loggerContext.getLogger(getClass().getName());
+        Logger logger = loggerContext.getLogger(getClass().getName());
+        return logger;
     }
 
-    private URI newURI(String configLocation) {
-        File file = new File(configLocation);
-        return file.toURI();
-    }
 
-    private String getConfigPath(String profilePath) {
+    private Path getConfigPath(Path profilePath) {
         for (String configFile : LOOKUP) {
-            String configLocation = String.format("%s%s", profilePath, configFile);
-            final File file = new File(configLocation);
-            if (file.exists()) {
+            Path configLocation = profilePath.resolve(configFile);
+            if (configLocation.toFile().exists()) {
                 return configLocation;
             }
         }
@@ -100,10 +98,15 @@ public class Log4j2LoggingSystem implements LoggingSystem {
     }
 
     private LoggerContext getLoggerContext(URI uri) {
-        String factory = prepare(FACTORY_PROPERTY_NAME);
+        // Prepare SystemProperties
+        final String factory = prepare(FACTORY_PROPERTY_NAME, Log4j2ContextFactory.class.getName());
+        // Log4j2 RCE CVE-2021-44228
+        // https://github.com/pinpoint-apm/pinpoint/issues/8489
+        final String nolookup = prepare(NOLOOKUPS, Boolean.TRUE.toString());
         try {
-            return (LoggerContext) LogManager.getContext(this.getClass().getClassLoader(), false, null, uri, CONTEXT_NAME);
+            return LogManager.getContext(this.getClass().getClassLoader(), false, null, uri, CONTEXT_NAME);
         } finally {
+            rollback(NOLOOKUPS, nolookup);
             rollback(FACTORY_PROPERTY_NAME, factory);
         }
     }
@@ -126,16 +129,18 @@ public class Log4j2LoggingSystem implements LoggingSystem {
         if (loggerContext != null) {
             Logger logger = getLoggerContextLogger();
             logger.info("{} stop", this.getClass().getSimpleName());
-
             this.binder.shutdown();
-            loggerContext.stop();
+            if (loggerContext instanceof LifeCycle) {
+                logger.info("{} loggerContext stop", this.getClass().getSimpleName());
+                ((LifeCycle)loggerContext).stop();
+            }
         }
 
     }
 
-    private String prepare(String key) {
+    private String prepare(String key, String value) {
         final String backup = System.getProperty(key);
-        System.setProperty(key, Log4j2ContextFactory.class.getName());
+        System.setProperty(key, value);
         return backup;
     }
 

@@ -23,9 +23,8 @@ import com.navercorp.pinpoint.common.server.bo.AgentInfoBo;
 import com.navercorp.pinpoint.grpc.Header;
 import com.navercorp.pinpoint.grpc.server.lifecycle.PingSession;
 import com.navercorp.pinpoint.grpc.server.lifecycle.LifecycleListener;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import java.util.Objects;
 
@@ -34,12 +33,13 @@ import java.util.Objects;
  * @author jaehong.kim
  */
 public class AgentLifecycleListener implements LifecycleListener {
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
+    private final boolean isDebug = logger.isDebugEnabled();
+
     private final KeepAliveService lifecycleService;
     private final AgentInfoService agentInfoService;
     private final ShutdownEventListener shutdownEventListener;
 
-    @Autowired
     public AgentLifecycleListener(KeepAliveService lifecycleService, AgentInfoService agentInfoService, ShutdownEventListener shutdownEventListener) {
         this.lifecycleService = Objects.requireNonNull(lifecycleService, "lifecycleService");
         this.agentInfoService = Objects.requireNonNull(agentInfoService, "agentInfoService");
@@ -63,7 +63,9 @@ public class AgentLifecycleListener implements LifecycleListener {
 
     @Override
     public void handshake(PingSession lifecycle) {
-        logger.info("handshake:{}", lifecycle);
+        if (isDebug) {
+            logger.debug("handshake:{}", lifecycle);
+        }
         lifecycleService.updateState(lifecycle);
     }
 

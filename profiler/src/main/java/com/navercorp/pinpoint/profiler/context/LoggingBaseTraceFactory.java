@@ -21,22 +21,21 @@ import com.navercorp.pinpoint.bootstrap.context.TraceId;
 import com.navercorp.pinpoint.common.annotations.InterfaceAudience;
 import java.util.Objects;
 import com.navercorp.pinpoint.profiler.context.id.TraceRoot;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 /**
  * @author Woonduk Kang(emeroad)
  */
 public class LoggingBaseTraceFactory implements BaseTraceFactory {
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
 
-    private BaseTraceFactory baseTraceFactory;
+    private final BaseTraceFactory baseTraceFactory;
 
     public static BaseTraceFactory wrap(BaseTraceFactory baseTraceFactory) {
-        if (baseTraceFactory == null) {
-            throw new NullPointerException("baseTraceFactory");
-        }
+        Objects.requireNonNull(baseTraceFactory, "baseTraceFactory");
+
         return new LoggingBaseTraceFactory(baseTraceFactory);
     }
 
@@ -73,12 +72,12 @@ public class LoggingBaseTraceFactory implements BaseTraceFactory {
     }
 
     @Override
-    public Trace continueAsyncTraceObject(TraceRoot traceRoot, LocalAsyncId localAsyncId) {
+    public Trace continueAsyncContextTraceObject(TraceRoot traceRoot, LocalAsyncId localAsyncId, boolean canSampled) {
         if (logger.isDebugEnabled()) {
-            logger.debug("continueAsyncTraceObject(traceRoot:{}, localAsyncId:{})", traceRoot, localAsyncId);
+            logger.debug("continueAsyncTraceObject(traceRoot:{}, localAsyncId:{}, canSampled:{})", traceRoot, localAsyncId, canSampled);
         }
 
-        return baseTraceFactory.continueAsyncTraceObject(traceRoot, localAsyncId);
+        return baseTraceFactory.continueAsyncContextTraceObject(traceRoot, localAsyncId, canSampled);
     }
 
     @Override
@@ -89,10 +88,21 @@ public class LoggingBaseTraceFactory implements BaseTraceFactory {
     }
 
     @Override
+    public Trace newTraceObject(String urlPath) {
+        logger.debug("newTraceObject(String urlPath)");
+        return baseTraceFactory.newTraceObject(urlPath);
+    }
+
+    @Override
     @InterfaceAudience.LimitedPrivate("vert.x")
     public Trace newAsyncTraceObject() {
         logger.debug("newAsyncTraceObject()");
 
         return baseTraceFactory.newAsyncTraceObject();
+    }
+
+    public Trace newAsyncTraceObject(String urlPath) {
+        logger.debug("newAsyncTraceObject(String urlPath)");
+        return baseTraceFactory.newAsyncTraceObject(urlPath);
     }
 }

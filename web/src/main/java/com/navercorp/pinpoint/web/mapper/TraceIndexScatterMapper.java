@@ -27,12 +27,15 @@ import com.navercorp.pinpoint.common.profiler.util.TransactionId;
 import com.navercorp.pinpoint.web.vo.scatter.Dot;
 
 import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.client.Result;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
+import java.util.function.Predicate;
 
 /**
  * @author emeroad
@@ -40,6 +43,19 @@ import java.util.List;
  */
 @Component
 public class TraceIndexScatterMapper implements RowMapper<List<Dot>> {
+
+    private static final HbaseColumnFamily.ApplicationTraceIndexTrace INDEX = HbaseColumnFamily.APPLICATION_TRACE_INDEX_TRACE;
+
+    // @Nullable
+    private final Predicate<Dot> filter;
+
+    public TraceIndexScatterMapper() {
+        this.filter = null;
+    }
+
+    public TraceIndexScatterMapper(Predicate<Dot> filter) {
+        this.filter = Objects.requireNonNull(filter, "filter");
+    }
 
     @Override
     public List<Dot> mapRow(Result result, int rowNum) throws Exception {
@@ -50,11 +66,21 @@ public class TraceIndexScatterMapper implements RowMapper<List<Dot>> {
         Cell[] rawCells = result.rawCells();
         List<Dot> list = new ArrayList<>(rawCells.length);
         for (Cell cell : rawCells) {
-            final Dot dot = createDot(cell);
-            list.add(dot);
+            if (CellUtil.matchingFamily(cell, INDEX.getName())) {
+                Dot dot = createDot(cell);
+                if (filter(dot, this.filter)) {
+                    list.add(dot);
+                }
+            }
         }
-
         return list;
+    }
+
+    static boolean filter(Dot dot, Predicate<Dot> filter) {
+        if (filter == null) {
+            return true;
+        }
+        return filter.test(dot);
     }
 
     static Dot createDot(Cell cell) {
@@ -69,23 +95,8 @@ public class TraceIndexScatterMapper implements RowMapper<List<Dot>> {
         long acceptedTime = TimeUtils.recoveryTimeMillis(reverseAcceptedTime);
 
         TransactionId transactionId = TransactionIdMapper.parseVarTransactionId(cell.getQualifierArray(), cell.getQualifierOffset(), cell.getQualifierLength());
-        
+
         return new Dot(transactionId, acceptedTime, elapsed, exceptionCode, agentId);
     }
 
-    /*
-    public static TransactionId parseVarTransactionId(byte[] bytes, int offset) {
-        if (bytes == null) {
-            throw new NullPointerException("bytes");
-        }
-        final Buffer buffer = new OffsetFixedBuffer(bytes, offset);
-
-        buffer.readInt();
-
-        String agentId = buffer.readPrefixedString();
-        long agentStartTime = buffer.readSVarLong();
-        long transactionSequence = buffer.readVarLong();
-        return new TransactionId(agentId, agentStartTime, transactionSequence);
-    }
-    */
 }

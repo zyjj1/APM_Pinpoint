@@ -7,11 +7,14 @@ import { ConfigurationGeneralModule } from 'app/core/components/configuration-ge
 import { ConfigurationFavoriteModule } from 'app/core/components/configuration-favorite';
 import { ConfigurationInspectorChartManagerModule } from 'app/core/components/configuration-inspector-chart-manager';
 import { ConfigurationUserGroupModule } from 'app/core/components/configuration-user-group';
+import { ConfigurationWebhookModule } from 'app/core/components/configuration-webhook';
 import { ConfigurationInstallationModule } from 'app/core/components/configuration-installation';
 import { ConfigurationHelpModule } from 'app/core/components/configuration-help';
+import { ConfigurationExperimentalModule } from 'app/core/components/configuration-experimental';
 import { ConfigurationAlarmModule } from 'app/core/components/configuration-alarm';
 import { ConfigurationAgentStatisticModule } from 'app/core/components/configuration-agent-statistic';
 import { ConfigurationAgentManagementModule } from 'app/core/components/configuration-agent-management';
+import { SideNavigationBarModule } from 'app/core/components/side-navigation-bar';
 
 @NgModule({
     declarations: [
@@ -19,14 +22,17 @@ import { ConfigurationAgentManagementModule } from 'app/core/components/configur
     ],
     imports: [
         SharedModule,
+        SideNavigationBarModule,
         ConfigPageRoutingModule,
         ConfigurationGeneralModule,
         ConfigurationFavoriteModule,
         ConfigurationInspectorChartManagerModule,
         ConfigurationUserGroupModule,
         ConfigurationAlarmModule,
+        ConfigurationWebhookModule,
         ConfigurationInstallationModule,
         ConfigurationHelpModule,
+        ConfigurationExperimentalModule,
         ConfigurationAgentStatisticModule,
         ConfigurationAgentManagementModule
     ],

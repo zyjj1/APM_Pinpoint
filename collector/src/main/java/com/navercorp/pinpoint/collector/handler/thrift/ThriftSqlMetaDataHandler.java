@@ -24,8 +24,8 @@ import com.navercorp.pinpoint.io.request.ServerResponse;
 import com.navercorp.pinpoint.thrift.dto.TResult;
 import com.navercorp.pinpoint.thrift.dto.TSqlMetaData;
 import org.apache.thrift.TBase;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.springframework.stereotype.Service;
 
 import java.util.Objects;
@@ -35,7 +35,7 @@ import java.util.Objects;
  */
 @Service
 public class ThriftSqlMetaDataHandler implements RequestResponseHandler<TBase<?, ?>, TBase<?, ?>> {
-    private final Logger logger = LoggerFactory.getLogger(getClass());
+    private final Logger logger = LogManager.getLogger(getClass());
 
     private final SqlMetaDataService sqlMetaDataService;
 
@@ -61,8 +61,9 @@ public class ThriftSqlMetaDataHandler implements RequestResponseHandler<TBase<?,
 
     private TResult handleSqlMetaData(TSqlMetaData sqlMetaData) {
         try {
-            final SqlMetaDataBo sqlMetaDataBo = new SqlMetaDataBo(sqlMetaData.getAgentId(), sqlMetaData.getAgentStartTime(), sqlMetaData.getSqlId());
-            sqlMetaDataBo.setSql(sqlMetaData.getSql());
+            final SqlMetaDataBo sqlMetaDataBo = new SqlMetaDataBo(sqlMetaData.getAgentId(), sqlMetaData.getAgentStartTime(),
+                    sqlMetaData.getSqlId(), sqlMetaData.getSql());
+
             sqlMetaDataService.insert(sqlMetaDataBo);
         } catch (Exception e) {
             logger.warn("Failed to handle SqlMetaData={}, Caused:{}", sqlMetaData, e.getMessage(), e);

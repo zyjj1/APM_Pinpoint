@@ -26,7 +26,6 @@ import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * @author minwoo.jung
@@ -338,8 +337,9 @@ public class JoinApplicationStatBo implements JoinStatBo {
         }
 
         public List<JoinAgentStatBo> build() {
-            Stream<JoinAgentStatBo.Builder> stream = joinAgentStatBoMap.values().stream();
-            return stream.map(JoinAgentStatBo.Builder::build).collect(Collectors.toList());
+            return joinAgentStatBoMap.values().stream()
+                    .map(JoinAgentStatBo.Builder::build)
+                    .collect(Collectors.toList());
         }
     }
 

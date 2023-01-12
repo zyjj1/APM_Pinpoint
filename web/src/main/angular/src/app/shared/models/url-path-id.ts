@@ -71,11 +71,8 @@ export class UrlPathId {
     static APPLICATION = 'application';
     static PERIOD = 'period';
     static END_TIME = 'endTime';
-    // static FILTER = 'filter';
-    // static HINT = 'hint';
     static REAL_TIME = 'realtime';
     static AGENT_ID = 'agentId';
-    static TRANSACTION_INFO = 'transactionInfo';
     static TRACE_ID = 'traceId';
     static FOCUS_TIMESTAMP = 'focusTimestamp';
     static SPAN_ID = 'spanId';
@@ -84,11 +81,15 @@ export class UrlPathId {
     static FAVORITE = 'favorite';
     static USER_GROUP = 'userGroup';
     static ALARM = 'alarm';
+    static WEBHOOK = 'webhook';
     static INSTALLATION = 'installation';
     static HELP = 'help';
+    static EXPERIMENTAL = 'experimental';
     static CHART_MANAGER = 'chartManager';
     static AGENT_STATISTIC = 'agentStatistic';
     static AGENT_MANAGEMENT = 'agentManagement';
+    static HOST_GROUP = 'hostGroup';
+    static HOST = 'host';
 
     constructor() {}
     static getPathIdList(): string[] {
@@ -104,9 +105,10 @@ export class UrlPathId {
             UrlPathId.REAL_TIME,
             UrlPathId.SPAN_ID,
             UrlPathId.TRACE_ID,
-            UrlPathId.TRANSACTION_INFO,
             UrlPathId.AGENT_STATISTIC,
-            UrlPathId.AGENT_MANAGEMENT
+            UrlPathId.AGENT_MANAGEMENT,
+            UrlPathId.HOST_GROUP,
+            UrlPathId.HOST
         ];
     }
 }
@@ -128,12 +130,13 @@ export class UrlPathIdFactory {
             // case UrlPathId.HINT:
             case UrlPathId.REAL_TIME:
             case UrlPathId.AGENT_ID:
-            case UrlPathId.TRANSACTION_INFO:
             case UrlPathId.TRACE_ID:
             case UrlPathId.FOCUS_TIMESTAMP:
             case UrlPathId.SPAN_ID:
             case UrlPathId.AGENT_STATISTIC:
             case UrlPathId.AGENT_MANAGEMENT:
+            case UrlPathId.HOST_GROUP:
+            case UrlPathId.HOST:
                 return new UrlGeneral(paramValue) as IUrlPathId<string>;
             default:
                 return new UrlGeneral(paramValue) as IUrlPathId<string>;

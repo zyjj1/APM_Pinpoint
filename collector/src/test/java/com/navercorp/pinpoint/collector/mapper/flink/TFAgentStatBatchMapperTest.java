@@ -20,11 +20,11 @@ import com.navercorp.pinpoint.common.server.bo.stat.AgentStatBo;
 import com.navercorp.pinpoint.common.server.bo.stat.CpuLoadBo;
 import com.navercorp.pinpoint.thrift.dto.flink.TFAgentStat;
 import com.navercorp.pinpoint.thrift.dto.flink.TFAgentStatBatch;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * @author minwoo.jung
@@ -37,7 +37,7 @@ public class TFAgentStatBatchMapperTest {
     public static final long collectTime3rd = collectTime2nd + 5000;
 
     @Test
-    public void mapTest() throws Exception {
+    public void mapTest() {
         AgentStatBo agentStatBo = createCpuLoadBoList();
 
         TFAgentStatMapper tFAgentStatMapper = new TFAgentStatMapper(new TFCpuLoadMapper[]{new TFCpuLoadMapper()});
@@ -48,7 +48,7 @@ public class TFAgentStatBatchMapperTest {
         assertEquals(startTimestamp, tFAgentStatBatch.getStartTimestamp());
 
         List<TFAgentStat> agentStatList = tFAgentStatBatch.getAgentStats();
-        assertEquals(agentStatList.size(), 3);
+        assertEquals(3, agentStatList.size());
     }
 
     private AgentStatBo createCpuLoadBoList() {

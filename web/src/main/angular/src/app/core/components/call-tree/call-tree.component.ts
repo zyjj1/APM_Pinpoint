@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnInit, OnChanges, SimpleChanges, AfterViewInit, HostBinding } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnChanges, SimpleChanges, AfterViewInit, HostBinding, Renderer2 } from '@angular/core';
 import * as moment from 'moment-timezone';
 import { GridOptions, RowNode } from 'ag-grid-community';
 
@@ -18,12 +18,14 @@ export interface IGridData {
     clazz: string;
     api: string;
     agent: string;
+    agentName?: string;
     application: string;
     isMethod: boolean;
     methodType: string;
     hasException: boolean;
     isAuthorized: boolean;
-    isFocused: boolean;
+    lineNumber: number;
+    location: string;
     folder?: boolean;
     open?: boolean;
     children?: any[];
@@ -44,28 +46,32 @@ export class CallTreeComponent implements OnInit, OnChanges, AfterViewInit {
         this.originalData = callTreeData;
         this.ratio = this.calcTimeRatio(callTreeData.callStack[0][callTreeData.callStackIndex.begin], callTreeData.callStack[0][callTreeData.callStackIndex.end]);
         this.rowData = this.makeGridData(callTreeData.callStack, callTreeData.callStackIndex);
+        if (this.gridOptions) {
+            this.gridOptions.context.focusIndex = null;
+            this.gridOptions.context.searchTargetIndexList = [];
+        }
     }
 
     @Input() timezone: string;
     @Input() dateFormat: string;
     @Output() outSelectFormatting = new EventEmitter<any>();
     @Output() outRowSelected = new EventEmitter<IGridData>();
-    @Output() outCellDoubleClicked = new EventEmitter<string>();
+    @Output() outCellDoubleClicked = new EventEmitter<{type: string, contents: string}>();
 
     private originalData: ITransactionDetailData;
     private ratio: number;
+    private isRendered = false;
 
     gridOptions: GridOptions;
     rowData: IGridData[];
 
     constructor(
-        private windowRefService: WindowRefService
+        private windowRefService: WindowRefService,
+        private renderer: Renderer2,
     ) {}
 
     ngAfterViewInit() {
-        const rowIndex = this.originalData.callStack.find((cs: any[]) => cs[4] === this.originalData.applicationId)[6];
-
-        this.moveRow(rowIndex);
+        this.moveRow(this.getInitialRow());
     }
 
     ngOnInit() {
@@ -87,7 +93,10 @@ export class CallTreeComponent implements OnInit, OnChanges, AfterViewInit {
                         });
                         break;
                     case 'selectedRowId':
-                        this.moveRow(changes[propName].currentValue);
+                        const rowId = changes[propName].currentValue;
+                        const row = this.gridOptions.api.getRowNode(rowId);
+                        
+                        this.moveRow(row);
                         break;
                 }
             });
@@ -104,15 +113,20 @@ export class CallTreeComponent implements OnInit, OnChanges, AfterViewInit {
             animateRows: true,
             enableCellTextSelection: true,
             rowHeight: 30,
-            getRowClass: (params: any) => {
-                if ( params.data.isFocused ) {
-                    return 'ag-row-focused';
-                } else if ( params.data.hasException ) {
-                    return 'ag-row-exception';
-                } else {
-                    return '';
-                }
+            context: {
+                focusIndex: null,
+                searchTargetIndexList: [],
             },
+            rowClassRules: {
+                'ag-row-search-target': ({context, rowIndex}: any) => {
+                    return context.searchTargetIndexList.includes(rowIndex);
+                },
+                'ag-row-focused': ({context, rowIndex}: any) => {
+                    return rowIndex === context.focusIndex;
+                },
+                'ag-row-exception': ({data}: any) => data.hasException,
+            },
+            getRowNodeId: (data) => data.id,
             getNodeChildDetails: (file) => {
                 if (file.folder) {
                     return {
@@ -131,7 +145,7 @@ export class CallTreeComponent implements OnInit, OnChanges, AfterViewInit {
                 }
             },
             suppressRowClickSelection: !this.canSelectRow,
-            rowSelection: this.rowSelection
+            rowSelection: this.rowSelection,
         };
     }
 
@@ -148,6 +162,16 @@ export class CallTreeComponent implements OnInit, OnChanges, AfterViewInit {
         }
 
         return color;
+    }
+
+    private getInitialRow(): RowNode {
+        const {callStack, callStackIndex, applicationId} = this.originalData;
+        const exceptionRow = callStack.find((call: any[]) => call[callStackIndex.hasException]);
+        const rowId = exceptionRow ? exceptionRow[callStackIndex.id]
+            : callStack.find((cs: any[]) => cs[callStackIndex.applicationName] === applicationId)[callStackIndex.id];
+        const row = this.gridOptions.api.getRowNode(rowId);
+
+        return row;
     }
 
     private getAgentKey(rowIndex: number): string {
@@ -180,10 +204,19 @@ export class CallTreeComponent implements OnInit, OnChanges, AfterViewInit {
                 width: 420,
                 cellRenderer: 'agGroupCellRenderer',
                 cellRendererParams: {
-                    innerRenderer: this.innerCellRenderer,
+                    innerRenderer: this.innerCellRenderer.bind(this),
                     suppressCount: true
                 },
-                tooltipField: 'method'
+                tooltipField: 'method',
+                cellStyle: (params: any) => {
+                    const { level } = params.node;
+                    const indent = 15;
+                    const isRootRow = params.node.rowIndex === 0;
+
+                    return {
+                        paddingLeft: isRootRow ? `4px` : `${(level + 1) * indent}px`
+                    };
+                }
             },
             {
                 headerName: 'Argument',
@@ -199,6 +232,10 @@ export class CallTreeComponent implements OnInit, OnChanges, AfterViewInit {
                 suppressSizeToFit: true,
                 valueFormatter: (params: any) => {
                     return params.value === 0 ? '' : moment(params.value).tz(this.timezone).format(this.dateFormat);
+                },
+                tooltipValueGetter: (params: any) => {
+                    const dayFormat = 'YYYY-MM-DD';
+                    return params.value === 0 ? '' : moment(params.value).tz(this.timezone).format(dayFormat);
                 }
             },
             {
@@ -278,7 +315,7 @@ export class CallTreeComponent implements OnInit, OnChanges, AfterViewInit {
                 tooltipField: 'api'
             },
             {
-                headerName: 'Agent',
+                headerName: 'Agent Id',
                 field: 'agent',
                 width: 150,
                 tooltipField: 'agent'
@@ -288,6 +325,12 @@ export class CallTreeComponent implements OnInit, OnChanges, AfterViewInit {
                 field: 'application',
                 width: 150,
                 tooltipField: 'application'
+            },
+            {
+                headerName: 'Agent Name',
+                field: 'agentName',
+                width: 150,
+                tooltipField: 'agentName'
             }
         ];
     }
@@ -335,7 +378,14 @@ export class CallTreeComponent implements OnInit, OnChanges, AfterViewInit {
                     break;
             }
         }
-        return result + params.data.method;
+
+        const span = this.renderer.createElement('span');
+        const text = this.renderer.createText(params.data.method);
+
+        this.renderer.setProperty(span, 'innerHTML', result);
+        this.renderer.appendChild(span, text);
+
+        return span;
     }
 
     onCellClick({colDef, value, data}: any): void {
@@ -350,7 +400,7 @@ export class CallTreeComponent implements OnInit, OnChanges, AfterViewInit {
                     bindValue = nextRowData[this.originalData.callStackIndex.arguments];
                 }
 
-                this.outSelectFormatting.next({
+                this.outSelectFormatting.emit({
                     type,
                     originalContents: data.argument,
                     bindValue
@@ -360,43 +410,65 @@ export class CallTreeComponent implements OnInit, OnChanges, AfterViewInit {
     }
 
     onCellDoubleClicked(params: any): void {
-        this.outCellDoubleClicked.next(params.data[params.colDef.field]);
+        const field = params.colDef.field;
+        let contents = params.data[field];
+        let type = 'plain';
+
+        if (!contents) {
+            return;
+        }
+
+        switch (field) {
+            case 'method':
+                const location = params.data.location;
+                const lineNumber = params.data.lineNumber;
+                const metaInfo = lineNumber ? `${location}:${lineNumber}` : '';
+                
+                type = 'html';
+                contents = `${contents} <span style="text-decoration:underline !important; color:var(--text-secondary); font-size:12px; margin-left:3px;">${metaInfo}</span>`;
+
+                break;
+            case 'startTime':
+                contents = moment(params.value).tz(this.timezone).format(this.dateFormat);
+
+                break;
+            default:
+                break;
+        }
+
+        this.outCellDoubleClicked.emit({
+            type,
+            contents
+        });
+    }
+
+    onGridSizeChanged(_: GridOptions): void {
+        this.gridOptions.api.sizeColumnsToFit();
     }
 
     onRendered(): void {
+        this.isRendered = true;
         this.gridOptions.api.sizeColumnsToFit();
     }
 
     onRowDataChanged(): void {
-        if (this.gridOptions) {
-            const rowIndex = this.originalData.callStack.find((cs: any[]) => cs[4] === this.originalData.applicationId)[6];
-
-            this.moveRow(rowIndex);
+        if (this.isRendered) {
+            this.moveRow(this.getInitialRow());
         }
     }
 
-    getQueryedRowCount({type, query}: {type: string, query: string | number}): number {
-        let resultCount = 0;
-        let targetIndex = -1;
+    getQueryedRowList({type, query}: {type: string, query: string}): RowNode[] {
+        const rowList: RowNode[] = [];
+
+        this.gridOptions.context.searchTargetIndexList = [];
 
         this.gridOptions.api.forEachNode((rowNode: RowNode) => {
             if (this.hasValueOnType(type, rowNode.data, query)) {
-                if (resultCount === 0) {
-                    targetIndex = rowNode.data.index;
-                }
-
-                resultCount++;
-                rowNode.setSelected(true);
-            } else {
-                rowNode.setSelected(false);
+                this.gridOptions.context.searchTargetIndexList.push(rowNode.rowIndex);
+                rowList.push(rowNode);
             }
         });
-
-        if (resultCount > 0) {
-            this.gridOptions.api.ensureIndexVisible(targetIndex, 'top');
-        }
-
-        return resultCount;
+        return rowList;
     }
 
     private calcTimeRatio(begin: number, end: number): number {
@@ -446,12 +518,15 @@ export class CallTreeComponent implements OnInit, OnChanges, AfterViewInit {
         oRow['clazz'] = callTree[oIndex.simpleClassName];
         oRow['api'] = callTree[oIndex.apiType];
         oRow['agent'] = callTree[oIndex.agent];
+        oRow['agentName'] = callTree[oIndex.agentName];
         oRow['application'] = callTree[oIndex.applicationName];
         oRow['isMethod'] = callTree[oIndex.isMethod];
         oRow['methodType'] = callTree[oIndex.methodType];
         oRow['hasException'] = callTree[oIndex.hasException];
         oRow['isAuthorized'] = callTree[oIndex.isAuthorized];
-        oRow['isFocused'] = callTree[oIndex.isFocused];
+        oRow['lineNumber'] = callTree[oIndex.lineNumber];
+        oRow['location'] = callTree[oIndex.location];
+
         if (callTree[oIndex.hasChild]) {
             oRow['folder'] = true;
             oRow['open'] = true;
@@ -459,38 +534,36 @@ export class CallTreeComponent implements OnInit, OnChanges, AfterViewInit {
         }
     }
 
-    private hasValueOnType(type: string, data: any, value: string | number): boolean {
+    private hasValueOnType(type: string, data: any, query: string): boolean {
+        const value = query.toLowerCase();
+
         switch (type) {
             case 'all':
-                return (data.method && data.method.indexOf(value) !== -1) ||
-                    (data.argument && data.argument.indexOf(value) !== -1) ||
-                    (data.clazz && data.clazz.indexOf(value) !== -1) ||
-                    (data.api && data.api.indexOf(value) !== -1) ||
-                    (data.agent && data.agent.indexOf(value) !== -1) ||
-                    (data.application && data.application.indexOf(value) !== -1);
+                return (data.method && data.method.toLowerCase().includes(value)) ||
+                    (data.argument && data.argument.toLowerCase().includes(value)) ||
+                    (data.clazz && data.clazz.toLowerCase().includes(value)) ||
+                    (data.api && data.api.toLowerCase().includes(value)) ||
+                    (data.agent && data.agent.toLowerCase().includes(value)) ||
+                    (data.application && data.application.toLowerCase().includes(value));
             case 'self':
                 return +data.selp >= +value;
             case 'argument':
-                return data.argument.indexOf(value) !== -1;
+                return data.argument.toLowerCase().includes(value);
             case 'exception':
-                return data.hasException && (
-                    (data.method && data.method.indexOf(value) !== -1) ||
-                    (data.argument && data.argument.indexOf(value) !== -1)
-                )
+                return data.hasException && (value === '' ||
+                    ((data.method && data.method.toLowerCase().includes(value)) ||
+                    (data.argument && data.argument.toLowerCase().includes(value)))
+                );
+                // return data.hasException && (
+                //     (data.method && data.method.indexOf(value) !== -1) ||
+                //     (data.argument && data.argument.indexOf(value) !== -1)
+                // )
         }
     }
 
-    moveRow(id: string): void {
-        let targetIndex = -1;
-        this.gridOptions.api.forEachNode((rowNode: RowNode) => {
-            if (rowNode.data.id === id) {
-                targetIndex = rowNode.data.index;
-                rowNode.setSelected(true);
-            } else {
-                rowNode.setSelected(false);
-            }
-        });
-
-        this.gridOptions.api.ensureIndexVisible(targetIndex, 'top');
+    moveRow(row: RowNode): void {
+        this.gridOptions.context.focusIndex = row.rowIndex;
+        this.gridOptions.api.ensureNodeVisible(row, 'middle');
+        this.gridOptions.api.redrawRows();
     }
 }

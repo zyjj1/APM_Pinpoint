@@ -44,8 +44,8 @@ import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -61,7 +61,7 @@ public class SpanMapperV2 implements RowMapper<List<SpanBo>> {
 
     private static final int DISABLED_CACHE = -1;
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
 
     private final SpanDecoder spanDecoder;
 
@@ -121,15 +121,15 @@ public class SpanMapperV2 implements RowMapper<List<SpanBo>> {
                 final Object decodeObject = spanDecoder.decode(qualifier, columnValue, decodingContext);
                 if (decodeObject instanceof SpanBo) {
                     SpanBo spanBo = (SpanBo) decodeObject;
-                    if (logger.isDebugEnabled()) {
-                        logger.debug("spanBo:{}", spanBo);
+                    if (logger.isTraceEnabled()) {
+                        logger.trace("spanBo:{}", spanBo);
                     }
                     AgentKey agentKey = newAgentKey(spanBo);
                     spanMap.put(agentKey, spanBo);
                 } else if (decodeObject instanceof SpanChunkBo) {
                     SpanChunkBo spanChunkBo = (SpanChunkBo) decodeObject;
-                    if (logger.isDebugEnabled()) {
-                        logger.debug("spanChunkBo:{}", spanChunkBo);
+                    if (logger.isTraceEnabled()) {
+                        logger.trace("spanChunkBo:{}", spanChunkBo);
                     }
                     spanChunkList.add(spanChunkBo);
                 }

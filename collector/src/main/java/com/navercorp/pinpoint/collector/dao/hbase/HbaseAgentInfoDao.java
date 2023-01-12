@@ -20,19 +20,16 @@ import com.navercorp.pinpoint.collector.dao.AgentInfoDao;
 import com.navercorp.pinpoint.collector.util.CollectorUtils;
 import com.navercorp.pinpoint.common.hbase.HbaseColumnFamily;
 import com.navercorp.pinpoint.common.hbase.HbaseOperations2;
-import com.navercorp.pinpoint.common.hbase.HbaseTableConstants;
 import com.navercorp.pinpoint.common.hbase.ResultsExtractor;
-import com.navercorp.pinpoint.common.hbase.TableDescriptor;
+import com.navercorp.pinpoint.common.hbase.TableNameProvider;
 import com.navercorp.pinpoint.common.server.bo.AgentInfoBo;
+import com.navercorp.pinpoint.common.server.bo.serializer.agent.AgentIdRowKeyEncoder;
 import com.navercorp.pinpoint.common.server.util.RowKeyUtils;
-import com.navercorp.pinpoint.common.util.TimeUtils;
-
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Scan;
-import org.apache.hadoop.hbase.util.Bytes;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.springframework.stereotype.Repository;
 
 import java.util.Objects;
@@ -45,16 +42,20 @@ import java.util.Objects;
 public class HbaseAgentInfoDao implements AgentInfoDao {
     private static final int SCANNER_CACHING = 1;
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LogManager.getLogger(this.getClass());
+    private static final HbaseColumnFamily.AgentInfo DESCRIPTOR = HbaseColumnFamily.AGENTINFO_INFO;
 
     private final HbaseOperations2 hbaseTemplate;
+    private final TableNameProvider tableNameProvider;
+
     private final ResultsExtractor<AgentInfoBo> agentInfoResultsExtractor;
+    private final AgentIdRowKeyEncoder rowKeyEncoder = new AgentIdRowKeyEncoder();
 
-    private final TableDescriptor<HbaseColumnFamily.AgentInfo> descriptor;
-
-    public HbaseAgentInfoDao(HbaseOperations2 hbaseTemplate, TableDescriptor<HbaseColumnFamily.AgentInfo> descriptor, ResultsExtractor<AgentInfoBo> agentInfoResultsExtractor) {
+    public HbaseAgentInfoDao(HbaseOperations2 hbaseTemplate,
+                             TableNameProvider tableNameProvider,
+                             ResultsExtractor<AgentInfoBo> agentInfoResultsExtractor) {
         this.hbaseTemplate = Objects.requireNonNull(hbaseTemplate, "hbaseTemplate");
-        this.descriptor = Objects.requireNonNull(descriptor, "descriptor");
+        this.tableNameProvider = Objects.requireNonNull(tableNameProvider, "tableNameProvider");
         this.agentInfoResultsExtractor = Objects.requireNonNull(agentInfoResultsExtractor, "agentInfoResultsExtractor");
     }
 
@@ -69,27 +70,27 @@ public class HbaseAgentInfoDao implements AgentInfoDao {
         CollectorUtils.checkAgentId(agentInfo.getAgentId());
         // Assert applicationName
         CollectorUtils.checkApplicationName(agentInfo.getApplicationName());
+        //check agentName if set
+        CollectorUtils.checkAgentName(agentInfo.getAgentName());
 
-        final byte[] agentId = Bytes.toBytes(agentInfo.getAgentId());
-        final long reverseKey = TimeUtils.reverseTimeMillis(agentInfo.getStartTime());
-        final byte[] rowKey = RowKeyUtils.concatFixedByteAndLong(agentId, HbaseTableConstants.AGENT_NAME_MAX_LEN, reverseKey);
+        final byte[] rowKey = rowKeyEncoder.encodeRowKey(agentInfo.getAgentId(), agentInfo.getStartTime());
         final Put put = new Put(rowKey);
 
         // should add additional agent informations. for now added only starttime for sqlMetaData
         final byte[] agentInfoBoValue = agentInfo.writeValue();
-        put.addColumn(descriptor.getColumnFamilyName(), descriptor.getColumnFamily().QUALIFIER_IDENTIFIER, agentInfoBoValue);
+        put.addColumn(DESCRIPTOR.getName(), DESCRIPTOR.QUALIFIER_IDENTIFIER, agentInfoBoValue);
 
         if (agentInfo.getServerMetaData() != null) {
             final byte[] serverMetaDataBoValue = agentInfo.getServerMetaData().writeValue();
-            put.addColumn(descriptor.getColumnFamilyName(), descriptor.getColumnFamily().QUALIFIER_SERVER_META_DATA, serverMetaDataBoValue);
+            put.addColumn(DESCRIPTOR.getName(), DESCRIPTOR.QUALIFIER_SERVER_META_DATA, serverMetaDataBoValue);
         }
 
         if (agentInfo.getJvmInfo() != null) {
             final byte[] jvmInfoBoValue = agentInfo.getJvmInfo().writeValue();
-            put.addColumn(descriptor.getColumnFamilyName(), descriptor.getColumnFamily().QUALIFIER_JVM, jvmInfoBoValue);
+            put.addColumn(DESCRIPTOR.getName(), DESCRIPTOR.QUALIFIER_JVM, jvmInfoBoValue);
         }
 
-        final TableName agentInfoTableName = descriptor.getTableName();
+        final TableName agentInfoTableName = tableNameProvider.getTableName(DESCRIPTOR.getTable());
         hbaseTemplate.put(agentInfoTableName, put);
     }
 
@@ -97,20 +98,19 @@ public class HbaseAgentInfoDao implements AgentInfoDao {
         Objects.requireNonNull(agentId, "agentId");
 
         final Scan scan = createScan(agentId, timestamp);
-        final TableName agentInfoTableName = descriptor.getTableName();
+        final TableName agentInfoTableName = tableNameProvider.getTableName(DESCRIPTOR.getTable());
         return this.hbaseTemplate.find(agentInfoTableName, scan, agentInfoResultsExtractor);
     }
 
     private Scan createScan(String agentId, long currentTime) {
         final Scan scan = new Scan();
-        final byte[] agentIdBytes = Bytes.toBytes(agentId);
-        final long startTime = TimeUtils.reverseTimeMillis(currentTime);
-        final byte[] startKeyBytes = RowKeyUtils.concatFixedByteAndLong(agentIdBytes, HbaseTableConstants.AGENT_NAME_MAX_LEN, startTime);
-        final byte[] endKeyBytes = RowKeyUtils.concatFixedByteAndLong(agentIdBytes, HbaseTableConstants.AGENT_NAME_MAX_LEN, Long.MAX_VALUE);
+
+        final byte[] startKeyBytes = rowKeyEncoder.encodeRowKey(agentId, currentTime);
+        final byte[] endKeyBytes = RowKeyUtils.agentIdAndTimestamp(agentId, Long.MAX_VALUE);
 
         scan.withStartRow(startKeyBytes);
         scan.withStopRow(endKeyBytes);
-        scan.addFamily(descriptor.getColumnFamilyName());
+        scan.addFamily(DESCRIPTOR.getName());
         scan.setMaxVersions(1);
         scan.setCaching(SCANNER_CACHING);
 

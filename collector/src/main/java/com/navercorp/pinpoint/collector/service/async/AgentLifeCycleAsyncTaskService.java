@@ -24,9 +24,8 @@ import com.navercorp.pinpoint.common.server.util.AgentLifeCycleState;
 import com.navercorp.pinpoint.common.trace.ServiceType;
 import com.navercorp.pinpoint.common.util.BytesUtils;
 import com.navercorp.pinpoint.loader.service.ServiceTypeRegistryService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -39,15 +38,19 @@ import java.util.Objects;
 public class AgentLifeCycleAsyncTaskService {
     private static final int INTEGER_BIT_COUNT = BytesUtils.INT_BYTE_LENGTH * 8;
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
-    @Autowired
-    private AgentLifeCycleService agentLifeCycleService;
-    @Autowired
-    private StatisticsService statisticsService;
-    @Autowired
-    private ServiceTypeRegistryService registry;
-    @Autowired
-    private CollectorConfiguration configuration;
+    private final Logger logger = LogManager.getLogger(this.getClass());
+
+    private final AgentLifeCycleService agentLifeCycleService;
+    private final StatisticsService statisticsService;
+    private final ServiceTypeRegistryService registry;
+    private final CollectorConfiguration configuration;
+
+    public AgentLifeCycleAsyncTaskService(AgentLifeCycleService agentLifeCycleService, StatisticsService statisticsService, ServiceTypeRegistryService registry, CollectorConfiguration configuration) {
+        this.agentLifeCycleService = agentLifeCycleService;
+        this.statisticsService = statisticsService;
+        this.registry = registry;
+        this.configuration = configuration;
+    }
 
     @Async("agentEventWorker")
     public void handleLifeCycleEvent(AgentProperty agentProperty, long eventTimestamp, AgentLifeCycleState agentLifeCycleState, long eventIdentifier) {
@@ -59,16 +62,15 @@ public class AgentLifeCycleAsyncTaskService {
             logger.warn("Failed to handle event of agent life cycle, agentId is null. agentProperty={}", agentProperty);
             return;
         }
-
-        final long startTimestamp = agentProperty.getStartTime();
-        final AgentLifeCycleBo agentLifeCycleBo = new AgentLifeCycleBo(agentId, startTimestamp, eventTimestamp, eventIdentifier, agentLifeCycleState);
-        agentLifeCycleService.insert(agentLifeCycleBo);
-
         final String applicationName = agentProperty.getApplicationName();
         if (applicationName == null) {
             logger.warn("Failed to handle event of agent life cycle, applicationName is null. agentProperty={}", agentProperty);
             return;
         }
+
+        final long startTimestamp = agentProperty.getStartTime();
+        final AgentLifeCycleBo agentLifeCycleBo = new AgentLifeCycleBo(agentId, startTimestamp, eventTimestamp, eventIdentifier, agentLifeCycleState);
+        agentLifeCycleService.insert(agentLifeCycleBo);
 
         final ServiceType serviceType = registry.findServiceType(agentProperty.getServiceType());
         if (isUpdateAgentState(serviceType)) {

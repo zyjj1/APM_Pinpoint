@@ -60,6 +60,7 @@ interface IAgentList {
 // @store
 interface IAgent {
     agentId: string;
+    agentName?: string;
     agentVersion: string;
     applicationName: string;
     hostName: string;
@@ -112,15 +113,16 @@ interface IServerInfo {
 }
 interface ILinkInfo {
     errorCount: number;
-    filterApplicationName: string;
-    filterApplicationServiceTypeCode: number;
-    filterApplicationServiceTypeName: string;
+    filterApplicationName?: string;
+    filterApplicationServiceTypeCode?: number;
+    filterApplicationServiceTypeName?: string;
     filterTargetRpcList?: any[];
     from: string;
     fromAgent?: string[];
+    fromAgentIdNameMap?: { [key: string]: string }
     hasAlert: boolean;
-    histogram: IResponseTime | IResponseMilliSecondTime;
-    responseStatistics: IResponseStatistics;
+    histogram?: IResponseTime | IResponseMilliSecondTime;
+    responseStatistics?: IResponseStatistics;
     key: string;
     slowCount: number;
     sourceHistogram?: { [key: string]: IResponseTime | IResponseMilliSecondTime };
@@ -130,34 +132,44 @@ interface ILinkInfo {
     targetHistogram?: { [key: string]: IResponseTime | IResponseMilliSecondTime };
     targetResponseStatistics?: { [key: string]: IResponseStatistics };
     targetInfo: ISourceInfo;
-    timeSeriesHistogram: IHistogram[];
+    timeSeriesHistogram?: IHistogram[];
     to: string;
     toAgent?: string[];
+    toAgentIdNameMap?: { [key: string]: string }
     totalCount: number;
+    isMerged?: boolean;
+    isFiltered?: boolean;
 }
 interface INodeInfo {
     agentHistogram?: { [key: string]: IResponseTime | IResponseMilliSecondTime }[];
     agentTimeSeriesHistogram?: { [key: string]: IHistogram[] };
-    agentIds: string[];
+    agentIds?: string[];
+    agentIdNameMap?: { [key: string]: string };
+    apdexScore?: number;
     applicationName: string;
     category: string;
-    errorCount: number;
-    hasAlert: boolean;
-    histogram: IResponseTime | IResponseMilliSecondTime;
-    responseStatistics: IResponseStatistics;
+    errorCount?: number;
+    hasAlert?: boolean;
+    histogram?: IResponseTime | IResponseMilliSecondTime;
+    responseStatistics?: IResponseStatistics;
     agentResponseStatistics?: { [key: string]: IResponseStatistics};
     instanceCount: number;
-    instanceErrorCount: number;
+    instanceErrorCount?: number;
     isAuthorized: boolean;
-    isQueue: boolean;
-    isWas: boolean;
+    isQueue?: boolean;
+    isWas?: boolean;
     key: string;
     serverList?: { [key: string]: IServerInfo };
     serviceType: string;
-    serviceTypeCode: string;
-    slowCount: number;
-    timeSeriesHistogram: IHistogram[];
-    totalCount: number;
+    serviceTypeCode?: string;
+    slowCount?: number;
+    timeSeriesHistogram?: IHistogram[];
+    totalCount?: number;
+
+    isMerged?: boolean;
+    mergedNodes?: any[];
+    topCountNodes?: any[];
+    mergedSourceNodes?: any[];
 }
 interface IQueryRange {
     from: number;
@@ -198,17 +210,9 @@ interface ISelectedTarget {
     groupedNode?: string[];
     hasServerList?: boolean;
     isAuthorized?: boolean;
+    apdexScore?: number;
 }
 
-interface AjaxExceptionObj {
-    message: string;
-    request: {[key: string]: any};
-    stacktrace: string
-}
-
-interface AjaxException {
-    exception: AjaxExceptionObj;
-}
 // @store
 interface IScatterXRange {
     from: number;
@@ -243,6 +247,7 @@ interface ICoordinate {
 // @store
 interface ITransactionMetaData {
     agentId: string;
+    agentName?: string;
     application: string;
     collectorAcceptTime: number;
     elapsed: number;
@@ -256,6 +261,7 @@ interface ITransactionMetaData {
 // @store
 interface ITransactionDetailData {
     agentId: string;
+    agentName?: string;
     applicationId: string;
     applicationMapData: any;
     applicationName: string;
@@ -275,14 +281,8 @@ interface ITransactionDetailData {
 interface ITransactionTimelineData {
     agentId: string;
     applicationId: string;
-    barRatio: number;
-    callStack: any[];
-    asyncCallStack: any[];
-    focusedRows: boolean[];
-    databaseCalls: any[];
-    callStackEnd: number;
-    callStackStart: number;
     transactionId: string;
+    traceViewerDataURL: string;
 }
 // @store
 interface IHoveredInfo {
@@ -300,8 +300,10 @@ interface ISelectedRowInfo {
     agentId?: string;
 }
 // @store
+
 interface IServerAndAgentData {
     agentId: string;
+    agentName?: string;
     agentVersion: string;
     applicationName: string;
     hostName: string;
@@ -316,6 +318,36 @@ interface IServerAndAgentData {
     ports: string;
     serverMetaData: any;
     serviceType: string;
+    startTimestamp: number;
+    status: {
+        agentId: string;
+        eventTimestamp: number;
+        state: {
+            code: number;
+            desc: string;
+        }
+    };
+    vmVersion: string;
+}
+
+interface IServerAndAgentDataV2 {
+    groupName: string;
+    instancesList: IAgentDataV2[];
+}
+
+interface IAgentDataV2 {
+    agentId: string;
+    agentName: string;
+    agentVersion: string;
+    applicationName: string;
+    container: boolean;
+    hostName: string;
+    ip: string;
+    linkList: any[];
+    pid: number;
+    ports: string;
+    serviceType: string;
+    serviceTypeCode: number;
     startTimestamp: number;
     status: {
         agentId: string;
@@ -347,9 +379,10 @@ interface IServerMapMergeState {
 }
 
 // @store
-interface ITransactionMessage {
+interface IMessage {
     title: string;
     contents: string;
+    type: string;
 }
 
 // @store
@@ -379,6 +412,23 @@ interface IServerErrorShortFormat {
     errorCode: string;
     errorMessage: string;
 }
+interface IServerError {
+    timestamp: number;
+    status: number;
+    error: string;
+    exception: string;
+    trace: string;
+    message: string;
+    path: string;
+    data: {
+        requestInfo: {
+            method: string;
+            url: string;
+            headers: {[key: string]: string[]};
+            parameters: {[key: string]: string[]};
+        }
+    }
+}
 interface ISystemConfiguration {
     editUserInfo: boolean;
     enableServerMapRealTime: boolean;
@@ -392,6 +442,8 @@ interface ISystemConfiguration {
     userId?: string;
     userName?: string;
     userDepartment?: string;
+    showSystemMetric: boolean;
+    showUrlStat: boolean;
 }
 
 interface IFormFieldErrorType {
@@ -415,7 +467,7 @@ interface IChartLayoutInfoResponse {
 
 interface IChartConfig {
     dataConfig: any;
-    elseConfig: {[key: string]: any};
+    elseConfig?: {[key: string]: any};
 }
 
 interface IUserProfile {
@@ -425,4 +477,38 @@ interface IUserProfile {
     phoneCountryCode?: string;
     phoneNumber?: string;
     email?: string;
+}
+
+interface IMetricData {
+    title: string;
+    timestamp: number[];
+    metricValueGroups: {
+        groupName: string,
+        metricValues: IMetricValue[]
+    }[];
+    unit: string;
+}
+
+interface IMetricValue {
+    fieldName: string;
+    // tagList: {name: string, value: string}[];
+    tags?: any[]; // TODO: Check format
+    values: number[];
+}
+
+interface IUrlStatInfoData {
+    uri: string;
+    totalCount: number;
+    failureCount: number;
+    maxTimeMs: number;
+    avgTimeMs: number;
+}
+
+interface IUrlStatChartData {
+    title: string;
+    timestamp: number[];
+    metricValueGroups: {
+        groupName: string;
+        metricValues: IMetricValue[]
+    }[];
 }

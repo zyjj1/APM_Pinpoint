@@ -17,10 +17,10 @@
 
 package com.navercorp.pinpoint.common.util.logger;
 
-import org.junit.Assert;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -30,7 +30,7 @@ import java.io.PrintStream;
  */
 public class StdoutCommonLoggerTest {
 
-    private final Logger logger = LoggerFactory.getLogger(getClass());
+    private final Logger logger = LogManager.getLogger(getClass());
 
 
     @Test
@@ -56,7 +56,7 @@ public class StdoutCommonLoggerTest {
 
     private void assertMessage(String out, String message) {
         logger.debug("log-message {}", out);
-        Assert.assertTrue(out.contains(message));
+        Assertions.assertTrue(out.contains(message));
 
     }
 

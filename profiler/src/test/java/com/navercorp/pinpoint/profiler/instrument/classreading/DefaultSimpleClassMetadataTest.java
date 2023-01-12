@@ -15,11 +15,12 @@
  */
 package com.navercorp.pinpoint.profiler.instrument.classreading;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * @author jaehong.kim
@@ -40,7 +41,7 @@ public class DefaultSimpleClassMetadataTest {
     }
 
     @Test
-    public void interfaceNameNull() throws Exception {
+    public void interfaceNameNull() {
         final byte[] classBinary = new byte[1];
         DefaultSimpleClassMetadata classMetadata = new DefaultSimpleClassMetadata(1, 1, "java/lang/String", "java/lang/Object", null, classBinary);
         assertEquals(0, classMetadata.getInterfaceNames().size());

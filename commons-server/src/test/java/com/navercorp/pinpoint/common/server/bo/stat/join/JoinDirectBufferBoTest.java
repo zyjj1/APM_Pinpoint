@@ -16,12 +16,13 @@
 
 package com.navercorp.pinpoint.common.server.bo.stat.join;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 
 /**
  * @author minwoo.jung
@@ -29,7 +30,7 @@ import static org.junit.Assert.assertEquals;
 public class JoinDirectBufferBoTest {
     @Test
     public void joinDirectBufferBoList() throws Exception {
-        List<JoinDirectBufferBo> joinDirectBufferBoList = new ArrayList<JoinDirectBufferBo>();
+        List<JoinDirectBufferBo> joinDirectBufferBoList = new ArrayList<>();
         JoinDirectBufferBo joinDirectBufferBo1 = new JoinDirectBufferBo("agent1", 33, 70, "agent1", 30, "agent1"
                 , 33, 70, "agent1", 30, "agent1"
                 , 33, 70, "agent1", 30, "agent1"
@@ -69,11 +70,11 @@ public class JoinDirectBufferBoTest {
         assertEquals(joinDirectBufferBo.getDirectMemoryUsedJoinValue(), new JoinLongFieldBo(30L, 7L, "agent3", 80L, "agent4"));
         assertEquals(joinDirectBufferBo.getMappedCountJoinValue(), new JoinLongFieldBo(30L, 7L, "agent3", 80L, "agent4"));
         assertEquals(joinDirectBufferBo.getMappedMemoryUsedJoinValue(), new JoinLongFieldBo(30L, 7L, "agent3", 80L, "agent4"));
-   }
+    }
 
     @Test
-    public void  joinDirectBufferBo2List() {
-        List<JoinDirectBufferBo> joinDirectBufferBoList = new ArrayList<JoinDirectBufferBo>();
+    public void joinDirectBufferBo2List() {
+        List<JoinDirectBufferBo> joinDirectBufferBoList = new ArrayList<>();
         JoinDirectBufferBo joinDirectBufferBo = JoinDirectBufferBo.joinDirectBufferBoList(joinDirectBufferBoList, 1496988667231L);
         assertEquals(joinDirectBufferBo, JoinDirectBufferBo.EMPTY_JOIN_DIRECT_BUFFER_BO);
     }

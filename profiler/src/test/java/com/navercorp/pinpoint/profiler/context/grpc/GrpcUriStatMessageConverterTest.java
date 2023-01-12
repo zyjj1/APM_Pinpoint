@@ -16,33 +16,40 @@
 
 package com.navercorp.pinpoint.profiler.context.grpc;
 
+import com.navercorp.pinpoint.common.profiler.clock.Clock;
+import com.navercorp.pinpoint.common.profiler.clock.TickClock;
 import com.navercorp.pinpoint.common.trace.UriStatHistogramBucket;
 import com.navercorp.pinpoint.grpc.trace.PAgentUriStat;
 import com.navercorp.pinpoint.grpc.trace.PEachUriStat;
 import com.navercorp.pinpoint.grpc.trace.PUriHistogram;
 import com.navercorp.pinpoint.profiler.monitor.metric.uri.AgentUriStatData;
 import com.navercorp.pinpoint.profiler.monitor.metric.uri.UriStatInfo;
-
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.LongSummaryStatistics;
 import java.util.Random;
 
 /**
  * @author Taejin Koo
  */
 public class GrpcUriStatMessageConverterTest {
+    private static final int DEFAULT_COLLECT_INTERVAL = 30000; // 30s
 
     private static final Random RANDOM = new Random(System.currentTimeMillis());
 
     private static final String[] URI_EXAMPLES = {"/index.html", "/main", "/error"};
 
+    private final UriStatHistogramBucket.Layout layout = UriStatHistogramBucket.getLayout();
+
     @Test
     public void convertTest() {
+        TickClock clock = (TickClock) Clock.tick(DEFAULT_COLLECT_INTERVAL);
+
         long currentTimeMillis = System.currentTimeMillis();
-        AgentUriStatData agentUriStatData = new AgentUriStatData(currentTimeMillis);
+        AgentUriStatData agentUriStatData = new AgentUriStatData(currentTimeMillis, 10, clock);
 
         List<UriStatInfo> uriStatInfoList = createRandomUriStatInfo(100);
         for (UriStatInfo uriStatInfo : uriStatInfoList) {
@@ -59,18 +66,20 @@ public class GrpcUriStatMessageConverterTest {
     }
 
     private List<UriStatInfo> createRandomUriStatInfo(int size) {
+        long endTime = System.currentTimeMillis();
+
         List<UriStatInfo> result = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
-            result.add(createRandomUriStatInfo());
+            result.add(createRandomUriStatInfo(endTime));
         }
         return result;
     }
 
-    private UriStatInfo createRandomUriStatInfo() {
+    private UriStatInfo createRandomUriStatInfo(long timestamp) {
         int index = RANDOM.nextInt(URI_EXAMPLES.length);
         boolean status = RANDOM.nextBoolean();
         final int elapsedTime = RANDOM.nextInt(10000);
-        return new UriStatInfo(URI_EXAMPLES[index], status, elapsedTime);
+        return new UriStatInfo(URI_EXAMPLES[index], status, timestamp - elapsedTime, timestamp);
     }
 
     private void assertData(List<UriStatInfo> uriStatInfoList, List<PEachUriStat> eachUriStatList) {
@@ -82,39 +91,31 @@ public class GrpcUriStatMessageConverterTest {
     }
 
     private void assertData(List<UriStatInfo> expected, PUriHistogram actual) {
-        Assert.assertEquals(expected.size(), actual.getCount());
-        Assert.assertEquals(getMax(expected), actual.getMax());
-        Assert.assertEquals(new Double(getAvg(expected)).longValue(), new Double(actual.getAvg()).longValue());
+        LongSummaryStatistics summary = getSummary(expected);
+
+        Assertions.assertEquals(summary.getMax(), actual.getMax());
+        Assertions.assertEquals(summary.getSum(), actual.getTotal());
 
         List<Integer> histogramList = actual.getHistogramList();
         for (int i = 0; i < histogramList.size(); i++) {
-            UriStatHistogramBucket valueByIndex = UriStatHistogramBucket.getValueByIndex(i);
+            UriStatHistogramBucket valueByIndex = layout.getBucketByIndex(i);
             int bucketCount = getBucketCount(expected, valueByIndex);
-            Assert.assertEquals(new Integer(bucketCount), histogramList.get(i));
+            Assertions.assertEquals(new Integer(bucketCount), histogramList.get(i));
         }
     }
 
-    private long getMax(List<UriStatInfo> expected) {
-        long max = 0;
-        for (UriStatInfo uriStatInfo : expected) {
-            max = Math.max(max, uriStatInfo.getElapsed());
-        }
-        return max;
+    private LongSummaryStatistics getSummary(List<UriStatInfo> expected) {
+        return expected.stream()
+                .mapToLong(UriStatInfo::getElapsed)
+                .summaryStatistics();
     }
 
-    private double getAvg(List<UriStatInfo> expected) {
-        long total = 0l;
-        for (UriStatInfo uriStatInfo : expected) {
-            total += uriStatInfo.getElapsed();
-        }
-        return total / expected.size();
-    }
 
     private int getBucketCount(List<UriStatInfo> uriStatInfoList, UriStatHistogramBucket type) {
         int count = 0;
 
         for (UriStatInfo uriStatInfo : uriStatInfoList) {
-            UriStatHistogramBucket value = UriStatHistogramBucket.getValue(uriStatInfo.getElapsed());
+            UriStatHistogramBucket value = layout.getBucket(uriStatInfo.getElapsed());
             if (value == type) {
                 count += 1;
             }

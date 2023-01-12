@@ -33,9 +33,7 @@ import com.navercorp.pinpoint.common.server.bo.stat.join.JoinDataSourceBo;
 import com.navercorp.pinpoint.common.server.bo.stat.join.JoinDataSourceListBo;
 import com.navercorp.pinpoint.common.server.bo.stat.join.JoinIntFieldBo;
 import com.navercorp.pinpoint.common.server.bo.stat.join.JoinStatBo;
-
 import org.apache.commons.collections4.CollectionUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -45,16 +43,15 @@ import java.util.Objects;
 /**
  * @author minwoo.jung
  */
-@Component("joinDataSourceCodec")
-public class DataSourceCodec implements ApplicationStatCodec {
+@Component
+public class DataSourceCodec implements ApplicationStatCodec<JoinDataSourceListBo> {
 
     private static final byte VERSION = 1;
 
     private final AgentStatDataPointCodec codec;
 
-    @Autowired
     public DataSourceCodec(AgentStatDataPointCodec codec) {
-        this.codec = Objects.requireNonNull(codec, "agentStatDataPointCodec");
+        this.codec = Objects.requireNonNull(codec, "codec");
     }
 
     @Override
@@ -63,7 +60,7 @@ public class DataSourceCodec implements ApplicationStatCodec {
     }
 
     @Override
-    public void encodeValues(Buffer valueBuffer, List<JoinStatBo> JoinStatBoList) {
+    public void encodeValues(Buffer valueBuffer, List<JoinDataSourceListBo> JoinStatBoList) {
         if (CollectionUtils.isEmpty(JoinStatBoList)) {
             throw new IllegalArgumentException("joinDataSourceListBoList must not be empty");
         }
@@ -124,8 +121,8 @@ public class DataSourceCodec implements ApplicationStatCodec {
         codec.encodeTimestamps(valueBuffer, timestamps);
     }
 
-    private List<JoinDataSourceListBo> castJoinDataSourceListBoList(List<JoinStatBo> joinStatBoList) {
-        List<JoinDataSourceListBo> joinDataSourceListBoList = new ArrayList<JoinDataSourceListBo>();
+    private List<JoinDataSourceListBo> castJoinDataSourceListBoList(List<JoinDataSourceListBo> joinStatBoList) {
+        List<JoinDataSourceListBo> joinDataSourceListBoList = new ArrayList<>();
 
         for (JoinStatBo joinStatBo : joinStatBoList) {
             joinDataSourceListBoList.add((JoinDataSourceListBo) joinStatBo);
@@ -135,7 +132,7 @@ public class DataSourceCodec implements ApplicationStatCodec {
     }
 
     @Override
-    public List<JoinStatBo> decodeValues(Buffer valueBuffer, ApplicationStatDecodingContext decodingContext) {
+    public List<JoinDataSourceListBo> decodeValues(Buffer valueBuffer, ApplicationStatDecodingContext decodingContext) {
         final String id = decodingContext.getApplicationId();
         final long baseTimestamp = decodingContext.getBaseTimestamp();
         final long timestampDelta = decodingContext.getTimestampDelta();
@@ -144,7 +141,7 @@ public class DataSourceCodec implements ApplicationStatCodec {
         int numValues = valueBuffer.readVInt();
         List<Long> timestampList = this.codec.decodeTimestamps(initialTimestamp, valueBuffer, numValues);
 
-        List<JoinStatBo> joinDataSourceListBoList = new ArrayList<JoinStatBo>(numValues);
+        List<JoinDataSourceListBo> joinDataSourceListBoList = new ArrayList<>(numValues);
 
         for (int i = 0; i < numValues; ++i) {
             JoinDataSourceListBo joinDataSourceListBo = new JoinDataSourceListBo();

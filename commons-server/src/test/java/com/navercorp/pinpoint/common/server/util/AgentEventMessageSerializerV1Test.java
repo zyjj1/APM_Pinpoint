@@ -20,13 +20,14 @@ import com.navercorp.pinpoint.common.server.bo.event.DeadlockBo;
 import com.navercorp.pinpoint.common.server.bo.event.MonitorInfoBo;
 import com.navercorp.pinpoint.common.server.bo.event.ThreadDumpBo;
 import com.navercorp.pinpoint.common.server.bo.event.ThreadState;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * @author jaehong.kim
@@ -37,8 +38,6 @@ public class AgentEventMessageSerializerV1Test {
     public void serialize() throws Exception {
         AgentEventMessageSerializerV1 serializer = new AgentEventMessageSerializerV1();
         // Mock
-        final DeadlockBo deadlockBo = new DeadlockBo();
-        deadlockBo.setDeadlockedThreadCount(1);
         List<ThreadDumpBo> threadDumpBoList = new ArrayList<>();
         ThreadDumpBo threadDumpBo = new ThreadDumpBo();
         threadDumpBo.setThreadName("threadName");
@@ -56,22 +55,20 @@ public class AgentEventMessageSerializerV1Test {
         threadDumpBo.setStackTraceList(Arrays.asList("foo", "bar"));
 
         List<MonitorInfoBo> monitorInfoBoList = new ArrayList<>();
-        MonitorInfoBo monitorInfoBo = new MonitorInfoBo();
-        monitorInfoBo.setStackDepth(9);
-        monitorInfoBo.setStackFrame("Frame");
+        MonitorInfoBo monitorInfoBo = new MonitorInfoBo(9, "Frame");
         monitorInfoBoList.add(monitorInfoBo);
         threadDumpBo.setLockedMonitorInfoList(monitorInfoBoList);
         threadDumpBo.setLockedSynchronizerList(Arrays.asList("foo", "bar"));
 
         threadDumpBoList.add(threadDumpBo);
-        deadlockBo.setThreadDumpBoList(threadDumpBoList);
+        final DeadlockBo deadlockBo = new DeadlockBo(1, threadDumpBoList);
 
         byte[] bytes = serializer.serialize(AgentEventType.AGENT_DEADLOCK_DETECTED, deadlockBo);
 
         // deserialize
         AgentEventMessageDeserializerV1 deserializer = new AgentEventMessageDeserializerV1();
         Object object = deserializer.deserialize(AgentEventType.AGENT_DEADLOCK_DETECTED, bytes);
-        if (false == (object instanceof DeadlockBo)) {
+        if (!(object instanceof DeadlockBo)) {
             fail("Failed to deserialize, expected object is DeadlockBo");
         }
         DeadlockBo result = (DeadlockBo) object;

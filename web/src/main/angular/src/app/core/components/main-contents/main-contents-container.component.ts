@@ -13,8 +13,12 @@ import { UrlPathId } from 'app/shared/models';
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class MainContentsContainerComponent implements OnInit {
+    sideNavigationUI: boolean;
+    
     showElements$: Observable<boolean>;
     enableRealTime$: Observable<boolean>;
+
+    isAppSelected$: Observable<boolean>;
 
     constructor(
         private dynamicPopupService: DynamicPopupService,
@@ -25,6 +29,8 @@ export class MainContentsContainerComponent implements OnInit {
     ) {}
 
     ngOnInit() {
+        this.sideNavigationUI = this.webAppSettingDataService.getExperimentalOption('sideNavigationUI');
+        
         this.showElements$ = this.newUrlStateNotificationService.onUrlStateChange$.pipe(
             map((urlService: NewUrlStateNotificationService) => urlService.hasValue(UrlPathId.PERIOD, UrlPathId.END_TIME))
         );
@@ -36,6 +42,10 @@ export class MainContentsContainerComponent implements OnInit {
             this.webAppSettingDataService.useActiveThreadChart()
         ).pipe(
             map(([isRealTimeMode, useActiveThreadChart]: boolean[]) => isRealTimeMode && useActiveThreadChart)
+        );
+
+        this.isAppSelected$ = this.newUrlStateNotificationService.onUrlStateChange$.pipe(
+            map((urlService: NewUrlStateNotificationService) => urlService.hasValue(UrlPathId.APPLICATION))
         );
     }
 

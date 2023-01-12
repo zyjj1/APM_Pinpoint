@@ -3,11 +3,11 @@ import { RouterModule } from '@angular/router';
 
 import { SharedModule } from 'app/shared';
 import { NoticeModule } from 'app/core/components/notice';
-import { ConfigurationIconModule } from 'app/core/components/configuration-icon';
 import { TransactionDetailContentsModule } from 'app/core/components/transaction-detail-contents';
 import { TransactionDetailPageComponent } from './transaction-detail-page.component';
 import { routing } from './transaction-detail-page.routing';
 import { ServerErrorPopupModule } from 'app/core/components/server-error-popup';
+import { SideNavigationBarModule } from 'app/core/components/side-navigation-bar';
 
 @NgModule({
     declarations: [
@@ -16,9 +16,9 @@ import { ServerErrorPopupModule } from 'app/core/components/server-error-popup';
     imports: [
         SharedModule,
         NoticeModule,
-        ConfigurationIconModule,
         TransactionDetailContentsModule,
         ServerErrorPopupModule,
+        SideNavigationBarModule,
         RouterModule.forChild(routing)
     ],
     exports: [],
