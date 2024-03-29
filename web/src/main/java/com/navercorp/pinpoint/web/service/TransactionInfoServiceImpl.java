@@ -26,6 +26,7 @@ import com.navercorp.pinpoint.common.trace.LoggingInfo;
 import com.navercorp.pinpoint.web.calltree.span.Align;
 import com.navercorp.pinpoint.web.calltree.span.CallTreeIterator;
 import com.navercorp.pinpoint.web.calltree.span.CallTreeNode;
+import com.navercorp.pinpoint.web.component.AnnotationKeyMatcherService;
 import com.navercorp.pinpoint.web.dao.TraceDao;
 import com.navercorp.pinpoint.web.filter.Filter;
 import com.navercorp.pinpoint.web.security.MetaDataFilter;
@@ -159,7 +160,7 @@ public class TransactionInfoServiceImpl implements TransactionInfoService {
 
         if (rootEndTime - startTime <= 0) {
             recordSet.setEndTime(endTime);
-        } else if ((double)(rootEndTime - startTime) / (endTime-startTime) < 0.1) {
+        } else if ((double) (rootEndTime - startTime) / (endTime - startTime) < 0.1) {
             recordSet.setEndTime(rootEndTime);
         } else {
             recordSet.setEndTime(endTime);

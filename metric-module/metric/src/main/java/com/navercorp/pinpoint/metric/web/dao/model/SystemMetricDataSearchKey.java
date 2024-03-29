@@ -17,9 +17,9 @@
 package com.navercorp.pinpoint.metric.web.dao.model;
 
 import com.navercorp.pinpoint.metric.common.model.MetricTag;
+import com.navercorp.pinpoint.metric.common.model.Range;
 import com.navercorp.pinpoint.metric.common.model.Tag;
 import com.navercorp.pinpoint.metric.web.model.MetricDataSearchKey;
-import com.navercorp.pinpoint.metric.web.util.Range;
 import com.navercorp.pinpoint.metric.web.util.TimePrecision;
 
 import java.util.List;
@@ -41,7 +41,7 @@ public class SystemMetricDataSearchKey {
     private final long limit;
 
     public SystemMetricDataSearchKey(MetricDataSearchKey metricDataSearchKey, MetricTag metricTag) {
-        Objects.requireNonNull(metricDataSearchKey, "range");
+        Objects.requireNonNull(metricDataSearchKey, "metricDataSearchKey");
         Objects.requireNonNull(metricTag, "metricTag");
 
         this.tenantId = metricDataSearchKey.getTenantId();

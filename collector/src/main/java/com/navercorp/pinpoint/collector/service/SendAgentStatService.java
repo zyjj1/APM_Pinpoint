@@ -15,12 +15,15 @@
  */
 package com.navercorp.pinpoint.collector.service;
 
-import com.navercorp.pinpoint.collector.config.FlinkConfiguration;
+import com.navercorp.pinpoint.collector.config.FlinkProperties;
 import com.navercorp.pinpoint.collector.mapper.flink.TFAgentStatBatchMapper;
 import com.navercorp.pinpoint.common.server.bo.stat.AgentStatBo;
 import com.navercorp.pinpoint.thrift.dto.flink.TFAgentStatBatch;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
+import org.springframework.validation.annotation.Validated;
 
 import java.util.Objects;
 
@@ -28,19 +31,21 @@ import java.util.Objects;
  * @author minwoo.jung
  */
 @Service("sendAgentStatService")
+@Validated
+@ConditionalOnProperty(value = "pinpoint.modules.collector.inspector.hbase.enabled", havingValue = "true")
 public class SendAgentStatService implements AgentStatService {
     private final boolean flinkClusterEnable;
     private final SendDataToFlinkService flinkService;
     private final TFAgentStatBatchMapper tFAgentStatBatchMapper;
 
-    public SendAgentStatService(FlinkConfiguration config, @Qualifier("sendDataToFlinkService") SendDataToFlinkService flinkService, TFAgentStatBatchMapper tFAgentStatBatchMapper) {
-        this.flinkClusterEnable = config.isFlinkClusterEnable();
+    public SendAgentStatService(FlinkProperties properties, @Qualifier("sendDataToFlinkService") SendDataToFlinkService flinkService, TFAgentStatBatchMapper tFAgentStatBatchMapper) {
+        this.flinkClusterEnable = properties.isFlinkClusterEnable();
         this.flinkService = Objects.requireNonNull(flinkService, "flinkService");
         this.tFAgentStatBatchMapper = Objects.requireNonNull(tFAgentStatBatchMapper, "tFAgentStatBatchMapper");
     }
 
     @Override
-    public void save(AgentStatBo agentStatBo) {
+    public void save(@Valid AgentStatBo agentStatBo) {
         if (!flinkClusterEnable) {
             return;
         }

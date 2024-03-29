@@ -17,14 +17,13 @@
 package com.navercorp.pinpoint.web.view;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.navercorp.pinpoint.common.server.util.json.Jackson;
 import com.navercorp.pinpoint.common.server.util.json.TypeRef;
 import com.navercorp.pinpoint.common.util.CollectionUtils;
 import com.navercorp.pinpoint.common.util.ThreadMXBeanUtils;
-import com.navercorp.pinpoint.profiler.context.thrift.ThreadDumpThriftMessageConverter;
 import com.navercorp.pinpoint.profiler.monitor.metric.deadlock.ThreadDumpMetricSnapshot;
 import com.navercorp.pinpoint.profiler.util.ThreadDumpUtils;
-import com.navercorp.pinpoint.thrift.dto.command.TActiveThreadDump;
-import com.navercorp.pinpoint.thrift.dto.command.TThreadDump;
+import com.navercorp.pinpoint.realtime.dto.ActiveThreadDump;
 import com.navercorp.pinpoint.web.vo.activethread.AgentActiveThreadDumpFactory;
 import com.navercorp.pinpoint.web.vo.activethread.AgentActiveThreadDumpList;
 import org.junit.jupiter.api.Assertions;
@@ -35,13 +34,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import static com.navercorp.pinpoint.web.vo.activethread.AgentActiveThreadDumpListTest.createThreadDump;
+import static org.assertj.core.api.Assertions.assertThat;
+
 /**
  * @author Taejin Koo
  */
 public class AgentActiveThreadDumpListSerializerTest {
 
-    private final ObjectMapper mapper = new ObjectMapper();
-    private final ThreadDumpThriftMessageConverter threadDumpThriftMessageConverter = new ThreadDumpThriftMessageConverter();
+    private final ObjectMapper mapper = Jackson.newMapper();
 
     @Test
     public void serializeTest() throws Exception {
@@ -55,28 +56,27 @@ public class AgentActiveThreadDumpListSerializerTest {
 
         Map<String, Object> map = list.get(0);
 
-        Assertions.assertTrue(map.containsKey("threadId"));
-        Assertions.assertTrue(map.containsKey("threadName"));
-        Assertions.assertTrue(map.containsKey("threadState"));
-        Assertions.assertTrue(map.containsKey("startTime"));
-        Assertions.assertTrue(map.containsKey("execTime"));
-        Assertions.assertTrue(map.containsKey("localTraceId"));
-        Assertions.assertTrue(map.containsKey("sampled"));
-        Assertions.assertTrue(map.containsKey("transactionId"));
-        Assertions.assertTrue(map.containsKey("entryPoint"));
-        Assertions.assertTrue(map.containsKey("detailMessage"));
+        assertThat(map)
+                .containsKey("threadId")
+                .containsKey("threadName")
+                .containsKey("threadState")
+                .containsKey("startTime")
+                .containsKey("execTime")
+                .containsKey("localTraceId")
+                .containsKey("sampled")
+                .containsKey("transactionId")
+                .containsKey("entryPoint")
+                .containsKey("detailMessage");
     }
 
     private AgentActiveThreadDumpList createThreadDumpList(ThreadInfo[] allThreadInfo) {
-        List<TActiveThreadDump> activeThreadDumpList = new ArrayList<>();
+        List<ActiveThreadDump> activeThreadDumpList = new ArrayList<>();
         for (ThreadInfo threadInfo : allThreadInfo) {
-            TActiveThreadDump tActiveThreadDump = new TActiveThreadDump();
-            tActiveThreadDump.setStartTime(System.currentTimeMillis() - 1000);
-
-            final ThreadDumpMetricSnapshot threadDumpMetricSnapshot =ThreadDumpUtils.createThreadDump(threadInfo);
-            final TThreadDump threadDump = this.threadDumpThriftMessageConverter.toMessage(threadDumpMetricSnapshot);
-            tActiveThreadDump.setThreadDump(threadDump);
-            activeThreadDumpList.add(tActiveThreadDump);
+            ThreadDumpMetricSnapshot snapshot = ThreadDumpUtils.createThreadDump(threadInfo);
+            ActiveThreadDump dump = new ActiveThreadDump();
+            dump.setStartTime(System.currentTimeMillis() - 1000);
+            dump.setThreadDump(createThreadDump(snapshot));
+            activeThreadDumpList.add(dump);
         }
 
         AgentActiveThreadDumpFactory factory = new AgentActiveThreadDumpFactory();

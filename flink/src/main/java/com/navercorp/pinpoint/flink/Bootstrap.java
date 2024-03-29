@@ -17,8 +17,9 @@ package com.navercorp.pinpoint.flink;
 
 import com.navercorp.pinpoint.collector.receiver.thrift.TCPReceiverBean;
 import com.navercorp.pinpoint.common.server.bo.stat.join.JoinStatBo;
+import com.navercorp.pinpoint.common.util.IOUtils;
 import com.navercorp.pinpoint.flink.cluster.FlinkServerRegister;
-import com.navercorp.pinpoint.flink.config.FlinkConfiguration;
+import com.navercorp.pinpoint.flink.config.FlinkProperties;
 import com.navercorp.pinpoint.flink.dao.hbase.ApplicationMetricDao;
 import com.navercorp.pinpoint.flink.dao.hbase.StatisticsDao;
 import com.navercorp.pinpoint.flink.dao.hbase.StatisticsDaoInterceptor;
@@ -36,8 +37,9 @@ import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceCont
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.support.ClassPathXmlApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
+import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -48,15 +50,16 @@ import java.util.Map;
 public class Bootstrap {
     private static final Logger logger = LogManager.getLogger(Bootstrap.class);
     private static final String SPRING_PROFILE = "spring.profiles.active";
+    private static final String PINPOINT_PROFILE = "pinpoint.profiles.active";
 
     private volatile static Bootstrap instance;
 
     private final StatisticsDao statisticsDao;
 
-    private final ClassPathXmlApplicationContext applicationContext;
+    private final ApplicationContext applicationContext;
 
     private final TBaseFlatMapper tbaseFlatMapper;
-    private final FlinkConfiguration flinkConfiguration;
+    private final FlinkProperties flinkProperties;
     private final TcpDispatchHandler tcpDispatchHandler;
     private final TcpSourceFunction tcpSourceFunction;
     private final ApplicationCache applicationCache;
@@ -69,10 +72,10 @@ public class Bootstrap {
     private final AgentStatHandler agentStatHandler;
 
     private Bootstrap() {
-        applicationContext = new ClassPathXmlApplicationContext("applicationContext-flink.xml");
+        applicationContext = new AnnotationConfigApplicationContext(FlinkModule.class);
 
         tbaseFlatMapper = applicationContext.getBean("tbaseFlatMapper", TBaseFlatMapper.class);
-        flinkConfiguration = applicationContext.getBean("flinkConfiguration", FlinkConfiguration.class);
+        flinkProperties = applicationContext.getBean("flinkProperties", FlinkProperties.class);
         tcpDispatchHandler = applicationContext.getBean("tcpDispatchHandler", TcpDispatchHandler.class);
         tcpSourceFunction = applicationContext.getBean("tcpSourceFunction", TcpSourceFunction.class);
         applicationCache = applicationContext.getBean("applicationCache", ApplicationCache.class);
@@ -97,18 +100,39 @@ public class Bootstrap {
     }
 
     public static Bootstrap getInstance(Map<String, String> jobParameters) {
-        if (instance == null)  {
-            synchronized(Bootstrap.class) {
-                if (instance == null) {
-                    String profiles = jobParameters.getOrDefault(SPRING_PROFILE, "local");
-                    System.setProperty(SPRING_PROFILE, profiles);
-                    instance = new Bootstrap();
-                    logger.info("Bootstrap initialization. : job parameter " + jobParameters);
-                }
+        synchronized(Bootstrap.class) {
+            if (instance == null) {
+                instance = buildBootstrap(jobParameters);
             }
+            return instance;
         }
+    }
 
-        return instance;
+    private static Bootstrap buildBootstrap(Map<String, String> jobParameters) {
+        String profiles = jobParameters.getOrDefault(SPRING_PROFILE, "local");
+        System.setProperty(PINPOINT_PROFILE, profiles);
+        Bootstrap bootstrap = new Bootstrap();
+        logger.info("Initialized bootstrap: jobParameters=" + jobParameters);
+        return bootstrap;
+    }
+
+    public static void close() {
+        synchronized(Bootstrap.class) {
+            if (instance == null) {
+                logger.warn("Invalid attempt of closing bootstrap: bootstrap is not initialized yet");
+                return;
+            }
+            logger.info("Closing bootstrap: {}", instance);
+            final ApplicationContext applicationContext = instance.getApplicationContext();
+            if (applicationContext instanceof Closeable closeable) {
+                logger.info("Closing an instance of ApplicationContext: {}", applicationContext);
+                IOUtils.closeQuietly(closeable);
+            } else {
+                logger.warn("Invalid type of applicationContext was found: {}", applicationContext);
+            }
+            instance = null;
+            logger.info("Closed bootstrap: {}", instance);
+        }
     }
 
     public ApplicationContext getApplicationContext() {
@@ -131,12 +155,12 @@ public class Bootstrap {
         return applicationCache;
     }
 
-    public FlinkConfiguration getFlinkConfiguration() {
-        return flinkConfiguration;
+    public FlinkProperties getFlinkProperties() {
+        return flinkProperties;
     }
 
     public StreamExecutionEnvironment createStreamExecutionEnvironment() {
-        if (flinkConfiguration.isLocalforFlinkStreamExecutionEnvironment()) {
+        if (flinkProperties.isLocalforFlinkStreamExecutionEnvironment()) {
             LocalStreamEnvironment localEnvironment = StreamExecutionEnvironment.createLocalEnvironment();
             localEnvironment.setParallelism(1);
             return localEnvironment;

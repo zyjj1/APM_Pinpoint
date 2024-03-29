@@ -1,13 +1,13 @@
 package com.navercorp.pinpoint.collector.dao.hbase.statistics;
 
 import com.navercorp.pinpoint.common.hbase.HbaseColumnFamily;
-import com.navercorp.pinpoint.common.hbase.HbaseOperations2;
+import com.navercorp.pinpoint.common.hbase.HbaseOperations;
 import com.navercorp.pinpoint.common.hbase.TableNameProvider;
 import com.sematext.hbase.wd.RowKeyDistributorByHashPrefix;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Increment;
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.List;
 import java.util.Map;
@@ -20,7 +20,7 @@ public class DefaultBulkWriter implements BulkWriter {
 
     private final Logger logger;
 
-    private final HbaseOperations2 hbaseTemplate;
+    private final HbaseOperations hbaseTemplate;
     private final RowKeyDistributorByHashPrefix rowKeyDistributorByHashPrefix;
 
     private final BulkIncrementer bulkIncrementer;
@@ -32,7 +32,7 @@ public class DefaultBulkWriter implements BulkWriter {
 
 
     public DefaultBulkWriter(String loggerName,
-                             HbaseOperations2 hbaseTemplate,
+                             HbaseOperations hbaseTemplate,
                              RowKeyDistributorByHashPrefix rowKeyDistributorByHashPrefix,
                              BulkIncrementer bulkIncrementer,
                              BulkUpdater bulkUpdater,
@@ -77,7 +77,7 @@ public class DefaultBulkWriter implements BulkWriter {
             if (logger.isDebugEnabled()) {
                 logger.debug("flush {} to [{}] Increment:{}", this.getClass().getSimpleName(), tableName, increments.size());
             }
-            hbaseTemplate.increment(tableName, increments);
+            hbaseTemplate.asyncIncrement(tableName, increments);
         }
 
     }

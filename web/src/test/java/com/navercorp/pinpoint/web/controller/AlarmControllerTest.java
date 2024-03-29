@@ -17,8 +17,10 @@ package com.navercorp.pinpoint.web.controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.navercorp.pinpoint.common.server.util.json.Jackson;
 import com.navercorp.pinpoint.common.server.util.json.TypeRef;
 import com.navercorp.pinpoint.web.dao.AlarmDao;
+import com.navercorp.pinpoint.web.dao.UserGroupDao;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
@@ -37,6 +39,8 @@ import org.springframework.web.context.WebApplicationContext;
 import java.util.List;
 import java.util.Map;
 
+import static com.navercorp.pinpoint.web.TestTraceUtils.hasKey;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -44,7 +48,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static com.navercorp.pinpoint.web.TestTraceUtils.hasKey;
 
 /**
  * @author minwoo.jung
@@ -52,7 +55,7 @@ import static com.navercorp.pinpoint.web.TestTraceUtils.hasKey;
 @Disabled
 @ExtendWith(SpringExtension.class)
 @WebAppConfiguration
-@ContextConfiguration(locations = {"classpath:servlet-context-web.xml", "classpath:applicationContext-web.xml"})
+@ContextConfiguration(locations = {"classpath:applicationContext-web.xml"})
 public class AlarmControllerTest {
     private final static String APPLICATION_ID = "test-application";
     private final static String APPLICATION_ID_UPDATED = "test-application-tomcat";
@@ -81,17 +84,17 @@ public class AlarmControllerTest {
     private WebApplicationContext wac;
     
     @Autowired
-    private AlarmDao alarmDao;
+    private UserGroupDao userGroupDao;
 
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = Jackson.newMapper();
 
     private MockMvc mockMvc;
     
     @BeforeEach
     public void setup() {
         this.mockMvc = MockMvcBuilders.webAppContextSetup(this.wac).build();
-        this.alarmDao.deleteRuleByUserGroupId(USER_GROUP_ID);
-        this.alarmDao.deleteRuleByUserGroupId(USER_GROUP_ID_UPDATED);
+        this.userGroupDao.deleteRuleByUserGroupId(USER_GROUP_ID);
+        this.userGroupDao.deleteRuleByUserGroupId(USER_GROUP_ID_UPDATED);
     }
     
     @Test
@@ -199,6 +202,6 @@ public class AlarmControllerTest {
         String content = result.getResponse().getContentAsString();
 
         List<String> checkerList = mapper.readValue(content, new TypeReference<>() {});
-        Assertions.assertNotEquals(checkerList.size(), 0);
+        assertThat(checkerList).isEmpty();
     }
 }

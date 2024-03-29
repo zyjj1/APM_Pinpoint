@@ -16,14 +16,16 @@
 
 package com.navercorp.pinpoint.batch.common;
 
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.configuration.JobLocator;
 import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 import java.util.Date;
+import java.util.Objects;
 
 /**
  * @author minwoo.jung<minwoo.jung@navercorp.com>
@@ -32,21 +34,35 @@ public class BatchJobLauncher extends JobLaunchSupport {
 
     private final Logger logger = LogManager.getLogger(this.getClass());
 
-    public static final String CLEANUP_INACTIVE_AGENTS_JOB_NAME = "cleanupInactiveAgentsJob";
+    private final BatchProperties batchProperties;
 
-    private final boolean enableCleanupInactiveAgentsJob;
-
-    public BatchJobLauncher(JobLocator locator, JobLauncher launcher, BatchConfiguration batchConfiguration) {
+    public BatchJobLauncher(
+            @Qualifier("jobRegistry") JobLocator locator,
+            @Qualifier("jobLauncher") JobLauncher launcher,
+            BatchProperties batchProperties
+    ) {
         super(locator, launcher);
-        this.enableCleanupInactiveAgentsJob = batchConfiguration.isEnableCleanupInactiveAgents();
+        this.batchProperties = Objects.requireNonNull(batchProperties, "batchProperties");
     }
 
     public void alarmJob() {
-        JobParameters params = createTimeParameter();
-        run("alarmJob", params);
+        if (batchProperties.isAlarmJobEnable()) {
+            run("alarmJob", createTimeParameter());
+        } else {
+            logger.debug("Skip alarmJob, because 'enableUriStatAlarmJob' is disabled.");
+        }
+
     }
 
-    private JobParameters createTimeParameter() {
+    public void uriStatAlarmJob() {
+        if (batchProperties.isUriStatAlarmJobEnable()) {
+            run("uriAlarmJob", createTimeParameter());
+        } else {
+            logger.debug("Skip uriAlarmJob, because 'enableUriStatAlarmJob' is disabled.");
+        }
+    }
+
+    public static JobParameters createTimeParameter() {
         JobParametersBuilder builder = new JobParametersBuilder();
         Date now = new Date();
         builder.addDate("schedule.date", now);
@@ -54,18 +70,34 @@ public class BatchJobLauncher extends JobLaunchSupport {
     }
 
     public void agentCountJob() {
-        run("agentCountJob", createTimeParameter());
+        if (batchProperties.isAgentCountJobEnable()) {
+            run("agentCountJob", createTimeParameter());
+        } else {
+            logger.debug("Skip agentCountJob, because 'enableAgentCountJob' is disabled.");
+        }
     }
 
     public void flinkCheckJob() {
-        run("flinkCheckJob", createTimeParameter());
+        if (batchProperties.isFlinkCheckJobEnable()) {
+            run("flinkCheckJob", createTimeParameter());
+        } else {
+            logger.debug("Skip flinkCheckJob, because 'enableFlinkCheckJob' is disabled.");
+        }
     }
 
     public void cleanupInactiveAgentsJob() {
-        if (enableCleanupInactiveAgentsJob) {
-            run(CLEANUP_INACTIVE_AGENTS_JOB_NAME, createTimeParameter());
+        if (batchProperties.isCleanupInactiveAgentsJobEnable()) {
+            run("cleanupInactiveAgentsJob", createTimeParameter());
         } else {
-            logger.debug("Skip " + CLEANUP_INACTIVE_AGENTS_JOB_NAME + ", because 'enableCleanupInactiveAgentsJob' is disabled.");
+            logger.debug("Skip cleanupInactiveAgentsJob, because 'enableCleanupInactiveAgentsJob' is disabled.");
+        }
+    }
+
+    public void cleanupInactiveApplicationsJob() {
+        if (batchProperties.isCleanupInactiveApplicationsJobEnable()) {
+            run("cleanupInactiveApplicationsJob", createTimeParameter());
+        } else {
+            logger.debug("Skip applicationCleanJob, because 'enableCleanupInactiveApplicationsJob' is disabled.");
         }
     }
 

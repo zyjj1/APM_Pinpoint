@@ -22,11 +22,11 @@ import com.navercorp.pinpoint.common.trace.ServiceType;
 import com.navercorp.pinpoint.web.alarm.CheckerCategory;
 import com.navercorp.pinpoint.web.alarm.DataCollectorCategory;
 import com.navercorp.pinpoint.web.alarm.vo.Rule;
+import com.navercorp.pinpoint.web.applicationmap.dao.MapStatisticsCallerDao;
 import com.navercorp.pinpoint.web.applicationmap.histogram.TimeHistogram;
 import com.navercorp.pinpoint.web.applicationmap.rawdata.LinkCallDataMap;
 import com.navercorp.pinpoint.web.applicationmap.rawdata.LinkData;
 import com.navercorp.pinpoint.web.applicationmap.rawdata.LinkDataMap;
-import com.navercorp.pinpoint.web.dao.MapStatisticsCallerDao;
 import com.navercorp.pinpoint.web.vo.Application;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -53,7 +53,7 @@ public class ErrorCountToCalleCheckerTest {
         dao = new MapStatisticsCallerDao() {
 
             @Override
-            public LinkDataMap selectCaller(Application callerApplication, Range range) {
+            public LinkDataMap selectCaller(Application callerApplication, Range range, boolean timeAggregated) {
                 long timeStamp = 1409814914298L;
                 LinkDataMap linkDataMap = new LinkDataMap();
                 Application fromApplication = new Application(FROM_SERVICE_NAME, ServiceType.STAND_ALONE);
@@ -75,7 +75,7 @@ public class ErrorCountToCalleCheckerTest {
                         timeHistogramList.add(timeHistogram);
                     }
 
-                    linkCallDataMap.addCallData(fromApplication.getName(), fromApplication.getServiceType(), toApplication.getName(), toApplication.getServiceType(), timeHistogramList);
+                    linkCallDataMap.addCallData(fromApplication, toApplication, timeHistogramList);
                     LinkData linkData = new LinkData(fromApplication, toApplication);
                     linkData.setLinkCallDataMap(linkCallDataMap);
                     linkDataMap.addLinkData(linkData);

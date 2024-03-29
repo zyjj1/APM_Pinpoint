@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 NAVER Corp.
+ * Copyright 2024 NAVER Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,8 +20,7 @@ import com.navercorp.pinpoint.common.profiler.concurrent.PinpointThreadFactory;
 import com.navercorp.pinpoint.grpc.ChannelTypeEnum;
 import com.navercorp.pinpoint.grpc.ExecutorUtils;
 import com.navercorp.pinpoint.grpc.client.config.ClientOption;
-import com.navercorp.pinpoint.grpc.security.SslClientConfig;
-import com.navercorp.pinpoint.grpc.security.SslContextFactory;
+import com.navercorp.pinpoint.grpc.client.config.ClientRetryOption;
 import io.grpc.ClientInterceptor;
 import io.grpc.ManagedChannel;
 import io.grpc.Metadata;
@@ -39,7 +38,6 @@ import io.netty.util.concurrent.Future;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import javax.net.ssl.SSLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -63,7 +61,11 @@ public class DefaultChannelFactory implements ChannelFactory {
     private final HeaderFactory headerFactory;
 
     private final ClientOption clientOption;
-    private final SslClientConfig sslClientConfig;
+    // nullable
+    private final SslContext sslContext;
+
+    // nullable
+    private final ClientRetryOption clientRetryOption;
 
     private final List<ClientInterceptor> clientInterceptorList;
     private final NameResolverProvider nameResolverProvider;
@@ -79,18 +81,23 @@ public class DefaultChannelFactory implements ChannelFactory {
                           HeaderFactory headerFactory,
                           NameResolverProvider nameResolverProvider,
                           ClientOption clientOption,
-                          SslClientConfig sslClientConfig,
-                          List<ClientInterceptor> clientInterceptorList) {
+                          List<ClientInterceptor> clientInterceptorList,
+                          SslContext sslContext,
+                          ClientRetryOption clientRetryOption) {
         this.factoryName = Objects.requireNonNull(factoryName, "factoryName");
         this.executorQueueSize = executorQueueSize;
         this.headerFactory = Objects.requireNonNull(headerFactory, "headerFactory");
         // @Nullable
         this.nameResolverProvider = nameResolverProvider;
         this.clientOption = Objects.requireNonNull(clientOption, "clientOption");
-        this.sslClientConfig = Objects.requireNonNull(sslClientConfig, "sslClientConfig");
 
         Objects.requireNonNull(clientInterceptorList, "clientInterceptorList");
         this.clientInterceptorList = new ArrayList<>(clientInterceptorList);
+        // nullable
+        this.sslContext = sslContext;
+        // nullable
+        this.clientRetryOption = clientRetryOption;
+
 
         ChannelType channelType = getChannelType();
         this.channelType = channelType.getChannelType();
@@ -151,22 +158,21 @@ public class DefaultChannelFactory implements ChannelFactory {
         }
         setupClientOption(channelBuilder);
 
-        if (sslClientConfig.isEnable()) {
-            SslContext sslContext = null;
-            try {
-                sslContext = SslContextFactory.create(sslClientConfig);
-            } catch (SSLException e) {
-                throw new SecurityException(e);
-            }
+        if (sslContext != null) {
+            logger.info("{} enable SslContext", channelName);
             channelBuilder.sslContext(sslContext);
             channelBuilder.negotiationType(NegotiationType.TLS);
         }
 
+        // RetryOption
+        if (clientRetryOption != null) {
+            setupRetryOption(channelBuilder);
+        }
+
+
         channelBuilder.maxTraceEvents(clientOption.getMaxTraceEvent());
 
-        final ManagedChannel channel = channelBuilder.build();
-
-        return channel;
+        return channelBuilder.build();
     }
 
     @SuppressWarnings("deprecation")
@@ -214,6 +220,18 @@ public class DefaultChannelFactory implements ChannelFactory {
         channelBuilder.withOption(ChannelOption.WRITE_BUFFER_WATER_MARK, writeBufferWaterMark);
         if (logger.isInfoEnabled()) {
             logger.info("Set clientOption {}. name={}", clientOption, factoryName);
+        }
+    }
+
+    private void setupRetryOption(final NettyChannelBuilder channelBuilder) {
+        channelBuilder.enableRetry();
+        channelBuilder.retryBufferSize(clientRetryOption.getRetryBufferSize());
+        channelBuilder.perRpcBufferLimit(clientRetryOption.getPerRpcBufferLimit());
+
+        //channelBuilder.disableServiceConfigLookUp();
+        channelBuilder.defaultServiceConfig(clientRetryOption.getRetryServiceConfig());
+        if (logger.isDebugEnabled()) {
+            logger.debug("Set clientRetryOption {}. name={}", clientRetryOption, factoryName);
         }
     }
 

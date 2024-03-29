@@ -19,10 +19,11 @@ package com.navercorp.pinpoint.web.view;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import com.navercorp.pinpoint.common.server.util.json.Jackson;
 import com.navercorp.pinpoint.common.server.util.time.Range;
 import com.navercorp.pinpoint.common.trace.ServiceType;
-import com.navercorp.pinpoint.web.applicationmap.link.CreateType;
 import com.navercorp.pinpoint.web.applicationmap.link.Link;
+import com.navercorp.pinpoint.web.applicationmap.link.LinkDirection;
 import com.navercorp.pinpoint.web.applicationmap.nodes.Node;
 import com.navercorp.pinpoint.web.applicationmap.rawdata.AgentHistogram;
 import com.navercorp.pinpoint.web.applicationmap.rawdata.AgentHistogramList;
@@ -36,7 +37,7 @@ import org.junit.jupiter.api.Test;
  */
 public class LinkSerializerTest {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = Jackson.newMapper();
     private final Logger logger = LogManager.getLogger(this.getClass());
 
 
@@ -48,7 +49,7 @@ public class LinkSerializerTest {
         Node node1 = new Node(new Application("test1", ServiceType.STAND_ALONE));
         Node node2 = new Node(new Application("test1", ServiceType.STAND_ALONE));
 
-        Link link = new Link(CreateType.Source, node1, node2, Range.between(0, 1));
+        Link link = new Link(LinkDirection.IN_LINK, node1, node2, Range.between(0, 1));
         ObjectWriter objectWriter = MAPPER.writerWithDefaultPrettyPrinter();
         String s = objectWriter.writeValueAsString(link);
 

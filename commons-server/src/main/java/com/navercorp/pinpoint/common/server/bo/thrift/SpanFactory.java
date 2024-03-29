@@ -17,7 +17,8 @@
 package com.navercorp.pinpoint.common.server.bo.thrift;
 
 
-import com.navercorp.pinpoint.common.annotations.VisibleForTesting;
+import com.navercorp.pinpoint.common.profiler.util.TransactionId;
+import com.navercorp.pinpoint.common.profiler.util.TransactionIdUtils;
 import com.navercorp.pinpoint.common.server.bo.AnnotationBo;
 import com.navercorp.pinpoint.common.server.bo.AnnotationComparator;
 import com.navercorp.pinpoint.common.server.bo.AnnotationFactory;
@@ -26,12 +27,7 @@ import com.navercorp.pinpoint.common.server.bo.SpanBo;
 import com.navercorp.pinpoint.common.server.bo.SpanChunkBo;
 import com.navercorp.pinpoint.common.server.bo.SpanEventBo;
 import com.navercorp.pinpoint.common.server.bo.SpanEventComparator;
-import com.navercorp.pinpoint.common.server.bo.filter.EmptySpanEventFilter;
 import com.navercorp.pinpoint.common.server.bo.filter.SpanEventFilter;
-import com.navercorp.pinpoint.common.server.util.AcceptedTimeService;
-import com.navercorp.pinpoint.common.server.util.EmptyAcceptedTimeService;
-import com.navercorp.pinpoint.common.profiler.util.TransactionId;
-import com.navercorp.pinpoint.common.profiler.util.TransactionIdUtils;
 import com.navercorp.pinpoint.thrift.dto.TAnnotation;
 import com.navercorp.pinpoint.thrift.dto.TIntStringValue;
 import com.navercorp.pinpoint.thrift.dto.TLocalAsyncId;
@@ -39,9 +35,8 @@ import com.navercorp.pinpoint.thrift.dto.TSpan;
 import com.navercorp.pinpoint.thrift.dto.TSpanChunk;
 import com.navercorp.pinpoint.thrift.dto.TSpanEvent;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.apache.logging.log4j.Logger;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -56,47 +51,19 @@ public class SpanFactory {
 
     private final Logger logger = LogManager.getLogger(this.getClass());
 
-    private SpanEventFilter spanEventFilter = new EmptySpanEventFilter();
-
-    private AcceptedTimeService acceptedTimeService = new EmptyAcceptedTimeService();
-
     private final AnnotationFactory<TAnnotation> annotationFactory = new AnnotationFactory<>(new ThriftAnnotationHandler());
 
-    // TODO
-    private final boolean fastAsyncIdGen;
-
     public SpanFactory() {
-        this(fastAsyncIdGen());
     }
 
-    private static boolean fastAsyncIdGen() {
-        final String fastAsyncIdGen = System.getProperty("collector.spanfactory.fastasyncidgen", "true");
-        return Boolean.parseBoolean(fastAsyncIdGen);
-    }
-
-    public SpanFactory(boolean fastAsyncIdGen) {
-        this.fastAsyncIdGen = fastAsyncIdGen;
-    }
-
-    @Autowired(required = false)
-    public void setSpanEventFilter(SpanEventFilter spanEventFilter) {
-        this.spanEventFilter = spanEventFilter;
-    }
-
-    @Autowired(required = false)
-    public void setAcceptedTimeService(AcceptedTimeService acceptedTimeService) {
-        this.acceptedTimeService = acceptedTimeService;
-    }
-
-    public SpanBo buildSpanBo(TSpan tSpan) {
+    public SpanBo buildSpanBo(TSpan tSpan, long acceptedTime, SpanEventFilter spanEventFilter) {
 
         final SpanBo spanBo = newSpanBo(tSpan);
 
         List<TSpanEvent> spanEventList = tSpan.getSpanEventList();
-        List<SpanEventBo> spanEventBoList = buildSpanEventBoList(spanEventList);
+        List<SpanEventBo> spanEventBoList = buildSpanEventBoList(spanEventList, spanEventFilter);
         spanBo.addSpanEventBoList(spanEventBoList);
 
-        long acceptedTime = acceptedTimeService.getAcceptedTime();
         spanBo.setCollectorAcceptTime(acceptedTime);
 
         return spanBo;
@@ -164,7 +131,6 @@ public class SpanFactory {
         spanEvent.setStartElapsed(tSpanEvent.getStartElapsed());
         spanEvent.setEndElapsed(tSpanEvent.getEndElapsed());
 
-        spanEvent.setRpc(tSpanEvent.getRpc());
         spanEvent.setServiceType(tSpanEvent.getServiceType());
 
 
@@ -207,7 +173,7 @@ public class SpanFactory {
 //        }
     }
 
-    public SpanChunkBo buildSpanChunkBo(TSpanChunk tSpanChunk) {
+    public SpanChunkBo buildSpanChunkBo(TSpanChunk tSpanChunk, long acceptedTime, SpanEventFilter spanEventFilter) {
         final SpanChunkBo spanChunkBo = newSpanChunkBo(tSpanChunk);
         final LocalAsyncIdBo localAsyncIdBo = getLocalAsyncId(tSpanChunk);
         if (localAsyncIdBo != null) {
@@ -215,11 +181,8 @@ public class SpanFactory {
         }
 
         List<TSpanEvent> spanEventList = tSpanChunk.getSpanEventList();
-        List<SpanEventBo> spanEventBoList = buildSpanEventBoList(spanEventList);
+        List<SpanEventBo> spanEventBoList = buildSpanEventBoList(spanEventList, spanEventFilter);
         spanChunkBo.addSpanEventBoList(spanEventBoList);
-
-
-        long acceptedTime = acceptedTimeService.getAcceptedTime();
         spanChunkBo.setCollectorAcceptTime(acceptedTime);
 
         return spanChunkBo;
@@ -229,83 +192,11 @@ public class SpanFactory {
         final TLocalAsyncId localAsyncId = tSpanChunk.getLocalAsyncId();
         if (localAsyncId != null) {
             return new LocalAsyncIdBo(localAsyncId.getAsyncId(), localAsyncId.getSequence());
-        } else {
-            return extractLocalAsyncId(tSpanChunk);
-        }
-    }
-
-    // for compatibility
-    // https://github.com/naver/pinpoint/issues/5156
-    private LocalAsyncIdBo extractLocalAsyncId(TSpanChunk tSpanChunk) {
-        List<TSpanEvent> tSpanEventList = tSpanChunk.getSpanEventList();
-        if (CollectionUtils.isEmpty(tSpanEventList)) {
-            return null;
-        }
-        if (fastAsyncIdGen) {
-            return fastLocalAsyncIdBo(tSpanEventList);
-        } else {
-            return fullScanLocalAsyncIdBo(tSpanChunk);
-        }
-    }
-
-    @VisibleForTesting
-    LocalAsyncIdBo fullScanLocalAsyncIdBo(TSpanChunk tSpanChunk) {
-        int asyncId = -1;
-        int asyncSequence = -1;
-        boolean first = true;
-        boolean asyncIdNotSame = false;
-        for (TSpanEvent tSpanEvent : tSpanChunk.getSpanEventList()) {
-            if (first) {
-                first = false;
-                if (isSetAsyncId(tSpanEvent)) {
-                    asyncId = tSpanEvent.getAsyncId();
-                    asyncSequence = tSpanEvent.getAsyncSequence();
-                }
-            } else {
-                if (isSetAsyncId(tSpanEvent)) {
-                    if (asyncId != tSpanEvent.getAsyncId()) {
-                        asyncIdNotSame = true;
-                        break;
-                    }
-                    if (asyncSequence != tSpanEvent.getAsyncSequence()) {
-                        asyncIdNotSame = true;
-                        break;
-                    }
-                }
-            }
-        }
-        if (asyncIdNotSame) {
-            logger.warn("AsyncId consistency is broken. tSpanChunk:{}", tSpanChunk);
-            return null;
-        }
-        if (asyncId != -1 && asyncSequence != -1) {
-            return new LocalAsyncIdBo(asyncId, asyncSequence);
-        }
-        // non async
-        return null;
-    }
-
-    @VisibleForTesting
-    LocalAsyncIdBo fastLocalAsyncIdBo(List<TSpanEvent> tSpanEventList) {
-        final TSpanEvent first = tSpanEventList.get(0);
-        if (isSetAsyncId(first)) {
-            final int asyncId = first.getAsyncId();
-            final short asyncSequence = first.getAsyncSequence();
-            return new LocalAsyncIdBo(asyncId, asyncSequence);
         }
         return null;
     }
 
-    private boolean isSetAsyncId(TSpanEvent tSpanEvent) {
-        if (!tSpanEvent.isSetAsyncId()) {
-            return false;
-        }
-        if (!tSpanEvent.isSetAsyncSequence()) {
-            logger.warn("AsyncId & AsyncSequence consistency is broken. {}", tSpanEvent);
-            return false;
-        }
-        return true;
-    }
+
 
     // for test
     SpanChunkBo newSpanChunkBo(TSpanChunk tSpanChunk) {
@@ -334,7 +225,7 @@ public class SpanFactory {
     }
 
 
-    private List<SpanEventBo> buildSpanEventBoList(List<TSpanEvent> spanEventList) {
+    private List<SpanEventBo> buildSpanEventBoList(List<TSpanEvent> spanEventList, SpanEventFilter spanEventFilter) {
         if (CollectionUtils.isEmpty(spanEventList)) {
             return new ArrayList<>();
         }
@@ -377,8 +268,7 @@ public class SpanFactory {
     private AnnotationBo newAnnotationBo(TAnnotation tAnnotation) {
         Objects.requireNonNull(tAnnotation, "tAnnotation");
 
-        AnnotationBo annotationBo = annotationFactory.buildAnnotation(tAnnotation);
-        return annotationBo;
+        return annotationFactory.buildAnnotation(tAnnotation);
     }
 
 }

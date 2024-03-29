@@ -16,10 +16,11 @@
 
 package com.navercorp.pinpoint.batch.job;
 
-import com.navercorp.pinpoint.batch.common.BatchConfiguration;
+import com.navercorp.pinpoint.batch.common.BatchProperties;
 import com.navercorp.pinpoint.web.dao.ApplicationIndexDao;
 import com.navercorp.pinpoint.web.service.AdminService;
 import com.navercorp.pinpoint.web.vo.Application;
+import jakarta.annotation.Nonnull;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.batch.core.ExitStatus;
@@ -30,7 +31,6 @@ import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.repeat.RepeatStatus;
 
-import javax.annotation.Nonnull;
 import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.List;
@@ -41,6 +41,7 @@ import java.util.stream.Collectors;
 /**
  * @author Taejin Koo
  */
+@Deprecated
 public class CleanupInactiveAgentsTasklet implements Tasklet, StepExecutionListener {
 
     private final Logger logger = LogManager.getLogger(this.getClass());
@@ -57,12 +58,12 @@ public class CleanupInactiveAgentsTasklet implements Tasklet, StepExecutionListe
     private int inactiveCount;
 
     public CleanupInactiveAgentsTasklet(
-            BatchConfiguration batchConfiguration,
+            BatchProperties batchProperties,
             AdminService adminService,
             ApplicationIndexDao applicationIndexDao
     ) {
-        Objects.requireNonNull(batchConfiguration, "batchConfiguration");
-        this.durationDays = batchConfiguration.getCleanupInactiveAgentsDurationDays();
+        Objects.requireNonNull(batchProperties, "batchProperties");
+        this.durationDays = batchProperties.getCleanupInactiveAgentsDurationDays();
         this.adminService = Objects.requireNonNull(adminService, "adminService");
         this.applicationIndexDao = Objects.requireNonNull(applicationIndexDao, "applicationIndexDao");
     }

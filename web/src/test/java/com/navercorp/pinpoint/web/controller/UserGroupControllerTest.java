@@ -16,6 +16,7 @@
 package com.navercorp.pinpoint.web.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.navercorp.pinpoint.common.server.util.json.Jackson;
 import com.navercorp.pinpoint.common.server.util.json.TypeRef;
 import com.navercorp.pinpoint.web.dao.UserDao;
 import com.navercorp.pinpoint.web.dao.UserGroupDao;
@@ -23,7 +24,6 @@ import com.navercorp.pinpoint.web.vo.User;
 import com.navercorp.pinpoint.web.vo.UserGroup;
 import com.navercorp.pinpoint.web.vo.UserGroupMember;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -41,6 +41,8 @@ import org.springframework.web.context.WebApplicationContext;
 import java.util.List;
 import java.util.Map;
 
+import static com.navercorp.pinpoint.web.TestTraceUtils.hasKey;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -48,7 +50,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static com.navercorp.pinpoint.web.TestTraceUtils.hasKey;
 
 /**
  * @author minwoo.jung
@@ -56,7 +57,7 @@ import static com.navercorp.pinpoint.web.TestTraceUtils.hasKey;
 @Disabled
 @ExtendWith(SpringExtension.class)
 @WebAppConfiguration
-@ContextConfiguration(locations = {"classpath:servlet-context-web.xml", "classpath:applicationContext-web.xml"})
+@ContextConfiguration(locations = {"classpath:applicationContext-web.xml"})
 public class UserGroupControllerTest {
 
     private final static String TEST_USER_GROUP_ID = "testUserGroup";
@@ -79,7 +80,7 @@ public class UserGroupControllerTest {
     @Autowired
     private UserDao userDao;
 
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = Jackson.newMapper();
 
     private MockMvc mockMvc;
 
@@ -123,7 +124,7 @@ public class UserGroupControllerTest {
         String content = result.getResponse().getContentAsString();
 
         List<Map<String, Object>> userGroupList = mapper.readValue(content, TypeRef.listMap());
-        Assertions.assertEquals(userGroupList.size(), 2);
+        assertThat(userGroupList).hasSize(2);
     }
 
     @Test
@@ -136,7 +137,7 @@ public class UserGroupControllerTest {
         String content = result.getResponse().getContentAsString();
 
         List<Map<String, Object>> userGroupList = mapper.readValue(content, TypeRef.listMap());
-        Assertions.assertEquals(userGroupList.size(), 2);
+        assertThat(userGroupList).hasSize(2);
     }
 
     @Test

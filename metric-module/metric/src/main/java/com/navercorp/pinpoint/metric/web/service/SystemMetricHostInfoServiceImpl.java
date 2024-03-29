@@ -16,6 +16,7 @@
 
 package com.navercorp.pinpoint.metric.web.service;
 
+import com.navercorp.pinpoint.common.util.CollectionUtils;
 import com.navercorp.pinpoint.metric.common.model.MetricTag;
 import com.navercorp.pinpoint.metric.common.model.MetricTagCollection;
 import com.navercorp.pinpoint.metric.common.model.MetricTagKey;
@@ -72,7 +73,7 @@ public class SystemMetricHostInfoServiceImpl implements SystemMetricHostInfoServ
         List<MetricInfo> metricDefinitionIdList = new ArrayList<>();
         for (String metricName : metricNameList) {
             for (String metricDefinitionId : systemMetricBasicGroupManager.findMetricDefinitionIdList(metricName)) {
-                boolean isMatchingRuleAll = (systemMetricBasicGroupManager.findMatchingRule(metricDefinitionId) == MatchingRule.ALL);
+                boolean isMatchingRuleAll = (systemMetricBasicGroupManager.findMatchingRule(metricDefinitionId) == MatchingRule.PASSED_ALL);
                 metricDefinitionIdList.add(new MetricInfo(metricDefinitionId, isMatchingRuleAll));
             }
         }
@@ -92,16 +93,12 @@ public class SystemMetricHostInfoServiceImpl implements SystemMetricHostInfoServ
     public List<MetricTag> getTag(MetricDataSearchKey metricDataSearchKey, Field field, List<Tag> tags) {
         MatchingRule matchingRule = field.getMatchingRule();
 
-        switch (matchingRule) {
-            case EXACT_ONE:
-                return getExactMatchingTag(metricDataSearchKey, field);
-            case ANY_ONE:
-                return getAnyOneTag(metricDataSearchKey, field);
-            case ALL :
-                return createTag(metricDataSearchKey, field, tags);
-            default :
-                throw new UnsupportedOperationException("unsupported matchingRule:" + matchingRule);
-        }
+        return switch (matchingRule) {
+            case EXACT_ONE -> getExactMatchingTag(metricDataSearchKey, field);
+            case ANY_ONE -> getAnyOneTag(metricDataSearchKey, field);
+            case PASSED_ALL -> createTag(metricDataSearchKey, field, tags);
+            default -> throw new UnsupportedOperationException("unsupported matchingRule:" + matchingRule);
+        };
     }
 
     private List<MetricTag> getAnyOneTag(MetricDataSearchKey metricDataSearchKey, Field field) {
@@ -123,7 +120,7 @@ public class SystemMetricHostInfoServiceImpl implements SystemMetricHostInfoServ
     }
 
     private List<MetricTag> createTag(MetricDataSearchKey metricDataSearchKey, Field field, List<Tag> tags) {
-        if (tags == null || tags.isEmpty()) {
+        if (CollectionUtils.isEmpty(tags)) {
             return Collections.emptyList();
         }
 

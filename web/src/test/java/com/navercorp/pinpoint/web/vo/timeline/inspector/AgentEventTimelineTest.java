@@ -16,7 +16,6 @@
 
 package com.navercorp.pinpoint.web.vo.timeline.inspector;
 
-import com.navercorp.pinpoint.common.server.bo.event.AgentEventBo;
 import com.navercorp.pinpoint.common.server.util.AgentEventType;
 import com.navercorp.pinpoint.common.server.util.time.Range;
 import com.navercorp.pinpoint.web.filter.agent.AgentEventFilter;
@@ -25,13 +24,12 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author HyunGil Jeong
@@ -42,10 +40,10 @@ public class AgentEventTimelineTest {
     public void noFilter() {
         // Given
         Range timelineRange = Range.between(100, 200);
-        List<AgentEvent> agentEvents = Arrays.asList(
+        List<AgentEvent> agentEvents = List.of(
                 createAgentEvent(140, AgentEventType.AGENT_PING),
                 createAgentEvent(190, AgentEventType.AGENT_PING));
-        List<AgentEventTimelineSegment> expectedTimelineSegments = Collections.singletonList(
+        List<AgentEventTimelineSegment> expectedTimelineSegments = List.of(
                 createSegment(100, 200, agentEvents));
         // When
         AgentEventTimeline timeline = new AgentEventTimelineBuilder(timelineRange, 1)
@@ -59,10 +57,10 @@ public class AgentEventTimelineTest {
     public void nullFilter() {
         // Given
         Range timelineRange = Range.between(100, 200);
-        List<AgentEvent> agentEvents = Arrays.asList(
+        List<AgentEvent> agentEvents = List.of(
                 createAgentEvent(140, AgentEventType.AGENT_PING),
                 createAgentEvent(190, AgentEventType.AGENT_PING));
-        List<AgentEventTimelineSegment> expectedTimelineSegments = Collections.singletonList(
+        List<AgentEventTimelineSegment> expectedTimelineSegments = List.of(
                 createSegment(100, 200, agentEvents));
         // When
         AgentEventTimeline timeline = new AgentEventTimelineBuilder(timelineRange, 1)
@@ -77,7 +75,7 @@ public class AgentEventTimelineTest {
     public void multipleFilters() {
         // Given
         Range timelineRange = Range.between(100, 200);
-        List<AgentEvent> agentEvents = Arrays.asList(
+        List<AgentEvent> agentEvents = List.of(
                 createAgentEvent(110, AgentEventType.AGENT_PING),
                 createAgentEvent(120, AgentEventType.AGENT_CONNECTED),
                 createAgentEvent(130, AgentEventType.AGENT_SHUTDOWN),
@@ -86,12 +84,12 @@ public class AgentEventTimelineTest {
                 createAgentEvent(160, AgentEventType.AGENT_UNEXPECTED_CLOSE_BY_SERVER),
                 createAgentEvent(170, AgentEventType.USER_THREAD_DUMP),
                 createAgentEvent(180, AgentEventType.OTHER));
-        Set<AgentEventType> includedAgentEventTypes = new HashSet<AgentEventType>() {{
-            add(AgentEventType.AGENT_PING);
-            add(AgentEventType.AGENT_CONNECTED);
-            add(AgentEventType.AGENT_SHUTDOWN);
-            add(AgentEventType.AGENT_CLOSED_BY_SERVER);
-        }};
+        Set<AgentEventType> includedAgentEventTypes = Set.of(
+            AgentEventType.AGENT_PING,
+            AgentEventType.AGENT_CONNECTED,
+            AgentEventType.AGENT_SHUTDOWN,
+            AgentEventType.AGENT_CLOSED_BY_SERVER
+        );
         AgentEventFilter excludeUnexpectedEventsFilter = new AgentEventFilter.ExcludeFilter(
                 AgentEventType.AGENT_UNEXPECTED_SHUTDOWN, AgentEventType.AGENT_UNEXPECTED_CLOSE_BY_SERVER);
         AgentEventFilter excludeUserThreadDumpFilter = new AgentEventFilter.ExcludeFilter(AgentEventType.USER_THREAD_DUMP);
@@ -109,13 +107,15 @@ public class AgentEventTimelineTest {
             AgentEventMarker marker = segment.getValue();
             allEventsTotalCount += marker.getTotalCount();
             Map<AgentEventType, Integer> eventTypeCountMap = marker.getTypeCounts();
-            Assertions.assertTrue(includedAgentEventTypes.containsAll(eventTypeCountMap.keySet()));
-            Assertions.assertFalse(eventTypeCountMap.containsKey(AgentEventType.AGENT_UNEXPECTED_SHUTDOWN));
-            Assertions.assertFalse(eventTypeCountMap.containsKey(AgentEventType.AGENT_UNEXPECTED_CLOSE_BY_SERVER));
-            Assertions.assertFalse(eventTypeCountMap.containsKey(AgentEventType.USER_THREAD_DUMP));
-            Assertions.assertFalse(eventTypeCountMap.containsKey(AgentEventType.OTHER));
+
+            assertThat(includedAgentEventTypes)
+                    .containsAll(eventTypeCountMap.keySet())
+                    .doesNotContain(AgentEventType.AGENT_UNEXPECTED_SHUTDOWN)
+                    .doesNotContain(AgentEventType.AGENT_UNEXPECTED_CLOSE_BY_SERVER)
+                    .doesNotContain(AgentEventType.USER_THREAD_DUMP)
+                    .doesNotContain(AgentEventType.OTHER);
         }
-        Assertions.assertEquals(allEventsTotalCount, includedAgentEventTypes.size());
+        assertThat(includedAgentEventTypes).hasSize(allEventsTotalCount);
     }
 
     @Test
@@ -128,13 +128,13 @@ public class AgentEventTimelineTest {
         AgentEvent event4 = createAgentEvent(100, AgentEventType.AGENT_PING);
         AgentEvent event5 = createAgentEvent(150, AgentEventType.AGENT_PING);
         AgentEvent event6 = createAgentEvent(220, AgentEventType.AGENT_SHUTDOWN);
-        List<AgentEventTimelineSegment> expectedTimelineSegments = Arrays.asList(
-                createSegment(100, 101, Arrays.asList(event1, event2, event3, event4)),
-                createSegment(150, 151, Collections.singletonList(event5)),
-                createSegment(199, 200, Collections.singletonList(event6)));
+        List<AgentEventTimelineSegment> expectedTimelineSegments = List.of(
+                createSegment(100, 101, event1, event2, event3, event4),
+                createSegment(150, 151, event5),
+                createSegment(199, 200, event6));
         // When
         AgentEventTimeline timeline = new AgentEventTimelineBuilder(range, 100)
-                .from(Arrays.asList(event1, event2, event3, event4, event5, event6))
+                .from(List.of(event1, event2, event3, event4, event5, event6))
                 .build();
         // Then
         Assertions.assertEquals(expectedTimelineSegments, timeline.getTimelineSegments());
@@ -150,13 +150,13 @@ public class AgentEventTimelineTest {
         AgentEvent event4 = createAgentEvent(110, AgentEventType.AGENT_PING);
         AgentEvent event5 = createAgentEvent(199, AgentEventType.AGENT_PING);
         AgentEvent event6 = createAgentEvent(200, AgentEventType.AGENT_SHUTDOWN);
-        List<AgentEventTimelineSegment> expectedTimelineSegments = Arrays.asList(
-                createSegment(0, 1, Collections.singletonList(event1)),
-                createSegment(5, 6, Collections.singletonList(event2)),
-                createSegment(99, 199, Arrays.asList(event3, event4, event5, event6)));
+        List<AgentEventTimelineSegment> expectedTimelineSegments = List.of(
+                createSegment(0, 1, event1),
+                createSegment(5, 6, event2),
+                createSegment(99, 199, event3, event4, event5, event6));
         // When
         AgentEventTimeline timeline = new AgentEventTimelineBuilder(range, 100)
-                .from(Arrays.asList(event1, event2, event3, event4, event5, event6))
+                .from(List.of(event1, event2, event3, event4, event5, event6))
                 .build();
         // Then
         Assertions.assertEquals(expectedTimelineSegments, timeline.getTimelineSegments());
@@ -176,20 +176,20 @@ public class AgentEventTimelineTest {
         AgentEvent event8 = createAgentEvent(17, AgentEventType.AGENT_PING);
         AgentEvent event9 = createAgentEvent(18, AgentEventType.AGENT_PING);
         AgentEvent event10 = createAgentEvent(19, AgentEventType.AGENT_PING);
-        List<AgentEventTimelineSegment> expectedTimelineSegments = Arrays.asList(
-                createSegment(10, 11, Collections.singletonList(event1)),
-                createSegment(11, 12, Collections.singletonList(event2)),
-                createSegment(12, 13, Collections.singletonList(event3)),
-                createSegment(13, 14, Collections.singletonList(event4)),
-                createSegment(14, 15, Collections.singletonList(event5)),
-                createSegment(15, 16, Collections.singletonList(event6)),
-                createSegment(16, 17, Collections.singletonList(event7)),
-                createSegment(17, 18, Collections.singletonList(event8)),
-                createSegment(18, 19, Collections.singletonList(event9)),
-                createSegment(19, 20, Collections.singletonList(event10)));
+        List<AgentEventTimelineSegment> expectedTimelineSegments = List.of(
+                createSegment(10, 11, event1),
+                createSegment(11, 12, event2),
+                createSegment(12, 13, event3),
+                createSegment(13, 14, event4),
+                createSegment(14, 15, event5),
+                createSegment(15, 16, event6),
+                createSegment(16, 17, event7),
+                createSegment(17, 18, event8),
+                createSegment(18, 19, event9),
+                createSegment(19, 20, event10));
         // When
         AgentEventTimeline timeline = new AgentEventTimelineBuilder(range, 100)
-                .from(Arrays.asList(event1, event2, event3, event4, event5, event6, event7, event8, event9, event10))
+                .from(List.of(event1, event2, event3, event4, event5, event6, event7, event8, event9, event10))
                 .build();
         // Then
         Assertions.assertEquals(expectedTimelineSegments, timeline.getTimelineSegments());
@@ -214,13 +214,19 @@ public class AgentEventTimelineTest {
                 .build();
         // Then
         List<AgentEventTimelineSegment> timelineSegments = timeline.getTimelineSegments();
-        Assertions.assertEquals(numTimeslots, timelineSegments.size());
+        assertThat(timelineSegments).hasSize(numTimeslots);
         for (AgentEventTimelineSegment timelineSegment : timelineSegments) {
             AgentEventMarker eventMarker = timelineSegment.getValue();
+
             Assertions.assertEquals(expectedEventCountPerSegment, eventMarker.getTotalCount());
+
             int pingEventCount = eventMarker.getTypeCounts().get(AgentEventType.AGENT_PING);
             Assertions.assertEquals(expectedEventCountPerSegment, pingEventCount);
         }
+    }
+
+    private AgentEventTimelineSegment createSegment(long startTimestamp, long endTimestamp, AgentEvent... agentEvent) {
+        return createSegment(startTimestamp, endTimestamp, List.of(agentEvent));
     }
 
     private AgentEventTimelineSegment createSegment(long startTimestamp, long endTimestamp, List<AgentEvent> agentEvents) {
@@ -236,6 +242,6 @@ public class AgentEventTimelineTest {
     }
 
     private AgentEvent createAgentEvent(long eventTimestamp, AgentEventType agentEventType) {
-        return new AgentEvent(new AgentEventBo("testAgentId", 0, eventTimestamp, agentEventType));
+        return new AgentEvent("testAgentId", 0, eventTimestamp, agentEventType);
     }
 }

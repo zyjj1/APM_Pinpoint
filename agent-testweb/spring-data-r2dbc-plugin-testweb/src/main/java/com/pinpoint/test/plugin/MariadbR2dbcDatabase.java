@@ -17,13 +17,12 @@
 package com.pinpoint.test.plugin;
 
 import io.r2dbc.spi.ConnectionFactory;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import org.mariadb.r2dbc.MariadbConnectionConfiguration;
 import org.mariadb.r2dbc.MariadbConnectionFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
 
 @Component
 @Qualifier("mariadb")
@@ -33,7 +32,13 @@ public class MariadbR2dbcDatabase implements R2dbcDatabase {
 
     @PostConstruct
     public void init() throws Exception {
-        MariadbConnectionConfiguration connectionConfiguration = MariadbConnectionConfiguration.builder().host("localhost").port(9115).username("root").password("").database("test").build();
+        MariadbConnectionConfiguration.Builder builder = MariadbConnectionConfiguration.builder();
+        MariadbConnectionConfiguration connectionConfiguration = builder.host("localhost")
+                .port(9115)
+                .username("root")
+                .password("")
+                .database("test")
+                .build();
         connectionFactory = new MariadbConnectionFactory(connectionConfiguration);
     }
 

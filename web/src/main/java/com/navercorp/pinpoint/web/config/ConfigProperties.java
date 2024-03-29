@@ -18,18 +18,15 @@ package com.navercorp.pinpoint.web.config;
 
 import com.navercorp.pinpoint.common.server.config.AnnotationVisitor;
 import com.navercorp.pinpoint.common.server.config.LoggingEvent;
-import org.apache.logging.log4j.Logger;
+import jakarta.annotation.PostConstruct;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Configuration;
-
-import javax.annotation.PostConstruct;
 
 /**
  * @author HyunGil Jeong
  * @author Jongjin.Bae
  */
-@Configuration
 public class ConfigProperties {
 
     private final Logger logger = LogManager.getLogger(ConfigProperties.class);
@@ -70,10 +67,16 @@ public class ConfigProperties {
     @Value("${config.show.urlStat:false}")
     private boolean showUrlStat;
 
+    @Value("${config.show.exceptionTrace:false}")
+    private boolean showExceptionTrace;
+
+    @Value("${config.show.sqlStat:false}")
+    private boolean showSqlStat;
+
     @Value("${websocket.allowedOrigins:#{null}}")
     private String webSocketAllowedOrigins;
     
-    @Value("${webhook.enable:false}")
+    @Value("${pinpoint.modules.web.webhook:false}")
     private boolean webhookEnable;
 
     public String getSecurityGuideUrl() {
@@ -124,6 +127,14 @@ public class ConfigProperties {
         return showUrlStat;
     }
 
+    public boolean isShowExceptionTrace() {
+        return showExceptionTrace;
+    }
+
+    public boolean isShowSqlStat() {
+        return showSqlStat;
+    }
+
     public String getWebSocketAllowedOrigins() {
         return webSocketAllowedOrigins;
     }
@@ -153,7 +164,6 @@ public class ConfigProperties {
         sb.append(", showApplicationStat=").append(showApplicationStat);
         sb.append(", showStackTraceOnError=").append(showStackTraceOnError);
         sb.append(", webSocketAllowedOrigins=").append(webSocketAllowedOrigins);
-        sb.append(", webhookEnable=").append(webhookEnable);
         sb.append('}');
         return sb.toString();
     }

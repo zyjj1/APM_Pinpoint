@@ -16,6 +16,8 @@
 
 package com.navercorp.pinpoint.common.server.bo.stat;
 
+import jakarta.validation.constraints.NotBlank;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -25,8 +27,8 @@ import java.util.List;
  */
 public class AgentUriStatBo {
     private String serviceName;
-    private String applicationName;
-    private String agentId;
+    @NotBlank private String applicationName;
+    @NotBlank private String agentId;
     private byte bucketVersion;
     private List<EachUriStatBo> eachUriStatBoList = new ArrayList<>();
 
@@ -108,14 +110,12 @@ public class AgentUriStatBo {
 
     @Override
     public String toString() {
-        final StringBuilder sb = new StringBuilder("AgentUriStatBo{");
-        sb.append("serviceName='").append(serviceName).append('\'');
-        sb.append(", applicationName=").append(applicationName);
-        sb.append(", agentId='").append(agentId).append('\'');
-        sb.append(", bucketVersion=").append(bucketVersion);
-        sb.append(", eachUriStatBoList=").append(eachUriStatBoList);
-        sb.append('}');
-        return sb.toString();
+        return "AgentUriStatBo{" +
+                "serviceName='" + serviceName + '\'' +
+                ", applicationName='" + applicationName + '\'' +
+                ", agentId='" + agentId + '\'' +
+                ", bucketVersion=" + bucketVersion +
+                ", eachUriStatBoList=" + eachUriStatBoList +
+                '}';
     }
-
 }

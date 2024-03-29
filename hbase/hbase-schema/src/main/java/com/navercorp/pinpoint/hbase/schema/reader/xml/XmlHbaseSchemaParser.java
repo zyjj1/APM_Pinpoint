@@ -19,15 +19,15 @@ package com.navercorp.pinpoint.hbase.schema.reader.xml;
 import com.navercorp.pinpoint.hbase.schema.definition.xml.HbaseSchema;
 import com.navercorp.pinpoint.hbase.schema.reader.HbaseSchemaParseException;
 import com.navercorp.pinpoint.hbase.schema.reader.xml.mapper.HbaseSchemaMapper;
-import org.apache.logging.log4j.Logger;
+import jakarta.xml.bind.JAXBContext;
+import jakarta.xml.bind.JAXBException;
+import jakarta.xml.bind.Unmarshaller;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 import javax.xml.XMLConstants;
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBException;
-import javax.xml.bind.Unmarshaller;
 import javax.xml.transform.stream.StreamSource;
 import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
@@ -73,8 +73,8 @@ class XmlHbaseSchemaParser {
         } catch (IOException e) {
             LOGGER.error("{} file I/O error, skipping validation. Error:{}", XSD_FILE, e.getMessage(), e);
             return null;
-        } catch(NullPointerException npe) {
-            LOGGER.error("{} file I/O error, skipping validation. Error:{}", XSD_FILE, npe.getMessage(), npe);
+        } catch(Exception e) {
+            LOGGER.error("{} file unknown error, skipping validation. Error:{}", XSD_FILE, e.getMessage(), e);
             return null;
         }
     }

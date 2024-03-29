@@ -16,6 +16,7 @@
 
 package com.navercorp.pinpoint.web.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.web.ErrorProperties;
 import org.springframework.boot.autoconfigure.web.ServerProperties;
@@ -24,29 +25,33 @@ import org.springframework.boot.web.error.ErrorAttributeOptions;
 import org.springframework.boot.web.servlet.error.ErrorAttributes;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.servlet.http.HttpServletRequest;
 import java.util.Map;
 
 @RestController
 @RequestMapping(value={"/error"})
+@Validated
 public class NonWhiteLabelErrorController extends AbstractErrorController {
     private final ErrorProperties errorProperties;
 
-    public NonWhiteLabelErrorController(@Autowired ErrorAttributes errorAttributes, @Autowired ServerProperties serverProperties) {
+    public NonWhiteLabelErrorController(
+            @Autowired ErrorAttributes errorAttributes,
+            @Autowired ServerProperties serverProperties
+    ) {
         super(errorAttributes);
         this.errorProperties = serverProperties.getError();
     }
 
     @RequestMapping
     public ResponseEntity<Map<String, Object>> error(HttpServletRequest request) {
-        HttpStatus status = this.getStatus(request);
+        final HttpStatus status = this.getStatus(request);
         if (status == HttpStatus.NO_CONTENT) {
             return new ResponseEntity<>(status);
         } else {
-            Map<String, Object> body = this.getErrorAttributes(request, this.getErrorAttributeOptions(request));
+            final Map<String, Object> body = this.getErrorAttributes(request, this.getErrorAttributeOptions(request));
             return new ResponseEntity<>(body, status);
         }
     }
@@ -73,36 +78,27 @@ public class NonWhiteLabelErrorController extends AbstractErrorController {
     }
 
     private boolean isIncludeStackTrace(HttpServletRequest request) {
-        switch (this.getErrorProperties().getIncludeStacktrace()) {
-            case ALWAYS:
-                return true;
-            case ON_PARAM:
-                return this.getTraceParameter(request);
-            default:
-                return false;
-        }
+        return switch (this.getErrorProperties().getIncludeStacktrace()) {
+            case ALWAYS -> true;
+            case ON_PARAM -> this.getTraceParameter(request);
+            default -> false;
+        };
     }
 
     private boolean isIncludeMessage(HttpServletRequest request) {
-        switch (this.getErrorProperties().getIncludeMessage()) {
-            case ALWAYS:
-                return true;
-            case ON_PARAM:
-                return this.getMessageParameter(request);
-            default:
-                return false;
-        }
+        return switch (this.getErrorProperties().getIncludeMessage()) {
+            case ALWAYS -> true;
+            case ON_PARAM -> this.getMessageParameter(request);
+            default -> false;
+        };
     }
 
     private boolean isIncludeBindingErrors(HttpServletRequest request) {
-        switch (this.getErrorProperties().getIncludeBindingErrors()) {
-            case ALWAYS:
-                return true;
-            case ON_PARAM:
-                return this.getErrorsParameter(request);
-            default:
-                return false;
-        }
+        return switch (this.getErrorProperties().getIncludeBindingErrors()) {
+            case ALWAYS -> true;
+            case ON_PARAM -> this.getErrorsParameter(request);
+            default -> false;
+        };
     }
 
     private ErrorProperties getErrorProperties() {

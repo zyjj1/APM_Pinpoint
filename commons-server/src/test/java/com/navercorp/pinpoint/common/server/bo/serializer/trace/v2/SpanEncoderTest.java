@@ -6,7 +6,11 @@ import com.navercorp.pinpoint.common.server.bo.RandomTSpan;
 import com.navercorp.pinpoint.common.server.bo.SpanBo;
 import com.navercorp.pinpoint.common.server.bo.SpanChunkBo;
 import com.navercorp.pinpoint.common.server.bo.SpanEventBo;
+import com.navercorp.pinpoint.common.server.bo.filter.EmptySpanEventFilter;
+import com.navercorp.pinpoint.common.server.bo.filter.SpanEventFilter;
 import com.navercorp.pinpoint.common.server.bo.thrift.SpanFactory;
+import com.navercorp.pinpoint.common.util.JvmUtils;
+import com.navercorp.pinpoint.common.util.JvmVersion;
 import com.navercorp.pinpoint.thrift.dto.TSpan;
 import com.navercorp.pinpoint.thrift.dto.TSpanChunk;
 import com.navercorp.pinpoint.thrift.dto.TSpanEvent;
@@ -15,6 +19,8 @@ import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.nio.ByteBuffer;
@@ -34,24 +40,32 @@ public class SpanEncoderTest {
 
     private static final int REPEAT_COUNT = 10;
 
+    private final long spanAcceptedTime = System.currentTimeMillis();
+
     private final RandomTSpan randomTSpan = new RandomTSpan();
+
     private final SpanFactory spanFactory = new SpanFactory();
 
-    private SpanEncoder spanEncoder = new SpanEncoderV0();
-    private SpanDecoder spanDecoder = new SpanDecoderV0();
+    private final SpanEncoder spanEncoder = new SpanEncoderV0();
+    private final SpanDecoder spanDecoder = new SpanDecoderV0();
 
+    private final SpanEventFilter filter = new EmptySpanEventFilter();
+
+    @BeforeEach
+    public  void before() {
+        JvmVersion version = JvmUtils.getVersion();
+        Assumptions.assumeFalse(version.onOrAfter(JvmVersion.JAVA_17), "Skip test for Java 17+");
+    }
 
     @Test
-    public void testEncodeSpanColumnValue_simpleSpan() throws Exception {
-
+    public void testEncodeSpanColumnValue_simpleSpan() {
         SpanBo spanBo = randomSpan();
         assertSpan(spanBo);
-
     }
 
 
     @Test
-    public void testEncodeSpanColumnValue_simpleSpan_N() throws Exception {
+    public void testEncodeSpanColumnValue_simpleSpan_N() {
         for (int i = 0; i < REPEAT_COUNT; i++) {
             testEncodeSpanColumnValue_simpleSpan();
         }
@@ -59,7 +73,7 @@ public class SpanEncoderTest {
 
 
     @Test
-    public void testEncodeSpanColumnValue_complexSpan() throws Exception {
+    public void testEncodeSpanColumnValue_complexSpan() {
 
         SpanBo spanBo = randomComplexSpan();
         assertSpan(spanBo);
@@ -67,14 +81,14 @@ public class SpanEncoderTest {
     }
 
     @Test
-    public void testEncodeSpanColumnValue_complexSpan_N() throws Exception {
+    public void testEncodeSpanColumnValue_complexSpan_N() {
         for (int i = 0; i < REPEAT_COUNT; i++) {
             testEncodeSpanColumnValue_complexSpan();
         }
     }
 
     @Test
-    public void testEncodeSpanColumnValue_simpleSpanChunk() throws Exception {
+    public void testEncodeSpanColumnValue_simpleSpanChunk() {
 
         SpanChunkBo spanChunkBo = randomSpanChunk();
         assertSpanChunk(spanChunkBo);
@@ -82,7 +96,7 @@ public class SpanEncoderTest {
     }
 
     @Test
-    public void testEncodeSpanColumnValue_simpleSpanChunk_N() throws Exception {
+    public void testEncodeSpanColumnValue_simpleSpanChunk_N() {
         for (int i = 0; i < REPEAT_COUNT; i++) {
             testEncodeSpanColumnValue_simpleSpanChunk();
         }
@@ -90,7 +104,7 @@ public class SpanEncoderTest {
 
 
     @Test
-    public void testEncodeSpanColumnValue_complexSpanChunk() throws Exception {
+    public void testEncodeSpanColumnValue_complexSpanChunk() {
 
         SpanChunkBo spanChunkBo = randomComplexSpanChunk();
         assertSpanChunk(spanChunkBo);
@@ -98,7 +112,7 @@ public class SpanEncoderTest {
     }
 
     @Test
-    public void testEncodeSpanColumnValue_complexSpanChunk_N() throws Exception {
+    public void testEncodeSpanColumnValue_complexSpanChunk_N() {
         for (int i = 0; i < REPEAT_COUNT; i++) {
             testEncodeSpanColumnValue_complexSpanChunk();
         }
@@ -118,7 +132,7 @@ public class SpanEncoderTest {
 
     private SpanBo randomSpan() {
         TSpan tSpan = randomTSpan.randomTSpan();
-        return spanFactory.buildSpanBo(tSpan);
+        return spanFactory.buildSpanBo(tSpan, spanAcceptedTime, filter);
     }
 
     private <T> List<T> newArrayList(T... elements) {
@@ -136,12 +150,12 @@ public class SpanEncoderTest {
         TSpanEvent tSpanEvent4 = randomTSpan.randomTSpanEvent((short) 5);
 
         tSpan.setSpanEventList(newArrayList(tSpanEvent1, tSpanEvent2, tSpanEvent3, tSpanEvent4));
-        return spanFactory.buildSpanBo(tSpan);
+        return spanFactory.buildSpanBo(tSpan, spanAcceptedTime, filter);
     }
 
     private SpanChunkBo randomSpanChunk() {
         TSpanChunk tSpanChunk = randomTSpan.randomTSpanChunk();
-        return spanFactory.buildSpanChunkBo(tSpanChunk);
+        return spanFactory.buildSpanChunkBo(tSpanChunk, spanAcceptedTime, filter);
     }
 
     public SpanChunkBo randomComplexSpanChunk() {
@@ -152,7 +166,7 @@ public class SpanEncoderTest {
         TSpanEvent tSpanEvent4 = randomTSpan.randomTSpanEvent((short) 5);
 
         tSpanChunk.setSpanEventList(newArrayList(tSpanEvent1, tSpanEvent2, tSpanEvent3, tSpanEvent4));
-        return spanFactory.buildSpanChunkBo(tSpanChunk);
+        return spanFactory.buildSpanChunkBo(tSpanChunk, spanAcceptedTime, filter);
     }
 
 
@@ -181,7 +195,7 @@ public class SpanEncoderTest {
 
         List<SpanEventBo> spanEventBoList = spanBo.getSpanEventBoList();
         List<SpanEventBo> decodedSpanEventBoList = decode.getSpanEventBoList();
-        Assertions.assertTrue(EqualsBuilder.reflectionEquals(spanEventBoList, decodedSpanEventBoList));
+        Assertions.assertEquals(spanEventBoList, decodedSpanEventBoList);
     }
 
     private void assertSpanChunk(SpanChunkBo spanChunkBo) {
@@ -207,7 +221,7 @@ public class SpanEncoderTest {
 
         List<SpanEventBo> spanEventBoList = spanChunkBo.getSpanEventBoList();
         List<SpanEventBo> decodedSpanEventBoList = decode.getSpanEventBoList();
-        Assertions.assertTrue(EqualsBuilder.reflectionEquals(spanEventBoList, decodedSpanEventBoList));
+        Assertions.assertEquals(spanEventBoList, decodedSpanEventBoList);
 
     }
 

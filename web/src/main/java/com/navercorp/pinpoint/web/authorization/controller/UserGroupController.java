@@ -15,19 +15,21 @@
  */
 package com.navercorp.pinpoint.web.authorization.controller;
 
+import com.navercorp.pinpoint.common.server.response.Response;
+import com.navercorp.pinpoint.common.server.response.SuccessResponse;
 import com.navercorp.pinpoint.common.util.StringUtils;
 import com.navercorp.pinpoint.web.response.CreateUserGroupResponse;
-import com.navercorp.pinpoint.web.response.Response;
-import com.navercorp.pinpoint.web.response.SuccessResponse;
 import com.navercorp.pinpoint.web.service.UserGroupService;
 import com.navercorp.pinpoint.web.util.ValueValidator;
 import com.navercorp.pinpoint.web.vo.UserGroup;
 import com.navercorp.pinpoint.web.vo.UserGroupMember;
 import com.navercorp.pinpoint.web.vo.UserGroupMemberParam;
 import com.navercorp.pinpoint.web.vo.exception.PinpointUserGroupException;
-import org.apache.logging.log4j.Logger;
+import jakarta.validation.constraints.NotBlank;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -45,6 +47,7 @@ import java.util.Objects;
  */
 @RestController
 @RequestMapping(value = "/userGroup")
+@Validated
 public class UserGroupController {
     private final Logger logger = LogManager.getLogger(this.getClass());
 
@@ -57,14 +60,17 @@ public class UserGroupController {
         this.userGroupService = Objects.requireNonNull(userGroupService, "userGroupService");
     }
 
-    @PostMapping()
-    public Response createUserGroup(@RequestBody UserGroup userGroup) {
+    @PostMapping
+    public CreateUserGroupResponse createUserGroup(@RequestBody UserGroup userGroup) {
         if (!ValueValidator.validateUserGroupId(userGroup.getId())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "usergroupId pattern is invalid to create user group");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "userGroupId pattern is invalid to create user group"
+            );
         }
 
         try {
-            String userGroupNumber = userGroupService.createUserGroup(userGroup);
+            final String userGroupNumber = userGroupService.createUserGroup(userGroup);
             return new CreateUserGroupResponse("SUCCESS", userGroupNumber);
         } catch (PinpointUserGroupException e) {
             logger.error(e.getMessage(), e);
@@ -72,10 +78,13 @@ public class UserGroupController {
         }
     }
 
-    @DeleteMapping()
+    @DeleteMapping
     public Response deleteUserGroup(@RequestBody UserGroup userGroup) {
         if (StringUtils.isEmpty(userGroup.getId())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "there is id of userGroup in params to delete user group");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "there is id of userGroup in params to delete user group"
+            );
         }
 
         try {
@@ -87,20 +96,30 @@ public class UserGroupController {
         }
     }
 
-    @GetMapping()
-    public List<UserGroup> getUserGroup(@RequestParam(value = USER_ID, required = false) String userId, @RequestParam(value = USER_GROUP_ID, required = false) String userGroupId) {
-        if (StringUtils.hasLength(userId)) {
-            return userGroupService.selectUserGroupByUserId(userId);
-        } else if (StringUtils.hasLength(userGroupId)) {
-            return userGroupService.selectUserGroupByUserGroupId(userGroupId);
-        }
+    @GetMapping
+    public List<UserGroup> getUserGroups() {
         return userGroupService.selectUserGroup();
+    }
+
+    @GetMapping(params = USER_ID)
+    public List<UserGroup> getUserGroupOfUser(@RequestParam(USER_ID) String userId) {
+        return userGroupService.selectUserGroupByUserId(userId);
+    }
+
+    @GetMapping(params = USER_GROUP_ID)
+    public List<UserGroup> getUserGroupById(@RequestParam(USER_GROUP_ID) String userGroupId) {
+        return userGroupService.selectUserGroupByUserGroupId(userGroupId);
     }
 
     @PostMapping(value = "/member")
     public Response insertUserGroupMember(@RequestBody UserGroupMemberParam userGroupMember) {
-        if (StringUtils.isEmpty(userGroupMember.getMemberId()) || StringUtils.isEmpty(userGroupMember.getUserGroupId())) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "there is not userGroupId or memberId in params to insert user group member");
+        if (StringUtils.isEmpty(userGroupMember.getMemberId()) ||
+                StringUtils.isEmpty(userGroupMember.getUserGroupId())
+        ) {
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "There is no userGroupId or memberId in params to insert user group member"
+            );
         }
         userGroupService.insertMember(userGroupMember);
         return SuccessResponse.ok();
@@ -108,15 +127,20 @@ public class UserGroupController {
 
     @DeleteMapping(value = "/member")
     public Response deleteUserGroupMember(@RequestBody UserGroupMemberParam userGroupMember) {
-        if (StringUtils.isEmpty(userGroupMember.getUserGroupId()) || StringUtils.isEmpty(userGroupMember.getMemberId())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "there is not userGroupId or memberId in params to delete user group member");
+        if (StringUtils.isEmpty(userGroupMember.getUserGroupId()) ||
+                StringUtils.isEmpty(userGroupMember.getMemberId())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "There is no userGroupId or memberId in params to delete user group member"
+            );
         }
         userGroupService.deleteMember(userGroupMember);
         return SuccessResponse.ok();
     }
 
     @GetMapping(value = "/member")
-    public List<UserGroupMember> getUserGroupMember(@RequestParam(USER_GROUP_ID) String userGroupId) {
+    public List<UserGroupMember> getUserGroupMember(@RequestParam(USER_GROUP_ID) @NotBlank String userGroupId) {
         return userGroupService.selectMember(userGroupId);
     }
+
 }

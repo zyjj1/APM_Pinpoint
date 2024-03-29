@@ -19,6 +19,8 @@ package com.navercorp.pinpoint.common.server.bo;
 import com.navercorp.pinpoint.common.server.bo.serializer.metadata.MetaDataRowKey;
 import com.navercorp.pinpoint.common.util.LineNumber;
 import com.navercorp.pinpoint.common.util.StringUtils;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.PositiveOrZero;
 
 import java.util.Objects;
 
@@ -27,8 +29,8 @@ import java.util.Objects;
  * @author jaehong.kim
  */
 public class ApiMetaDataBo implements MetaDataRowKey {
-    private final String agentId;
-    private final long startTime;
+    @NotBlank private final String agentId;
+    @PositiveOrZero private final long startTime;
     private final int apiId;
 
     private final String apiInfo;

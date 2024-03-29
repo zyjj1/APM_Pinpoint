@@ -107,7 +107,6 @@ public class SpanFactoryAssert {
         Assertions.assertEquals(tSpanEvent.getStartElapsed(), spanEventBo.getStartElapsed());
         Assertions.assertEquals(tSpanEvent.getEndElapsed(), spanEventBo.getEndElapsed());
 
-        Assertions.assertEquals(tSpanEvent.getRpc(), spanEventBo.getRpc());
         Assertions.assertEquals(tSpanEvent.getServiceType(), spanEventBo.getServiceType());
         Assertions.assertEquals(tSpanEvent.getEndPoint(), spanEventBo.getEndPoint());
 
@@ -128,8 +127,6 @@ public class SpanFactoryAssert {
 
         Assertions.assertEquals(tSpanEvent.getNextAsyncId(), spanEventBo.getNextAsyncId());
 
-        Assertions.assertEquals(-1, spanEventBo.getAsyncId());
-        Assertions.assertEquals(-1, spanEventBo.getAsyncSequence());
     }
 
 
@@ -159,13 +156,11 @@ public class SpanFactoryAssert {
         Assertions.assertEquals(CollectionUtils.isEmpty(spanEventBoList), CollectionUtils.isEmpty(spanEventList));
         if (CollectionUtils.isNotEmpty(spanEventBoList)) {
             Map<Integer, SpanEventBo> spanEventBoMap = new HashMap<>();
-            for (int i = 0; i < spanEventBoList.size(); i++) {
-                SpanEventBo spanEventBo = spanEventBoList.get(i);
+            for (SpanEventBo spanEventBo : spanEventBoList) {
                 spanEventBoMap.put((int) spanEventBo.getSequence(), spanEventBo);
             }
 
-            for (int i = 0; i < spanEventList.size(); i++) {
-                TSpanEvent tSpanEvent = spanEventList.get(i);
+            for (TSpanEvent tSpanEvent : spanEventList) {
                 SpanEventBo spanEventBo = spanEventBoMap.get((int) tSpanEvent.getSequence());
                 Assertions.assertNotNull(spanEventBo);
                 assertSpanEvent(tSpanEvent, spanEventBo);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 NAVER Corp.
+ * Copyright 2024 NAVER Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,10 +17,10 @@
 package com.navercorp.pinpoint.grpc.client;
 
 import com.navercorp.pinpoint.grpc.client.config.ClientOption;
-import com.navercorp.pinpoint.grpc.client.config.SslOption;
-
+import com.navercorp.pinpoint.grpc.client.config.ClientRetryOption;
 import io.grpc.ClientInterceptor;
 import io.grpc.NameResolverProvider;
+import io.netty.handler.ssl.SslContext;
 
 
 /**
@@ -39,7 +39,9 @@ public interface ChannelFactoryBuilder {
 
     void setClientOption(ClientOption clientOption);
 
-    void setSslOption(SslOption sslOption);
+    void setSslContext(SslContext sslContext);
+
+    void setClientRetryOption(ClientRetryOption clientRetryOption);
 
     void setNameResolverProvider(NameResolverProvider nameResolverProvider);
 

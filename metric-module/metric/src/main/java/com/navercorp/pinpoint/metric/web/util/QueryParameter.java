@@ -16,6 +16,8 @@
 
 package com.navercorp.pinpoint.metric.web.util;
 
+import com.navercorp.pinpoint.metric.common.model.Range;
+
 public abstract class QueryParameter {
     protected static final int TAG_SET_COUNT = 10;
     protected final Range range;
@@ -40,22 +42,27 @@ public abstract class QueryParameter {
         return limit;
     }
 
-    public static abstract class Builder {
+    public static abstract class Builder<S extends Builder> {
         protected Range range;
         protected TimePrecision timePrecision;
         protected int timeSize = 10000;
         protected long limit;
 
-        public void setRange(Range range) {
+        protected abstract S self();
+
+        public S setRange(Range range) {
             this.range = range;
+            return self();
         }
 
-        public void setTimePrecision(TimePrecision timePrecision) {
+        public S setTimePrecision(TimePrecision timePrecision) {
             this.timePrecision = timePrecision;
+            return self();
         }
 
-        public void setTimeSize(int timeSize) {
+        public S setTimeSize(int timeSize) {
             this.timeSize = timeSize;
+            return self();
         }
 
         public long estimateLimit() {

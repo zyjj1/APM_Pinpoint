@@ -16,7 +16,6 @@
 
 package com.navercorp.pinpoint.common.server.cluster.zookeeper;
 
-import com.navercorp.pinpoint.testcase.util.SocketUtils;
 import org.apache.curator.test.TestingServer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -30,6 +29,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.TestSocketUtils;
 
 import java.util.concurrent.TimeUnit;
 
@@ -55,19 +55,15 @@ public class ConnectionTest {
 
     @BeforeAll
     public static void setUp() throws Exception {
-        zookeeperPort = SocketUtils.findAvailableTcpPort();
-        ts = createTestingServer();
-    }
-
-    private static TestingServer createTestingServer() throws Exception {
-        return new TestingServer(zookeeperPort);
+        zookeeperPort = TestSocketUtils.findAvailableTcpPort();
+        ts = ZKServerFactory.create(zookeeperPort);
     }
 
     @AfterAll
     public static void tearDown() throws Exception {
         if (ts != null) {
             ts.stop();
-            ts.close();
+            ZKUtils.closeQuietly(ts);
         }
     }
 
@@ -88,12 +84,12 @@ public class ConnectionTest {
             assertAwaitState(ZooKeeper.States.CONNECTED, zookeeper);
 
             ts.stop();
-            ts.close();
+            ZKUtils.closeQuietly(ts);
 
             assertAwaitState(ZooKeeper.States.CONNECTING, zookeeper);
 
 
-            ts = createTestingServer();
+            ts = ZKServerFactory.create(zookeeperPort);
 
             Assertions.assertThrows(ConditionTimeoutException.class, () -> assertAwaitState(ZooKeeper.States.CONNECTED, zookeeper));
 
@@ -142,11 +138,11 @@ public class ConnectionTest {
             assertAwaitState(true, curatorZookeeperClient);
 
             ts.stop();
-            ts.close();
+            ZKUtils.closeQuietly(ts);
 
             assertAwaitState(false, curatorZookeeperClient);
 
-            ts = createTestingServer();
+            ts = ZKServerFactory.create(zookeeperPort);
 
             assertAwaitState(true, curatorZookeeperClient);
         }

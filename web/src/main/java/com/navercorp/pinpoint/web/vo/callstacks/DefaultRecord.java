@@ -41,7 +41,7 @@ public class DefaultRecord extends BaseRecord {
         this.agentName = agentName;
 
         this.applicationName = applicationName;
-        this.serviceType = serviceType;
+        this.apiServiceType = serviceType;
         this.destinationId = destinationId;
 
         this.excludeFromTimeline = serviceType == null || serviceType.isInternalMethod();
@@ -72,14 +72,10 @@ public class DefaultRecord extends BaseRecord {
     }
 
     public String getTabspace() {
-        if(tab == 0) {
+        if (tab == 0) {
             return "";
         }
-        StringBuilder sb = new StringBuilder();
-        for(int i=0; i< tab; i++) {
-            sb.append("&nbsp");
-        }
-        return sb.toString();
+        return "&nbsp".repeat(Math.max(0, tab));
     }
 
     public boolean isMethod() {
@@ -116,16 +112,16 @@ public class DefaultRecord extends BaseRecord {
 
     public String getApiType() {
         if (destinationId == null) {
-            if (serviceType == null) {
+            if (apiServiceType == null) {
                 // no ServiceType when parameter
                 return "";
             }
-            return serviceType.getDesc();
+            return apiServiceType.getDesc();
         }
-        if (serviceType.isIncludeDestinationId()) {
-            return serviceType.getDesc() + "(" + destinationId + ")";
+        if (apiServiceType.isIncludeDestinationId()) {
+            return apiServiceType.getDesc() + "(" + destinationId + ")";
         } else {
-            return serviceType.getDesc();
+            return apiServiceType.getDesc();
         }
 
     }
@@ -225,7 +221,7 @@ public class DefaultRecord extends BaseRecord {
                 ", applicationName=" +
                 applicationName +
                 ", serviceType=" +
-                serviceType +
+                apiServiceType +
                 ", destinationId=" +
                 destinationId +
                 ", excludeFromTimeline=" +

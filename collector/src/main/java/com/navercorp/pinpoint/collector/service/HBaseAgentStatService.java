@@ -17,9 +17,12 @@ package com.navercorp.pinpoint.collector.service;
 
 import com.navercorp.pinpoint.collector.dao.AgentStatDao;
 import com.navercorp.pinpoint.common.server.bo.stat.AgentStatBo;
-import org.apache.logging.log4j.Logger;
+import jakarta.validation.Valid;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
+import org.springframework.validation.annotation.Validated;
 
 import java.util.Objects;
 
@@ -27,9 +30,11 @@ import java.util.Objects;
  * @author minwoo.jung
  */
 @Service("hBaseAgentStatService")
+@Validated
+@ConditionalOnProperty(value = "pinpoint.modules.collector.inspector.hbase.enabled", havingValue = "true")
 public class HBaseAgentStatService implements AgentStatService {
 
-    private final Logger logger = LogManager.getLogger(HBaseAgentStatService.class.getName());
+    private final Logger logger = LogManager.getLogger(HBaseAgentStatService.class);
 
     private final AgentStatDao<?>[] agentStatDaoList;
 
@@ -42,7 +47,7 @@ public class HBaseAgentStatService implements AgentStatService {
     }
 
     @Override
-    public void save(AgentStatBo agentStatBo) {
+    public void save(@Valid AgentStatBo agentStatBo) {
         for (AgentStatDao<?> agentStatDao : agentStatDaoList) {
             try {
                 agentStatDao.dispatch(agentStatBo);

@@ -19,12 +19,18 @@ package com.navercorp.pinpoint.metric.collector.dao.pinot;
 import com.navercorp.pinpoint.metric.collector.dao.SystemMetricDao;
 import com.navercorp.pinpoint.metric.collector.view.SystemMetricView;
 import com.navercorp.pinpoint.metric.common.model.DoubleMetric;
+import com.navercorp.pinpoint.pinot.kafka.util.KafkaCallbacks;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.BiConsumer;
 
 /**
  * @author Hyunjoon Cho
@@ -32,14 +38,20 @@ import java.util.Objects;
 @Repository
 public class PinotSystemMetricDoubleDao implements SystemMetricDao<DoubleMetric> {
 
+    private final Logger logger = LogManager.getLogger(this.getClass());
+
     private final KafkaTemplate<String, SystemMetricView> kafkaDoubleTemplate;
 
     private final String topic;
+
+    private final BiConsumer<SendResult<String, SystemMetricView>, Throwable> resultCallback
+            = KafkaCallbacks.loggingCallback("Kafka(SystemMetricView)", logger);
 
     public PinotSystemMetricDoubleDao(KafkaTemplate<String, SystemMetricView> kafkaDoubleTemplate,
                                       @Value("${kafka.double.topic}") String topic) {
         this.kafkaDoubleTemplate = Objects.requireNonNull(kafkaDoubleTemplate, "kafkaDoubleTemplate");
         this.topic = Objects.requireNonNull(topic, "topic");
+
     }
 
     @Override
@@ -51,17 +63,16 @@ public class PinotSystemMetricDoubleDao implements SystemMetricDao<DoubleMetric>
         for (DoubleMetric doubleMetric : systemMetrics) {
             String kafkaKey = generateKafkaKey(doubleMetric);
             SystemMetricView systemMetricView = new SystemMetricView(tenantId, hostGroupName, doubleMetric);
-            this.kafkaDoubleTemplate.send(topic, kafkaKey, systemMetricView);
+            CompletableFuture<SendResult<String, SystemMetricView>> callback = this.kafkaDoubleTemplate.send(topic, kafkaKey, systemMetricView);
+            callback.whenComplete(resultCallback);
         }
     }
 
     private String generateKafkaKey(DoubleMetric doubleMetric) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(doubleMetric.getHostName());
-        sb.append("_");
-        sb.append(doubleMetric.getMetricName());
-        sb.append("_");
-        sb.append(doubleMetric.getFieldName());
-        return sb.toString();
+        return doubleMetric.getHostName() +
+                "_" +
+                doubleMetric.getMetricName() +
+                "_" +
+                doubleMetric.getFieldName();
     }
 }

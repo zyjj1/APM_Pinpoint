@@ -15,7 +15,7 @@
  */
 package com.navercorp.pinpoint.batch.job;
 
-import com.navercorp.pinpoint.batch.common.BatchConfiguration;
+import com.navercorp.pinpoint.batch.common.BatchProperties;
 import com.navercorp.pinpoint.common.server.util.time.Range;
 import com.navercorp.pinpoint.web.dao.ApplicationIndexDao;
 import com.navercorp.pinpoint.web.service.AgentInfoService;
@@ -23,7 +23,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.batch.item.ItemProcessor;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
@@ -41,12 +41,12 @@ public class AgentCountProcessor implements ItemProcessor<String, Integer> {
     public AgentCountProcessor(
             ApplicationIndexDao applicationIndexDao,
             AgentInfoService agentInfoService,
-            BatchConfiguration batchConfiguration
+            BatchProperties batchProperties
     ) {
         this.applicationIndexDao = Objects.requireNonNull(applicationIndexDao, "applicationIndexDao");
         this.agentInfoService = Objects.requireNonNull(agentInfoService, "agentInfoService");
 
-        long durationDays = batchConfiguration.getCleanupInactiveAgentsDurationDays();
+        long durationDays = batchProperties.getCleanupInactiveAgentsDurationDays();
         this.duration = TimeUnit.DAYS.toMillis(durationDays);
     }
 

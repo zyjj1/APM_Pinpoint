@@ -19,6 +19,7 @@ package com.navercorp.pinpoint.common.server.bo.stat;
 public class TotalThreadCountBo implements AgentStatDataPoint {
     public static final long UNCOLLECTED_VALUE = -1L;
 
+    private String applicationName;
     private String agentId;
     private long startTimestamp;
     private long timestamp;
@@ -45,18 +46,27 @@ public class TotalThreadCountBo implements AgentStatDataPoint {
     @Override
     public AgentStatType getAgentStatType() { return AgentStatType.TOTAL_THREAD; }
 
+    @Override
+    public String getApplicationName() {
+        return this.applicationName;
+    }
+
+    @Override
+    public void setApplicationName(String applicationName) {
+        this.applicationName = applicationName;
+    }
+
     public long getTotalThreadCount() { return totalThreadCount; }
 
     public void setTotalThreadCount(long totalThreadCount) { this.totalThreadCount = totalThreadCount; }
 
     @Override
     public String toString() {
-        final StringBuilder sb = new StringBuilder("TotalThreadCountBo{");
-        sb.append("agentId='").append(agentId).append('\'');
-        sb.append(", startTimestamp=").append(startTimestamp);
-        sb.append(", timestamp=").append(timestamp);
-        sb.append(", totalThreadCount=").append(totalThreadCount);
-        sb.append('}');
-        return sb.toString();
+        return "TotalThreadCountBo{" +
+                "agentId='" + agentId + '\'' +
+                ", startTimestamp=" + startTimestamp +
+                ", timestamp=" + timestamp +
+                ", totalThreadCount=" + totalThreadCount +
+                '}';
     }
 }

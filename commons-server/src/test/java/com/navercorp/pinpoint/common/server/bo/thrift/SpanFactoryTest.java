@@ -18,12 +18,13 @@ package com.navercorp.pinpoint.common.server.bo.thrift;
 
 import com.navercorp.pinpoint.common.profiler.util.TransactionId;
 import com.navercorp.pinpoint.common.profiler.util.TransactionIdUtils;
-import com.navercorp.pinpoint.common.server.bo.LocalAsyncIdBo;
 import com.navercorp.pinpoint.common.server.bo.RandomTSpan;
 import com.navercorp.pinpoint.common.server.bo.SpanBo;
 import com.navercorp.pinpoint.common.server.bo.SpanChunkBo;
 import com.navercorp.pinpoint.common.server.bo.SpanEventBo;
 import com.navercorp.pinpoint.common.server.bo.SpanFactoryAssert;
+import com.navercorp.pinpoint.common.server.bo.filter.EmptySpanEventFilter;
+import com.navercorp.pinpoint.common.server.bo.filter.SpanEventFilter;
 import com.navercorp.pinpoint.thrift.dto.TSpan;
 import com.navercorp.pinpoint.thrift.dto.TSpanChunk;
 import com.navercorp.pinpoint.thrift.dto.TSpanEvent;
@@ -31,8 +32,7 @@ import org.apache.commons.lang3.RandomUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import java.util.Arrays;
-import java.util.Collections;
+import java.util.List;
 
 /**
  * @author Woonduk Kang(emeroad)
@@ -41,11 +41,14 @@ public class SpanFactoryTest {
 
     private static final int REPEAT_COUNT = 10;
 
+    private final long spanAcceptTime = System.currentTimeMillis();
+
     private final SpanFactory spanFactory = new SpanFactory();
+    private final SpanEventFilter filter = new EmptySpanEventFilter();
 
-    private SpanFactoryAssert spanFactoryAssert = new SpanFactoryAssert();
+    private final SpanFactoryAssert spanFactoryAssert = new SpanFactoryAssert();
 
-    private RandomTSpan random = new RandomTSpan();
+    private final RandomTSpan random = new RandomTSpan();
 
 
     @Test
@@ -107,9 +110,9 @@ public class SpanFactoryTest {
         TSpanEvent tSpanEvent2 = random.randomTSpanEvent((short) 1);
         TSpanEvent tSpanEvent3 = random.randomTSpanEvent((short) 5);
         TSpanEvent tSpanEvent4 = random.randomTSpanEvent((short) 2);
-        tSpan.setSpanEventList(Arrays.asList(tSpanEvent1, tSpanEvent2, tSpanEvent3, tSpanEvent4));
+        tSpan.setSpanEventList(List.of(tSpanEvent1, tSpanEvent2, tSpanEvent3, tSpanEvent4));
 
-        SpanBo spanBo = spanFactory.buildSpanBo(tSpan);
+        SpanBo spanBo = spanFactory.buildSpanBo(tSpan, spanAcceptTime, filter);
 
         spanFactoryAssert.assertSpan(tSpan, spanBo);
 
@@ -130,16 +133,16 @@ public class SpanFactoryTest {
         TSpanEvent tSpanEvent2 = random.randomTSpanEvent((short) 1);
         TSpanEvent tSpanEvent3 = random.randomTSpanEvent((short) 5);
         TSpanEvent tSpanEvent4 = random.randomTSpanEvent((short) 2);
-        tSpanChunk.setSpanEventList(Arrays.asList(tSpanEvent1, tSpanEvent2, tSpanEvent3, tSpanEvent4));
+        tSpanChunk.setSpanEventList(List.of(tSpanEvent1, tSpanEvent2, tSpanEvent3, tSpanEvent4));
 
-        SpanChunkBo spanChunkBo = spanFactory.buildSpanChunkBo(tSpanChunk);
+        SpanChunkBo spanChunkBo = spanFactory.buildSpanChunkBo(tSpanChunk, spanAcceptTime, filter);
 
         spanFactoryAssert.assertSpanChunk(tSpanChunk, spanChunkBo);
 
     }
 
     @Test
-    public void testBuildSpanChunkBo_N() throws Exception {
+    public void testBuildSpanChunkBo_N() {
         for (int i = 0; i < REPEAT_COUNT; i++) {
             testBuildSpanChunkBo();
         }
@@ -175,56 +178,5 @@ public class SpanFactoryTest {
         Assertions.assertEquals(transactionId.getTransactionSequence(), 2);
     }
 
-
-    @Test
-    public void testFastLocalAsyncIdBo() {
-        int asyncId = 1;
-        short asyncSequence = 0;
-        TSpanEvent tSpanEvent = new TSpanEvent();
-
-        tSpanEvent.setAsyncId(asyncId);
-        tSpanEvent.setAsyncSequence(asyncSequence);
-        LocalAsyncIdBo localAsyncIdBo = spanFactory.fastLocalAsyncIdBo(Collections.singletonList(tSpanEvent));
-
-        Assertions.assertEquals(localAsyncIdBo.getAsyncId(), asyncId);
-        Assertions.assertEquals(localAsyncIdBo.getSequence(), asyncSequence);
-    }
-
-    @Test
-    public void testFastLocalAsyncIdBo_empty() {
-
-        TSpanEvent tSpanEvent = new TSpanEvent();
-
-        LocalAsyncIdBo localAsyncIdBo = spanFactory.fastLocalAsyncIdBo(Collections.singletonList(tSpanEvent));
-        Assertions.assertNull(localAsyncIdBo);
-    }
-
-    @Test
-    public void testFullScanLocalAsyncIdBo() {
-        int asyncId = 1;
-        short asyncSequence = 0;
-        TSpanEvent tSpanEvent = new TSpanEvent();
-        tSpanEvent.setAsyncId(asyncId);
-        tSpanEvent.setAsyncSequence(asyncSequence);
-
-        TSpanChunk tSpanChunk = new TSpanChunk();
-        tSpanChunk.setSpanEventList(Arrays.asList(tSpanEvent, tSpanEvent));
-
-        LocalAsyncIdBo localAsyncIdBo = spanFactory.fullScanLocalAsyncIdBo(tSpanChunk);
-
-        Assertions.assertEquals(localAsyncIdBo.getAsyncId(), asyncId);
-        Assertions.assertEquals(localAsyncIdBo.getSequence(), asyncSequence);
-    }
-
-    @Test
-    public void testFullScanLocalAsyncIdBo_empty() {
-
-        TSpanEvent tSpanEvent = new TSpanEvent();
-        TSpanChunk tSpanChunk = new TSpanChunk();
-        tSpanChunk.setSpanEventList(Arrays.asList(tSpanEvent, tSpanEvent));
-
-        LocalAsyncIdBo localAsyncIdBo = spanFactory.fullScanLocalAsyncIdBo(tSpanChunk);
-        Assertions.assertNull(localAsyncIdBo);
-    }
 
 }

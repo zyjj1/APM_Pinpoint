@@ -23,23 +23,22 @@ import com.navercorp.pinpoint.hbase.schema.core.HbaseSchemaVerifier;
 import com.navercorp.pinpoint.hbase.schema.domain.SchemaChangeLog;
 import com.navercorp.pinpoint.hbase.schema.reader.core.ChangeSet;
 import com.navercorp.pinpoint.hbase.schema.reader.core.TableChange;
-import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author HyunGil Jeong
@@ -54,7 +53,7 @@ public class HbaseSchemaServiceImplTest {
     private SchemaChangeLogService schemaChangeLogService;
 
     @Mock
-    private HbaseSchemaVerifier<HTableDescriptor> hbaseSchemaVerifier;
+    private HbaseSchemaVerifier<TableDescriptor> hbaseSchemaVerifier;
 
     private HbaseSchemaService hbaseSchemaService;
 
@@ -108,11 +107,11 @@ public class HbaseSchemaServiceImplTest {
     @Test
     public void getSchemaStatus_invalidSchemaChangeLogs() {
         final String namespace = "namespace";
-        final List<ChangeSet> changeSets = Arrays.asList(
+        final List<ChangeSet> changeSets = List.of(
                 newChangeSet("id1", "value1"),
                 newChangeSet("id2", "value2"),
                 newChangeSet("id3", "value3"));
-        final List<SchemaChangeLog> schemaChangeLogs = Arrays.asList(
+        final List<SchemaChangeLog> schemaChangeLogs = List.of(
                 newSchemaChangeLog("id1", "value2", 2),
                 newSchemaChangeLog("id2", "value1", 1),
                 newSchemaChangeLog("someOtherId", "value3", 3));
@@ -126,11 +125,11 @@ public class HbaseSchemaServiceImplTest {
     @Test
     public void getSchemaStatus_validSchemaChangeLogs() {
         final String namespace = "namespace";
-        final List<ChangeSet> changeSets = Arrays.asList(
+        final List<ChangeSet> changeSets = List.of(
                 newChangeSet("id1", "value1"),
                 newChangeSet("id2", "value2"),
                 newChangeSet("id3", "value3"));
-        final List<SchemaChangeLog> schemaChangeLogs = Arrays.asList(
+        final List<SchemaChangeLog> schemaChangeLogs = List.of(
                 newSchemaChangeLog("id1", "value1", 1),
                 newSchemaChangeLog("id2", "value2", 2),
                 newSchemaChangeLog("id3", "value3", 3));
@@ -144,11 +143,11 @@ public class HbaseSchemaServiceImplTest {
     @Test
     public void getSchemaStatus_validButNeedUpdateSchemaChangeLogs() {
         final String namespace = "namespace";
-        final List<ChangeSet> changeSets = Arrays.asList(
+        final List<ChangeSet> changeSets = List.of(
                 newChangeSet("id1", "value1"),
                 newChangeSet("id2", "value2"),
                 newChangeSet("id3", "value3"));
-        final List<SchemaChangeLog> schemaChangeLogs = Arrays.asList(
+        final List<SchemaChangeLog> schemaChangeLogs = List.of(
                 newSchemaChangeLog("id1", "value1", 1),
                 newSchemaChangeLog("id2", "value2", 2));
         when(schemaChangeLogService.isAvailable(namespace)).thenReturn(true);
@@ -163,7 +162,7 @@ public class HbaseSchemaServiceImplTest {
     }
 
     private ChangeSet newChangeSet(String id, String value, TableChange... tableChanges) {
-        return new ChangeSet(id, value, Arrays.asList(tableChanges));
+        return new ChangeSet(id, value, List.of(tableChanges));
     }
 
     private SchemaChangeLog newSchemaChangeLog(String id, String value, int execOrder) {

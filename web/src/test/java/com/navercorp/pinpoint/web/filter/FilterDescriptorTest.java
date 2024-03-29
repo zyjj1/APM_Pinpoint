@@ -19,6 +19,7 @@ package com.navercorp.pinpoint.web.filter;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.navercorp.pinpoint.common.server.util.json.Jackson;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.Assertions;
@@ -30,13 +31,15 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 /**
  * @author netspider
  */
 public class FilterDescriptorTest {
     private final Logger logger = LogManager.getLogger(this.getClass());
 
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = Jackson.newMapper();
 
     @Test
     public void convert() throws IOException {
@@ -108,10 +111,11 @@ public class FilterDescriptorTest {
 
         logger.debug("json:{}", arrayJson);
 
-        List<FilterDescriptor> descriptor = mapper.readValue(arrayJson, new TypeReference<>() {});
+        List<FilterDescriptor> descriptor = mapper.readValue(arrayJson, new TypeReference<>() {
+        });
 
-        Assertions.assertEquals(1, descriptor.size());
-        Assertions.assertNotNull(descriptor.get(0));
+        assertThat(descriptor).hasSize(1)
+                .first().isNotNull();
     }
 
     @Test

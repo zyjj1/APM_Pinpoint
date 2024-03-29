@@ -18,6 +18,8 @@ package com.navercorp.pinpoint.common.server.bo.stat;
 
 
 import com.navercorp.pinpoint.common.server.util.FilterUtils;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.PositiveOrZero;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,8 +30,11 @@ import java.util.Objects;
  */
 public class AgentStatBo {
 
-    private final String agentId;
-    private final long startTimestamp;
+
+
+    @NotBlank private final String applicationName;
+    @NotBlank private final String agentId;
+    @PositiveOrZero private final long startTimestamp;
 
     private final List<JvmGcBo> jvmGcBos;
     private final List<JvmGcDetailedBo> jvmGcDetailedBos;
@@ -46,6 +51,7 @@ public class AgentStatBo {
 
 
     public AgentStatBo(Builder builder) {
+        this.applicationName = builder.applicationName;
         this.agentId = builder.agentId;
         this.startTimestamp = builder.startTimestamp;
         this.jvmGcBos = FilterUtils.filter(builder.statList, JvmGcBo.class);
@@ -65,6 +71,10 @@ public class AgentStatBo {
 
     public long getStartTimestamp() {
         return startTimestamp;
+    }
+
+    public String getApplicationName() {
+        return applicationName;
     }
 
     public String getAgentId() {
@@ -120,17 +130,20 @@ public class AgentStatBo {
         return loadedClassBos;
     }
 
-    public static Builder newBuilder(String agentId, long startTimestamp) {
-        return new Builder(agentId, startTimestamp);
+    public static Builder newBuilder(String applicationName, String agentId, long startTimestamp) {
+        return new Builder(applicationName, agentId, startTimestamp);
     }
 
     public static class Builder {
+
+        private final String applicationName;
         private final String agentId;
         private final long startTimestamp;
 
         private final List<AgentStatDataPoint> statList = new ArrayList<>();
 
-        public Builder(String agentId, long startTimestamp) {
+        public Builder(String applicationName, String agentId, long startTimestamp) {
+            this.applicationName = Objects.requireNonNull(applicationName, "applicationName");
             this.agentId = Objects.requireNonNull(agentId, "agentId");
             this.startTimestamp = startTimestamp;
         }
@@ -147,6 +160,7 @@ public class AgentStatBo {
             }
 
             private void setBaseData(AgentStatDataPoint agentStatDataPoint) {
+                agentStatDataPoint.setApplicationName(applicationName);
                 agentStatDataPoint.setAgentId(agentId);
                 agentStatDataPoint.setStartTimestamp(startTimestamp);
                 agentStatDataPoint.setTimestamp(this.timestamp);
@@ -245,22 +259,21 @@ public class AgentStatBo {
 
     @Override
     public String toString() {
-        final StringBuilder sb = new StringBuilder("AgentStatBo{");
-        sb.append("agentId='").append(agentId).append('\'');
-        sb.append(", jvmGcBos=").append(jvmGcBos);
-        sb.append(", jvmGcDetailedBos=").append(jvmGcDetailedBos);
-        sb.append(", cpuLoadBos=").append(cpuLoadBos);
-        sb.append(", transactionBos=").append(transactionBos);
-        sb.append(", activeTraceBos=").append(activeTraceBos);
-        sb.append(", dataSourceListBos=").append(dataSourceListBos);
-        sb.append(", responseTimeBos=").append(responseTimeBos);
-        sb.append(", deadlockThreadCountBos=").append(deadlockThreadCountBos);
-        sb.append(", fileDescriptorBos=").append(fileDescriptorBos);
-        sb.append(", directBufferBos=").append(directBufferBos);
-        sb.append(", totalThreadCountBos=").append(totalThreadCountBos);
-        sb.append(", loadedClassBos=").append(loadedClassBos);
-        sb.append('}');
-        return sb.toString();
+        return "AgentStatBo{" +
+                "agentId='" + agentId + '\'' +
+                ", startTimestamp=" + startTimestamp +
+                ", jvmGcBos=" + jvmGcBos +
+                ", jvmGcDetailedBos=" + jvmGcDetailedBos +
+                ", cpuLoadBos=" + cpuLoadBos +
+                ", transactionBos=" + transactionBos +
+                ", activeTraceBos=" + activeTraceBos +
+                ", dataSourceListBos=" + dataSourceListBos +
+                ", responseTimeBos=" + responseTimeBos +
+                ", deadlockThreadCountBos=" + deadlockThreadCountBos +
+                ", fileDescriptorBos=" + fileDescriptorBos +
+                ", directBufferBos=" + directBufferBos +
+                ", totalThreadCountBos=" + totalThreadCountBos +
+                ", loadedClassBos=" + loadedClassBos +
+                '}';
     }
-
 }

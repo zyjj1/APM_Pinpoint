@@ -26,6 +26,7 @@ public class DataSourceListBo implements AgentStatDataPointList<DataSourceBo> {
 
     private final List<DataSourceBo> dataSourceBoList = new ArrayList<>();
 
+    private String applicationName;
     private String agentId;
     private long startTimestamp;
     private long timestamp;
@@ -63,6 +64,16 @@ public class DataSourceListBo implements AgentStatDataPointList<DataSourceBo> {
     @Override
     public AgentStatType getAgentStatType() {
         return AgentStatType.DATASOURCE;
+    }
+
+    @Override
+    public String getApplicationName() {
+        return this.applicationName;
+    }
+
+    @Override
+    public void setApplicationName(String applicationName) {
+        this.applicationName = applicationName;
     }
 
     @Override
@@ -114,13 +125,11 @@ public class DataSourceListBo implements AgentStatDataPointList<DataSourceBo> {
 
     @Override
     public String toString() {
-        final StringBuilder sb = new StringBuilder("DataSourceListBo{");
-        sb.append("dataSourceBoList=").append(dataSourceBoList);
-        sb.append(", agentId='").append(agentId).append('\'');
-        sb.append(", startTimestamp=").append(startTimestamp);
-        sb.append(", timestamp=").append(timestamp);
-        sb.append('}');
-        return sb.toString();
+        return "DataSourceListBo{" +
+                "dataSourceBoList=" + dataSourceBoList +
+                ", agentId='" + agentId + '\'' +
+                ", startTimestamp=" + startTimestamp +
+                ", timestamp=" + timestamp +
+                '}';
     }
-
 }

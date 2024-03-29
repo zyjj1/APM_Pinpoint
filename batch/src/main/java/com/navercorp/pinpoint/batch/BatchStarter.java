@@ -17,14 +17,14 @@
 package com.navercorp.pinpoint.batch;
 
 import com.navercorp.pinpoint.common.server.starter.BasicStarter;
+import org.springframework.boot.WebApplicationType;
 
 public class BatchStarter extends BasicStarter {
     public static final String EXTERNAL_PROPERTY_SOURCE_NAME = "BatchExternalEnvironment";
     public static final String EXTERNAL_CONFIGURATION_KEY = "pinpoint.batch.config.location";
 
     public BatchStarter(Class<?>... sources) {
-        super(sources);
-        this.externalPropertySourceName = EXTERNAL_PROPERTY_SOURCE_NAME;
-        this.externalConfigurationKey = EXTERNAL_CONFIGURATION_KEY;
+        super(EXTERNAL_PROPERTY_SOURCE_NAME, EXTERNAL_CONFIGURATION_KEY, sources);
+        setWebApplicationType(WebApplicationType.NONE);
     }
 }

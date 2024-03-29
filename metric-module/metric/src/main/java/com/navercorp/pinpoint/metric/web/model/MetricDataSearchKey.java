@@ -16,10 +16,10 @@
 
 package com.navercorp.pinpoint.metric.web.model;
 
-import com.navercorp.pinpoint.metric.common.model.StringPrecondition;
-import com.navercorp.pinpoint.metric.web.util.Range;
+import com.navercorp.pinpoint.common.server.util.StringPrecondition;
+import com.navercorp.pinpoint.metric.common.model.Range;
+import com.navercorp.pinpoint.metric.common.model.TimeWindow;
 import com.navercorp.pinpoint.metric.web.util.TimePrecision;
-import com.navercorp.pinpoint.metric.web.util.TimeWindow;
 
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
@@ -39,7 +39,7 @@ public class MetricDataSearchKey {
     private final long limit;
 
     public MetricDataSearchKey(String tenantId, String hostGroupName, String hostName, String metricName, String metricDefinitionId, TimeWindow timeWindow) {
-        this.tenantId = StringPrecondition.requireHasLength(tenantId, "hostGroupName");
+        this.tenantId = StringPrecondition.requireHasLength(tenantId, "tenantId");
         this.hostGroupName = StringPrecondition.requireHasLength(hostGroupName, "hostGroupName");
         this.hostName = StringPrecondition.requireHasLength(hostName, "hostName");
         this.metricName = StringPrecondition.requireHasLength(metricName, "metricName");

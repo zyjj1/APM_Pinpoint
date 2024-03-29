@@ -29,7 +29,7 @@ import java.util.Objects;
  * @author HyunGil Jeong
  */
 //@Service
-public class DefaultAgentStatChartService<IN extends SampledAgentStatDataPoint, OUT extends StatChart> implements AgentStatChartService<OUT> {
+public class DefaultAgentStatChartService<IN extends SampledAgentStatDataPoint, OUT extends StatChart<?>> implements AgentStatChartService<OUT> {
 
     private final SampledAgentStatDao<IN> statDao;
     private final SampledChartFunction<IN, OUT> chartFunction;

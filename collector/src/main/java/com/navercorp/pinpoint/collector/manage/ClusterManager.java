@@ -17,12 +17,12 @@
 
 package com.navercorp.pinpoint.collector.manage;
 
-import com.navercorp.pinpoint.collector.cluster.ClusterPoint;
-import com.navercorp.pinpoint.collector.cluster.ClusterPointLocator;
-import com.navercorp.pinpoint.collector.config.CollectorClusterConfig;
 import com.navercorp.pinpoint.common.server.cluster.ClusterKey;
+import com.navercorp.pinpoint.realtime.collector.receiver.ClusterPoint;
+import com.navercorp.pinpoint.realtime.collector.receiver.ClusterPointLocator;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
@@ -31,27 +31,19 @@ import java.util.Objects;
  */
 public class ClusterManager extends AbstractCollectorManager implements ClusterManagerMBean {
 
-    private final boolean enableCluster;
-    private final ClusterPointLocator<?> clusterPointLocator;
+    private final ClusterPointLocator clusterPointLocator;
 
-    public ClusterManager(CollectorClusterConfig collectorClusterConfig, ClusterPointLocator<?> clusterPointLocator) {
-        Objects.requireNonNull(collectorClusterConfig, "configuration");
-        this.enableCluster = collectorClusterConfig.isClusterEnable();
+    public ClusterManager(ClusterPointLocator clusterPointLocator) {
         this.clusterPointLocator = Objects.requireNonNull(clusterPointLocator, "clusterPointLocator");
-    }
-
-    @Override
-    public boolean isEnable() {
-        return enableCluster;
     }
 
     @Override
     public List<String> getConnectedAgentList() {
         List<String> result = new ArrayList<>();
 
-        List<? extends ClusterPoint<?>> clusterPointList = clusterPointLocator.getClusterPointList();
-        for (ClusterPoint<?> clusterPoint : clusterPointList) {
-            ClusterKey destClusterKey = clusterPoint.getDestClusterKey();
+        Collection<? extends ClusterPoint> clusterPointList = clusterPointLocator.getClusterPointList();
+        for (ClusterPoint clusterPoint : clusterPointList) {
+            ClusterKey destClusterKey = clusterPoint.getClusterKey();
             result.add(destClusterKey.format());
         }
 

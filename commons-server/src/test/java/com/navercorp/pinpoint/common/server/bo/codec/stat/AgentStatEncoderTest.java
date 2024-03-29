@@ -28,7 +28,6 @@ import org.junit.jupiter.api.Test;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
@@ -46,7 +45,7 @@ public class AgentStatEncoderTest {
 
     private AgentStatEncoder<TestAgentStat> encoder = new AgentStatEncoder<>(codec);
 
-    private AgentStatDecoder<TestAgentStat> decoder = new AgentStatDecoder<>(Arrays.asList(codec));
+    private AgentStatDecoder<TestAgentStat> decoder = new AgentStatDecoder<>(List.of(codec));
 
     @Test
     public void stats_should_be_encoded_and_decoded_into_same_value() {
@@ -127,6 +126,7 @@ public class AgentStatEncoderTest {
 
     private static class TestAgentStat implements AgentStatDataPoint {
 
+        private String applicationName;
         private String agentId;
         private long startTimestamp;
         private long timestamp;
@@ -173,6 +173,16 @@ public class AgentStatEncoderTest {
         @Override
         public AgentStatType getAgentStatType() {
             return AgentStatType.UNKNOWN;
+        }
+
+        @Override
+        public String getApplicationName() {
+            return this.applicationName;
+        }
+
+        @Override
+        public void setApplicationName(String applicationName) {
+            this.applicationName = applicationName;
         }
 
         @Override

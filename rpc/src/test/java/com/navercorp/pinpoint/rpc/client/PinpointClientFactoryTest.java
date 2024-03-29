@@ -16,9 +16,8 @@
 
 package com.navercorp.pinpoint.rpc.client;
 
-import com.navercorp.pinpoint.rpc.Future;
+import com.navercorp.pinpoint.io.ResponseMessage;
 import com.navercorp.pinpoint.rpc.PinpointSocketException;
-import com.navercorp.pinpoint.rpc.ResponseMessage;
 import com.navercorp.pinpoint.rpc.TestByteUtils;
 import com.navercorp.pinpoint.rpc.util.PinpointRPCTestUtils;
 import com.navercorp.pinpoint.test.server.TestPinpointServerAcceptor;
@@ -40,7 +39,10 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 
 /**
@@ -66,13 +68,10 @@ public class PinpointClientFactoryTest {
 
     @Test
     public void connectFail() {
-        try {
+        Assertions.assertThrowsExactly(PinpointSocketException.class, () -> {
             int availableTcpPort = SocketUtils.findAvailableTcpPort(47000);
             clientFactory.connect("127.0.0.1", availableTcpPort);
-            Assertions.fail();
-        } catch (PinpointSocketException e) {
-            Assertions.assertTrue(ConnectException.class.isInstance(e.getCause()));
-        }
+        });
     }
 
     @Test
@@ -83,7 +82,7 @@ public class PinpointClientFactoryTest {
         ChannelFuture reconnect = clientFactory.reconnect(remoteAddress);
         reconnect.await();
         Assertions.assertFalse(reconnect.isSuccess());
-        Assertions.assertTrue(ConnectException.class.isInstance(reconnect.getCause()));
+        assertThat(reconnect.getCause()).isInstanceOf(ConnectException.class);
 
         Thread.sleep(1000);
     }
@@ -102,7 +101,7 @@ public class PinpointClientFactoryTest {
     }
 
     @Test
-    public void pingInternal() throws IOException, InterruptedException {
+    public void pingInternal() {
         TestServerMessageListenerFactory testServerMessageListenerFactory = new TestServerMessageListenerFactory(TestServerMessageListenerFactory.HandshakeType.DUPLEX, true);
         final TestServerMessageListenerFactory.TestServerMessageListener serverMessageListener = testServerMessageListenerFactory.create();
 
@@ -142,7 +141,7 @@ public class PinpointClientFactoryTest {
     }
 
     @Test
-    public void pingAndRequestResponse() throws IOException, InterruptedException {
+    public void pingAndRequestResponse() {
         TestPinpointServerAcceptor testPinpointServerAcceptor = new TestPinpointServerAcceptor(new TestServerMessageListenerFactory(TestServerMessageListenerFactory.HandshakeType.DUPLEX));
         int bindPort = testPinpointServerAcceptor.bind();
 
@@ -160,7 +159,7 @@ public class PinpointClientFactoryTest {
     }
 
     @Test
-    public void sendSync() throws IOException, InterruptedException {
+    public void sendSync() {
         TestPinpointServerAcceptor testPinpointServerAcceptor = new TestPinpointServerAcceptor();
         int bindPort = testPinpointServerAcceptor.bind();
 
@@ -178,7 +177,7 @@ public class PinpointClientFactoryTest {
     }
 
     @Test
-    public void requestAndResponse() throws IOException, InterruptedException {
+    public void requestAndResponse() {
         TestPinpointServerAcceptor testPinpointServerAcceptor = new TestPinpointServerAcceptor(new TestServerMessageListenerFactory(TestServerMessageListenerFactory.HandshakeType.DUPLEX));
         int bindPort = testPinpointServerAcceptor.bind();
 
@@ -226,14 +225,15 @@ public class PinpointClientFactoryTest {
 
                 PinpointClient client = clientFactory.connect("127.0.0.1", bindPort);
 
-                List<Future> futureList = new ArrayList();
+                List<CompletableFuture<ResponseMessage>> futureList = new ArrayList<>();
                 for (int i = 0; i < 30; i++) {
-                    Future<ResponseMessage> requestFuture = client.request(new byte[20]);
+                    CompletableFuture<ResponseMessage> requestFuture = client.request(new byte[20]);
                     futureList.add(requestFuture);
                 }
 
-                for (Future future : futureList) {
-                    future.getResult();
+                CompletableFuture.allOf(futureList.toArray(new CompletableFuture[0]));
+                for (CompletableFuture<?> future : futureList) {
+                    future.get(3000, TimeUnit.MILLISECONDS);
                 }
 
                 PinpointRPCTestUtils.close(client);

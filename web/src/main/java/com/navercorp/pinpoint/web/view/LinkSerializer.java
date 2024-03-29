@@ -16,18 +16,17 @@
 
 package com.navercorp.pinpoint.web.view;
 
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.navercorp.pinpoint.web.applicationmap.histogram.Histogram;
 import com.navercorp.pinpoint.web.applicationmap.link.Link;
-import com.navercorp.pinpoint.web.applicationmap.link.LinkType;
+import com.navercorp.pinpoint.web.applicationmap.link.LinkViews;
 import com.navercorp.pinpoint.web.applicationmap.nodes.Node;
 import com.navercorp.pinpoint.web.applicationmap.nodes.ServerGroupList;
-import com.navercorp.pinpoint.web.applicationmap.histogram.Histogram;
 import com.navercorp.pinpoint.web.applicationmap.rawdata.AgentHistogram;
 import com.navercorp.pinpoint.web.applicationmap.rawdata.AgentHistogramList;
 import com.navercorp.pinpoint.web.vo.Application;
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
 import com.navercorp.pinpoint.web.vo.ResponseTimeStatics;
 
 import java.io.IOException;
@@ -43,13 +42,13 @@ import java.util.Map;
 public class LinkSerializer extends JsonSerializer<Link> {
 
     @Override
-    public void serialize(Link link, JsonGenerator jgen, SerializerProvider provider) throws IOException, JsonProcessingException {
+    public void serialize(Link link, JsonGenerator jgen, SerializerProvider provider) throws IOException {
         jgen.writeStartObject();
 
-        jgen.writeStringField("key", link.getLinkName());  // for servermap
+        jgen.writeObjectField("key", link.getLinkName());  // for servermap
 
-        jgen.writeStringField("from", link.getFrom().getNodeName());  // necessary for go.js
-        jgen.writeStringField("to", link.getTo().getNodeName()); // necessary for go.js
+        jgen.writeObjectField("from", link.getFrom().getNodeName());  // necessary for go.js
+        jgen.writeObjectField("to", link.getTo().getNodeName()); // necessary for go.js
 
         // for FilterWizard. from, to agent mapping data
         writeAgentId("fromAgent", link.getFrom(), jgen);
@@ -80,9 +79,14 @@ public class LinkSerializer extends JsonSerializer<Link> {
 
 
         jgen.writeObjectField("histogram", histogram);
-        writeTimeSeriesHistogram(link, jgen);
+        final Class<?> activeView = LinkViews.getActiveView(provider);
+        //time histogram
+        if (!LinkViews.Simplified.inView(activeView)){
+            writeTimeSeriesHistogram(link, jgen);
+        }
 
-        if (LinkType.DETAILED == link.getLinkType()) {
+        //agent histogram
+        if (LinkViews.Detailed.inView(activeView)) {
             // data showing how agents call each of their respective links
             writeAgentHistogram("sourceHistogram", link.getSourceList(), jgen);
             writeAgentHistogram("targetHistogram", link.getTargetList(), jgen);

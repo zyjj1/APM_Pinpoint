@@ -2,8 +2,7 @@ package com.navercorp.pinpoint.web.applicationmap.histogram;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import com.navercorp.pinpoint.common.server.util.json.Jackson;
 import org.json.JSONException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -14,9 +13,7 @@ import java.io.IOException;
 
 public class ApdexScoreTest {
 
-    private final Logger logger = LogManager.getLogger(this.getClass());
-
-    private final ObjectMapper MAPPER = new ObjectMapper();
+    private final ObjectMapper MAPPER = Jackson.newMapper();
 
     @Test
     public void getApdexScore() {

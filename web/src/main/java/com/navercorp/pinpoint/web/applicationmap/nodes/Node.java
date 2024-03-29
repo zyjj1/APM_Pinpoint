@@ -16,13 +16,13 @@
 
 package com.navercorp.pinpoint.web.applicationmap.nodes;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.navercorp.pinpoint.common.trace.ServiceType;
 import com.navercorp.pinpoint.web.applicationmap.histogram.ApdexScore;
-import com.navercorp.pinpoint.web.applicationmap.histogram.TimeHistogramFormat;
 import com.navercorp.pinpoint.web.applicationmap.histogram.NodeHistogram;
+import com.navercorp.pinpoint.web.applicationmap.histogram.TimeHistogramFormat;
 import com.navercorp.pinpoint.web.view.NodeSerializer;
 import com.navercorp.pinpoint.web.vo.Application;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import java.util.Objects;
 
@@ -36,10 +36,6 @@ import java.util.Objects;
 @JsonSerialize(using = NodeSerializer.class)
 public class Node {
 
-    private static final String NODE_DELIMITER = "^";
-
-    private final NodeType nodeType;
-
     private final Application application;
 
     // avoid NPE
@@ -51,18 +47,7 @@ public class Node {
     private TimeHistogramFormat timeHistogramFormat = TimeHistogramFormat.V1;
 
     public Node(Application application) {
-        this(NodeType.DETAILED, application);
-    }
-
-    public Node(NodeType nodeType, Application application) {
-        this.nodeType = Objects.requireNonNull(nodeType, "nodeType");
         this.application = Objects.requireNonNull(application, "application");
-    }
-
-    public Node(Node copyNode) {
-        Objects.requireNonNull(copyNode, "copyNode");
-        this.nodeType = copyNode.nodeType;
-        this.application = copyNode.application;
     }
 
     public String getApplicationTextName() {
@@ -73,9 +58,6 @@ public class Node {
         }
     }
 
-    public NodeType getNodeType() {
-        return nodeType;
-    }
 
     // TODO remove setter
     public void setServerGroupList(ServerGroupList serverGroupList) {
@@ -91,12 +73,8 @@ public class Node {
         return application;
     }
 
-    public String getNodeName() {
-        return createNodeName(application);
-    }
-
-    public static String createNodeName(Application application) {
-        return application.getName() + NODE_DELIMITER + application.getServiceType();
+    public NodeName getNodeName() {
+        return NodeName.of(application);
     }
 
     public ServiceType getServiceType() {

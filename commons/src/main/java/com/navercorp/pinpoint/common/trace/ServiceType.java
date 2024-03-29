@@ -144,6 +144,8 @@ import static com.navercorp.pinpoint.common.trace.ServiceTypeProperty.TERMINAL;
  * <tr><td>2751</td><td>H2_EXECUTE_QUERY</td></tr>
  * <tr><td>2752</td><td>R2DBC_H2</td></tr>
  * <tr><td>2753</td><td>R2DBC_H2_EXECUTE_QUERY</td></tr>
+ * <tr><td>2800</td><td>CLICK_HOUSE</td></tr>
+ * <tr><td>2801</td><td>CLICK_HOUSE_EXECUTE_QUERY</td></tr>
  * </table>
  *
  * <h3>Database Sandbox (2900 ~ 2999)</h3>
@@ -165,6 +167,8 @@ import static com.navercorp.pinpoint.common.trace.ServiceTypeProperty.TERMINAL;
  * <tr><td>5051</td><td>SPRING_MVC</td></tr>
  * <tr><td>5052</td><td>SPRING_ASYNC</td></tr>
  * <tr><td>5053</td><td>SPRING_WEBFLUX</td></tr>
+ * <tr><td>5054</td><td>SPRING_TX</td></tr>
+ * <tr><td>5055</td><td>SPRING_CLOUD_SLEUTH</td></tr>
  * <tr><td>5061</td><td><i>RESERVED</i></td></tr>
  * <tr><td>5071</td><td>SPRING_BEAN</td></tr>
  * <tr><td>5500</td><td>IBATIS</td></tr>
@@ -178,6 +182,7 @@ import static com.navercorp.pinpoint.common.trace.ServiceTypeProperty.TERMINAL;
  * <tr><td>6062</td><td>DRUID</td></tr>
  * <tr><td>6500</td><td>RXJAVA</td></tr>
  * <tr><td>6510</td><td>REACTOR</td></tr>
+ * <tr><td>6520</td><td>RESILIENCE4J</td></tr>
  * <tr><td>6600</td><td>EXPRESS</td></tr>
  * <tr><td>6610</td><td>KOA</td></tr>
  * <tr><td>6620</td><td>HAPI</td></tr>
@@ -188,7 +193,7 @@ import static com.navercorp.pinpoint.common.trace.ServiceTypeProperty.TERMINAL;
  *
  * <h3>Library Sandbox (7500 ~ 7999)</h3>
  *
- * <h3>Cache & File Library (8000 ~ 8899) Fast Histogram</h3>
+ * <h3>Cache & File Library (8000 ~ 8299) Fast Histogram</h3>
  * <table>
  * <tr><td>8050</td><td>MEMCACHED</td></tr>
  * <tr><td>8051</td><td>MEMCACHED_FUTURE_GET</td></tr>
@@ -207,11 +212,20 @@ import static com.navercorp.pinpoint.common.trace.ServiceTypeProperty.TERMINAL;
  * <tr><td>8251</td><td><i>RESERVED</i></td></tr>
  * <tr><td>8260</td><td><i>RESERVED</i></td></tr>
  * <tr><td>8280</td><td><i>ETCD</i></td></tr>
+ * </table>
+ *
+ * <h3>Message Broker Library (8300 ~ 8799)</h3>
+ * <table>
  * <tr><td>8300</td><td>RABBITMQ</td></tr>
  * <tr><td>8310</td><td><i>ACTIVEMQ_CLIENT</i></td></tr>
  * <tr><td>8311</td><td><i>ACTIVEMQ_CLIENT_INTERNAL</i></td></tr>
  * <tr><td>8660</td><td><i>KAFKA_CLIENT</i></td></tr>
  * <tr><td>8661</td><td><i>KAFKA_CLIENT_INTERNAL</i></td></tr>
+ * <tr><td>8662</td><td><i>KAFKA_STREAMS</i></td></tr>
+ * </table>
+ *
+ * <h3>HBase Library (8800 ~ 8899)</h3>
+ * <table>
  * <tr><td>8800</td><td>HBASE_CLIENT</td></tr>
  * <tr><td>8801</td><td><i>HBASE_CLIENT_ADMIN</i></td></tr>
  * <tr><td>8802</td><td><i>HBASE_CLIENT_TABLE</i></td></tr>
@@ -235,6 +249,8 @@ import static com.navercorp.pinpoint.common.trace.ServiceTypeProperty.TERMINAL;
  * <tr><td>9060</td><td><i>RESERVED</i></td></tr>
  * <tr><td>9062</td><td><i>HTTP_CLIENT_5</i></td></tr>
  * <tr><td>9063</td><td><i>HTTP_CLIENT_5_INTERNAL</i></td></tr>
+ * <tr><td>9065</td><td><i>JDK_HTTP_CLIENT</i></td></tr>
+ * <tr><td>9066</td><td><i>JDK_HTTP_CLIENT_INTERNAL</i></td></tr>
  * <tr><td>9070</td><td><i>RESERVED</i></td></tr>
  * <tr><td><s>9080</s></td><td><s>APACHE_CXF_CLIENT</s></td></tr>
  * <tr><td>9081</td><td>APACHE_CXF_SERVICE_INVOKER</td></tr>

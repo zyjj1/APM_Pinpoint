@@ -25,7 +25,7 @@ import java.util.List;
  */
 public class SpanEventBo implements Event {
 
-   // version 0 means that the type of prefix's size is int
+    // version 0 means that the type of prefix's size is int
 
     private byte version = 0;
 
@@ -34,7 +34,7 @@ public class SpanEventBo implements Event {
     private int startElapsed;
     private int endElapsed;
 
-//    private String rpc;
+    // private String rpc;
     private short serviceType;
 
     private String destinationId;
@@ -55,11 +55,7 @@ public class SpanEventBo implements Event {
 
     private int nextAsyncId = -1;
 
-    @Deprecated
-    private int asyncId = -1;
-    @Deprecated
-    private short asyncSequence = -1;
-    
+
     public SpanEventBo() {
     }
 
@@ -94,16 +90,6 @@ public class SpanEventBo implements Event {
 
     public void setEndElapsed(int endElapsed) {
         this.endElapsed = endElapsed;
-    }
-
-    @Deprecated
-    public String getRpc() {
-        return null;
-    }
-
-    @Deprecated
-    public void setRpc(String rpc) {
-//        this.rpc = rpc;
     }
 
     public short getServiceType() {
@@ -166,11 +152,7 @@ public class SpanEventBo implements Event {
         }
         this.annotationBoList = annotationList;
     }
-    
-    public boolean isAsync() {
-        return this.asyncId != -1;
-    }
-    
+
     public boolean hasException() {
         return hasException;
     }
@@ -207,79 +189,26 @@ public class SpanEventBo implements Event {
     }
 
 
-    @Deprecated
-    public int getAsyncId() {
-        return asyncId;
-    }
-
-    @Deprecated
-    public void setAsyncId(int asyncId) {
-        this.asyncId = asyncId;
-    }
-
-    @Deprecated
-    public short getAsyncSequence() {
-        return asyncSequence;
-    }
-
-    @Deprecated
-    public void setAsyncSequence(short asyncSequence) {
-        this.asyncSequence = asyncSequence;
-    }
-
-    private boolean isDeprecatedAsyncFieldsSet() {
-        if (asyncId != -1 || asyncSequence != -1) {
-            return true;
-        }
-
-        return false;
-    }
-
     @Override
     public String toString() {
-        StringBuilder builder = new StringBuilder();
-        builder.append("{version=");
-        builder.append(version);
-        builder.append(", sequence=");
-        builder.append(sequence);
-        builder.append(", startElapsed=");
-        builder.append(startElapsed);
-        builder.append(", endElapsed=");
-        builder.append(endElapsed);
-        builder.append(", serviceType=");
-        builder.append(serviceType);
-        builder.append(", destinationId=");
-        builder.append(destinationId);
-        builder.append(", endPoint=");
-        builder.append(endPoint);
-        builder.append(", apiId=");
-        builder.append(apiId);
-        builder.append(", annotationBoList=");
-        builder.append(annotationBoList);
-        builder.append(", depth=");
-        builder.append(depth);
-        builder.append(", nextSpanId=");
-        builder.append(nextSpanId);
-        builder.append(", hasException=");
-        builder.append(hasException);
-        if (hasException) {
-            builder.append(", exceptionId=");
-            builder.append(exceptionId);
-            builder.append(", exceptionMessage=");
-            builder.append(exceptionMessage);
-        }
-        builder.append(", exceptionClass=");
-        builder.append(exceptionClass);
-        builder.append(", nextAsyncId=");
-        builder.append(nextAsyncId);
-        if (isDeprecatedAsyncFieldsSet()) {
-            builder.append(", asyncId=");
-            builder.append(asyncId);
-            builder.append(", asyncSequence=");
-            builder.append(asyncSequence);
-        }
-        builder.append("}");
-        return builder.toString();
+        return "SpanEventBo{" +
+                "version=" + version +
+                ", sequence=" + sequence +
+                ", startElapsed=" + startElapsed +
+                ", endElapsed=" + endElapsed +
+                ", serviceType=" + serviceType +
+                ", destinationId='" + destinationId + '\'' +
+                ", endPoint='" + endPoint + '\'' +
+                ", apiId=" + apiId +
+                ", annotationBoList=" + annotationBoList +
+                ", depth=" + depth +
+                ", nextSpanId=" + nextSpanId +
+                ", hasException=" + hasException +
+                ", exceptionId=" + exceptionId +
+                ", exceptionMessage='" + exceptionMessage + '\'' +
+                ", exceptionClass='" + exceptionClass + '\'' +
+                ", nextAsyncId=" + nextAsyncId +
+                '}';
     }
 
     public static class Builder {

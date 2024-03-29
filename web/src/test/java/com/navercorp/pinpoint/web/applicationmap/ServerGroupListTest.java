@@ -25,13 +25,12 @@ import com.navercorp.pinpoint.web.vo.agent.AgentAndStatus;
 import com.navercorp.pinpoint.web.vo.agent.AgentInfoFactory;
 import org.junit.jupiter.api.Test;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.assertj.core.api.Assertions.assertThat;
 
 
 /**
@@ -45,18 +44,16 @@ public class ServerGroupListTest {
         AgentAndStatus agentInfo1 = createAgentInfo("agentId1", "testHost");
         AgentAndStatus agentInfo2 = createAgentInfo("agentId2", "testHost");
 
-        Set<AgentAndStatus> agentInfoSet = new HashSet<>();
-        agentInfoSet.add(agentInfo1);
-        agentInfoSet.add(agentInfo2);
+        Set<AgentAndStatus> agentInfoSet = Set.of(agentInfo1, agentInfo2);
 
         ServerBuilder builder = new ServerBuilder();
         builder.addAgentInfo(agentInfoSet);
         ServerGroupList serverGroupList = builder.build();
         List<String> agentIdList = serverGroupList.getAgentIdList();
 
-        assertThat(agentIdList).hasSize(2);
-        assertThat(agentIdList).contains("agentId1");
-        assertThat(agentIdList).contains("agentId2");
+        assertThat(agentIdList).hasSize(2)
+                .contains("agentId1")
+                .contains("agentId2");
     }
 
     public static AgentAndStatus createAgentInfo(String agentId, String hostName) {

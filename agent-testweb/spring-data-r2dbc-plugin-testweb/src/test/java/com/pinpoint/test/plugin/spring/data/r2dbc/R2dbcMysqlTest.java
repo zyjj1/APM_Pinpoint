@@ -17,27 +17,25 @@
 package com.pinpoint.test.plugin.spring.data.r2dbc;
 
 
-import org.junit.AfterClass;
-import org.junit.Assume;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.MySQLContainer;
-
-import java.util.concurrent.TimeUnit;
 
 public class R2dbcMysqlTest {
     public static final String DATABASE_NAME = "test";
     public static final String USERNAME = "root";
     public static final String PASSWORD = "";
 
-    private static MySQLContainer container = new MySQLContainer();
+    private static MySQLContainer<?> container;
 
-    @BeforeClass
+    @BeforeAll
     public static void beforeClass() {
-        Assume.assumeTrue("Docker not enabled", DockerClientFactory.instance().isDockerAvailable());
+        Assumptions.assumeTrue(DockerClientFactory.instance().isDockerAvailable(), "Docker not enabled");
 
-        container = new MySQLContainer("mysql:5.7.34");
+        container = new MySQLContainer<>("mysql:8.0.36");
         container.withDatabaseName(DATABASE_NAME);
         container.withUsername(USERNAME);
         container.withPassword(PASSWORD);
@@ -53,7 +51,7 @@ public class R2dbcMysqlTest {
         System.out.println("##password=" + container.getPassword());
     }
 
-    @AfterClass
+    @AfterAll
     public static void select() {
         if (container != null) {
             container.stop();

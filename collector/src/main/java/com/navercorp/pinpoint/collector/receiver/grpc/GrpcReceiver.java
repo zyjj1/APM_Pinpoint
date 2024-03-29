@@ -16,13 +16,11 @@
 
 package com.navercorp.pinpoint.collector.receiver.grpc;
 
-import com.navercorp.pinpoint.collector.grpc.config.GrpcSslConfiguration;
 import com.navercorp.pinpoint.collector.receiver.BindAddress;
 import com.navercorp.pinpoint.common.server.util.AddressFilter;
 import com.navercorp.pinpoint.common.util.Assert;
 import com.navercorp.pinpoint.common.util.CollectionUtils;
 import com.navercorp.pinpoint.grpc.channelz.ChannelzRegistry;
-import com.navercorp.pinpoint.grpc.security.SslServerConfig;
 import com.navercorp.pinpoint.grpc.server.MetadataServerTransportFilter;
 import com.navercorp.pinpoint.grpc.server.ServerFactory;
 import com.navercorp.pinpoint.grpc.server.ServerOption;
@@ -34,6 +32,8 @@ import io.grpc.ServerCallExecutorSupplier;
 import io.grpc.ServerInterceptor;
 import io.grpc.ServerServiceDefinition;
 import io.grpc.ServerTransportFilter;
+import io.netty.handler.ssl.SslContext;
+import jakarta.annotation.Nonnull;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.BeanNameAware;
@@ -42,7 +42,6 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.NestedExceptionUtils;
 
-import javax.annotation.Nonnull;
 import java.io.Closeable;
 import java.net.BindException;
 import java.util.ArrayList;
@@ -66,7 +65,7 @@ public class GrpcReceiver implements InitializingBean, DisposableBean, BeanNameA
     private Executor executor;
     private ServerCallExecutorSupplier serverCallExecutorSupplier;
 
-    private List<Object> serviceList = new ArrayList<>();
+    private List<?> serviceList = new ArrayList<>();
 
     private AddressFilter addressFilter;
 
@@ -74,7 +73,8 @@ public class GrpcReceiver implements InitializingBean, DisposableBean, BeanNameA
     private List<ServerTransportFilter> transportFilterList;
 
     private ServerOption serverOption;
-    private GrpcSslConfiguration grpcSslConfiguration;
+
+    private SslContext sslContext;
 
     private Server server;
     private ChannelzRegistry channelzRegistry;
@@ -93,9 +93,8 @@ public class GrpcReceiver implements InitializingBean, DisposableBean, BeanNameA
         Assert.isTrue(CollectionUtils.hasLength(this.serviceList), "serviceList must not be empty");
         Objects.requireNonNull(this.serverOption, "serverOption");
 
-        if (grpcSslConfiguration != null) {
-            final SslServerConfig sslServerConfig = grpcSslConfiguration.toSslServerConfig();
-            this.serverFactory = new ServerFactory(beanName, this.bindAddress.getIp(), this.bindAddress.getPort(), this.executor, this.serverCallExecutorSupplier, serverOption, sslServerConfig);
+        if (sslContext != null) {
+            this.serverFactory = new ServerFactory(beanName, this.bindAddress.getIp(), this.bindAddress.getPort(), this.executor, this.serverCallExecutorSupplier, serverOption, sslContext);
         } else {
             this.serverFactory = new ServerFactory(beanName, this.bindAddress.getIp(), this.bindAddress.getPort(), this.executor, this.serverCallExecutorSupplier, serverOption);
         }
@@ -150,10 +149,10 @@ public class GrpcReceiver implements InitializingBean, DisposableBean, BeanNameA
     private void addService() {
         // Add service
         for (Object service : serviceList) {
-            if (service instanceof BindableService) {
-                this.serverFactory.addService((BindableService) service);
-            } else if (service instanceof ServerServiceDefinition) {
-                this.serverFactory.addService((ServerServiceDefinition) service);
+            if (service instanceof BindableService bindableService) {
+                this.serverFactory.addService(bindableService);
+            } else if (service instanceof ServerServiceDefinition serviceDefinition) {
+                this.serverFactory.addService(serviceDefinition);
             } else {
                 throw new IllegalStateException("unsupported service type " + service);
             }
@@ -196,8 +195,8 @@ public class GrpcReceiver implements InitializingBean, DisposableBean, BeanNameA
         shutdownServer();
 
         for (Object bindableService : serviceList) {
-            if (bindableService instanceof Closeable) {
-                ((Closeable) bindableService).close();
+            if (bindableService instanceof Closeable closeable) {
+                closeable.close();
             }
         }
 
@@ -242,8 +241,9 @@ public class GrpcReceiver implements InitializingBean, DisposableBean, BeanNameA
         this.serverOption = serverOption;
     }
 
-    public void setGrpcSslConfiguration(GrpcSslConfiguration grpcSslConfiguration) {
-        this.grpcSslConfiguration = grpcSslConfiguration;
+
+    public void setSslContext(SslContext sslContext) {
+        this.sslContext = sslContext;
     }
 
     private static final Class<?>[] BINDABLESERVICE_TYPE = {BindableService.class, ServerServiceDefinition.class};
@@ -257,7 +257,7 @@ public class GrpcReceiver implements InitializingBean, DisposableBean, BeanNameA
         return false;
     }
 
-    public void setBindableServiceList(List<Object> serviceList) {
+    public void setBindableServiceList(List<?> serviceList) {
         for (Object service : serviceList) {
             if (!supportType(service)) {
                 throw new IllegalStateException("unsupported type " + service);

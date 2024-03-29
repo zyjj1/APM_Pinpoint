@@ -20,9 +20,6 @@ import com.navercorp.pinpoint.common.profiler.concurrent.PinpointThreadFactory;
 import com.navercorp.pinpoint.common.util.CpuUtils;
 import com.navercorp.pinpoint.grpc.ExecutorUtils;
 import com.navercorp.pinpoint.grpc.channelz.ChannelzRegistry;
-import com.navercorp.pinpoint.grpc.security.SslContextFactory;
-import com.navercorp.pinpoint.grpc.security.SslServerConfig;
-
 import io.grpc.BindableService;
 import io.grpc.InternalWithLogId;
 import io.grpc.Server;
@@ -30,18 +27,19 @@ import io.grpc.ServerCallExecutorSupplier;
 import io.grpc.ServerInterceptor;
 import io.grpc.ServerServiceDefinition;
 import io.grpc.ServerTransportFilter;
-import io.grpc.netty.LogIdServerListenerDelegator;
-import io.grpc.netty.PinpointNettyServerBuilder;
+import io.grpc.internal.ServerImplBuilder;
+import io.grpc.netty.NettyServerBuilder;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.ServerChannel;
 import io.netty.channel.WriteBufferWaterMark;
 import io.netty.handler.ssl.SslContext;
 import io.netty.util.concurrent.Future;
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import javax.net.ssl.SSLException;
+import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
@@ -78,18 +76,25 @@ public class ServerFactory {
     private final List<ServerInterceptor> serverInterceptors = new ArrayList<>();
 
     private final ServerOption serverOption;
-    private final SslServerConfig sslServerConfig;
+    private final SslContext sslContext;
     private ChannelzRegistry channelzRegistry;
 
-    public ServerFactory(String name, String hostname, int port, Executor serverExecutor, ServerCallExecutorSupplier callExecutor, ServerOption serverOption) {
-        this(name, hostname, port, serverExecutor, callExecutor, serverOption, SslServerConfig.DISABLED_CONFIG);
+    public ServerFactory(String name, String hostname, int port,
+                         Executor serverExecutor,
+                         ServerCallExecutorSupplier callExecutor,
+                         ServerOption serverOption) {
+        this(name, hostname, port, serverExecutor, callExecutor, serverOption, null);
     }
 
-    public ServerFactory(String name, String hostname, int port, Executor serverExecutor, ServerCallExecutorSupplier callExecutor, ServerOption serverOption, SslServerConfig sslServerConfig) {
+    public ServerFactory(String name, String hostname, int port,
+                         Executor serverExecutor,
+                         ServerCallExecutorSupplier callExecutor,
+                         ServerOption serverOption,
+                         SslContext sslContext) {
         this.name = Objects.requireNonNull(name, "name");
         this.hostname = Objects.requireNonNull(hostname, "hostname");
         this.serverOption = Objects.requireNonNull(serverOption, "serverOption");
-        this.sslServerConfig = Objects.requireNonNull(sslServerConfig, "sslServerConfig");
+
         this.port = port;
 
         final ServerChannelType serverChannelType = getChannelType();
@@ -102,6 +107,8 @@ public class ServerFactory {
 
         this.serverExecutor = Objects.requireNonNull(serverExecutor, "serverExecutor");
         this.callExecutor = callExecutor;
+
+        this.sslContext = sslContext;
     }
 
     private ServerChannelType getChannelType() {
@@ -139,17 +146,17 @@ public class ServerFactory {
         this.serverInterceptors.add(serverInterceptor);
     }
 
-    public Server build() throws SSLException {
+    public Server build() throws SSLException, NoSuchFieldException, IllegalAccessException {
         InetSocketAddress bindAddress = new InetSocketAddress(this.hostname, this.port);
-        PinpointNettyServerBuilder serverBuilder = PinpointNettyServerBuilder.forAddress(bindAddress);
-        serverBuilder.serverListenerDelegator(new LogIdServerListenerDelegator());
+        NettyServerBuilder serverBuilder = NettyServerBuilder.forAddress(bindAddress);
 
         logger.info("ChannelType:{}", channelType.getSimpleName());
         serverBuilder.channelType(channelType);
         serverBuilder.bossEventLoopGroup(bossEventLoopGroup);
         serverBuilder.workerEventLoopGroup(workerEventLoopGroup);
 
-        setupInternal(serverBuilder);
+        ServerImplBuilder serverImplBuilder = extractServerImplBuilder(serverBuilder);
+        setupInternal(serverImplBuilder);
 
         for (Object service : this.bindableServices) {
 
@@ -179,10 +186,7 @@ public class ServerFactory {
 
         setupServerOption(serverBuilder);
 
-        if (sslServerConfig.isEnable()) {
-            logger.debug("Enable sslConfig.({})", sslServerConfig);
-
-            SslContext sslContext = SslContextFactory.create(sslServerConfig);
+        if (sslContext != null) {
             serverBuilder.sslContext(sslContext);
         }
 
@@ -192,24 +196,27 @@ public class ServerFactory {
             final long serverLogId = logId.getLogId().getId();
             logger.info("{} serverLogId:{}", name, serverLogId);
             if (channelzRegistry != null) {
-                channelzRegistry.addServer(serverLogId, name);
+                channelzRegistry.register(serverLogId, name);
             }
         }
         return server;
     }
 
-
-    private void setupInternal(PinpointNettyServerBuilder serverBuilder) {
-
-        serverBuilder.setTracingEnabled(false);
-
-        serverBuilder.setStatsEnabled(false);
-        serverBuilder.setStatsRecordRealTimeMetrics(false);
-        serverBuilder.setStatsRecordStartedRpcs(false);
-
+    public static ServerImplBuilder extractServerImplBuilder(NettyServerBuilder serverBuilder)
+            throws NoSuchFieldException, IllegalAccessException {
+        Field serverImplBuilderField = NettyServerBuilder.class.getDeclaredField("serverImplBuilder");
+        serverImplBuilderField.setAccessible(true);
+        return (ServerImplBuilder) serverImplBuilderField.get(serverBuilder);
     }
 
-    private void setupServerOption(final PinpointNettyServerBuilder builder) {
+    private void setupInternal(ServerImplBuilder builder) {
+        builder.setTracingEnabled(false);
+        builder.setStatsEnabled(false);
+        builder.setStatsRecordRealTimeMetrics(false);
+        builder.setStatsRecordStartedRpcs(false);
+    }
+
+    private void setupServerOption(NettyServerBuilder builder) {
         // TODO @see PinpointServerAcceptor
         builder.withChildOption(ChannelOption.TCP_NODELAY, true);
         builder.withChildOption(ChannelOption.SO_REUSEADDR, true);

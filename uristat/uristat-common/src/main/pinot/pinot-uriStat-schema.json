@@ -30,6 +30,10 @@
   ],
   "metricFieldSpecs": [
     {
+      "name": "apdexRaw",
+      "dataType": "DOUBLE"
+    },
+    {
       "name": "count",
       "dataType": "LONG"
     },

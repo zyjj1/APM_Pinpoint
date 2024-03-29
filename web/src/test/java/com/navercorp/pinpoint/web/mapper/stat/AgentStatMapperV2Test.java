@@ -40,7 +40,6 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
@@ -162,7 +161,7 @@ public class AgentStatMapperV2Test {
 
     private static class TestAgentStatDecoder extends AgentStatDecoder<TestAgentStat> {
         protected TestAgentStatDecoder(AgentStatCodec<TestAgentStat> codec) {
-            super(Arrays.asList(codec));
+            super(List.of(codec));
         }
     }
 
@@ -174,6 +173,7 @@ public class AgentStatMapperV2Test {
 
     private static class TestAgentStat implements AgentStatDataPoint {
 
+        private String applicationName;
         private String agentId;
         private long startTimestamp;
         private long timestamp;
@@ -220,6 +220,16 @@ public class AgentStatMapperV2Test {
         @Override
         public AgentStatType getAgentStatType() {
             return AGENT_STAT_TYPE;
+        }
+
+        @Override
+        public String getApplicationName() {
+            return this.applicationName;
+        }
+
+        @Override
+        public void setApplicationName(String applicationName) {
+            this.applicationName = applicationName;
         }
 
         @Override

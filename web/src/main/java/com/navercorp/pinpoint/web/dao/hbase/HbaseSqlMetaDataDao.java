@@ -17,7 +17,7 @@
 package com.navercorp.pinpoint.web.dao.hbase;
 
 import com.navercorp.pinpoint.common.hbase.HbaseColumnFamily;
-import com.navercorp.pinpoint.common.hbase.HbaseOperations2;
+import com.navercorp.pinpoint.common.hbase.HbaseOperations;
 import com.navercorp.pinpoint.common.hbase.RowMapper;
 import com.navercorp.pinpoint.common.hbase.TableNameProvider;
 import com.navercorp.pinpoint.common.server.bo.SqlMetaDataBo;
@@ -26,11 +26,11 @@ import com.navercorp.pinpoint.common.server.bo.serializer.metadata.DefaultMetaDa
 import com.navercorp.pinpoint.common.server.bo.serializer.metadata.MetaDataRowKey;
 import com.navercorp.pinpoint.common.server.bo.serializer.metadata.MetadataEncoder;
 import com.navercorp.pinpoint.web.dao.SqlMetaDataDao;
-
 import com.sematext.hbase.wd.RowKeyDistributorByHashPrefix;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Get;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Objects;
@@ -39,12 +39,12 @@ import java.util.Objects;
  * @author emeroad
  * @author minwoo.jung
  */
-//@Repository
+@Repository
 public class HbaseSqlMetaDataDao implements SqlMetaDataDao {
 
     private final HbaseColumnFamily.SqlMetadataV2 DESCRIPTOR = HbaseColumnFamily.SQL_METADATA_VER2_SQL;
 
-    private final HbaseOperations2 hbaseOperations2;
+    private final HbaseOperations hbaseOperations;
     private final TableNameProvider tableNameProvider;
 
     private final RowMapper<List<SqlMetaDataBo>> sqlMetaDataMapper;
@@ -53,11 +53,11 @@ public class HbaseSqlMetaDataDao implements SqlMetaDataDao {
 
     private final RowKeyEncoder<MetaDataRowKey> rowKeyEncoder = new MetadataEncoder();
 
-    public HbaseSqlMetaDataDao(HbaseOperations2 hbaseOperations2,
+    public HbaseSqlMetaDataDao(HbaseOperations hbaseOperations,
                                TableNameProvider tableNameProvider,
-                               @Qualifier("sqlMetaDataMapper2") RowMapper<List<SqlMetaDataBo>> sqlMetaDataMapper,
+                               @Qualifier("sqlMetaDataMapper") RowMapper<List<SqlMetaDataBo>> sqlMetaDataMapper,
                                @Qualifier("metadataRowKeyDistributor2") RowKeyDistributorByHashPrefix rowKeyDistributorByHashPrefix) {
-        this.hbaseOperations2 = Objects.requireNonNull(hbaseOperations2, "hbaseOperations2");
+        this.hbaseOperations = Objects.requireNonNull(hbaseOperations, "hbaseOperations");
         this.tableNameProvider = Objects.requireNonNull(tableNameProvider, "tableNameProvider");
         this.sqlMetaDataMapper = Objects.requireNonNull(sqlMetaDataMapper, "sqlMetaDataMapper");
         this.rowKeyDistributorByHashPrefix = Objects.requireNonNull(rowKeyDistributorByHashPrefix, "rowKeyDistributorByHashPrefix");
@@ -74,7 +74,7 @@ public class HbaseSqlMetaDataDao implements SqlMetaDataDao {
         get.addFamily(DESCRIPTOR.getName());
 
         TableName sqlMetaDataTableName = tableNameProvider.getTableName(DESCRIPTOR.getTable());
-        return hbaseOperations2.get(sqlMetaDataTableName, get, sqlMetaDataMapper);
+        return hbaseOperations.get(sqlMetaDataTableName, get, sqlMetaDataMapper);
     }
 
     private byte[] getDistributedKey(byte[] rowKey) {

@@ -38,8 +38,8 @@ import io.grpc.Status;
 import io.grpc.netty.NettyChannelBuilder;
 import io.grpc.stub.MetadataUtils;
 import io.grpc.stub.StreamObserver;
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.List;
 import java.util.Objects;
@@ -182,9 +182,10 @@ public class AgentClientMock {
         }
 
         @Override
-        public void handleResolvedAddressGroups(List<EquivalentAddressGroup> servers, Attributes attributes) {
+        public void handleResolvedAddresses(ResolvedAddresses resolvedAddresses) {
             if (subchannel == null) {
                 CreateSubchannelArgs.Builder builder = CreateSubchannelArgs.newBuilder();
+                List<EquivalentAddressGroup> servers = resolvedAddresses.getAddresses();
                 builder.setAddresses(servers);
                 builder.setAttributes(Attributes.EMPTY);
                 CreateSubchannelArgs subchannelArgs = builder.build();
@@ -196,6 +197,7 @@ public class AgentClientMock {
                 helper.updateBalancingState(CONNECTING, new Picker(PickResult.withSubchannel(subchannel)));
                 subchannel.requestConnection();
             } else {
+                List<EquivalentAddressGroup> servers = resolvedAddresses.getAddresses();
                 subchannel.updateAddresses(servers);
             }
         }
@@ -218,21 +220,12 @@ public class AgentClientMock {
                 return;
             }
 
-            PickResult pickResult;
-            switch (currentState) {
-                case CONNECTING:
-                    pickResult = PickResult.withNoResult();
-                    break;
-                case READY:
-                case IDLE:
-                    pickResult = PickResult.withSubchannel(subchannel);
-                    break;
-                case TRANSIENT_FAILURE:
-                    pickResult = PickResult.withError(stateInfo.getStatus());
-                    break;
-                default:
-                    throw new IllegalArgumentException("Unsupported state:" + currentState);
-            }
+            PickResult pickResult = switch (currentState) {
+                case CONNECTING -> PickResult.withNoResult();
+                case READY, IDLE -> PickResult.withSubchannel(subchannel);
+                case TRANSIENT_FAILURE -> PickResult.withError(stateInfo.getStatus());
+                default -> throw new IllegalArgumentException("Unsupported state:" + currentState);
+            };
 
             helper.updateBalancingState(currentState, new Picker(pickResult));
         }

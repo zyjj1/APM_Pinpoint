@@ -9,7 +9,6 @@ import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
 import java.util.List;
 
 
@@ -18,11 +17,12 @@ public class TagListTypeHandlerTest {
 
     @Test
     public void test() throws JsonProcessingException {
-        ObjectMapper mapper = TagListTypeHandler.createObjectMapper();
+        ObjectMapper mapper = TagListTypeHandler.getMapper();
 
-        List<Tag> list  = new ArrayList<>();
-        list.add(new Tag("a", "1"));
-        list.add(new Tag("a", "2"));
+        List<Tag> list = List.of(
+                new Tag("a", "1"),
+                new Tag("a", "2")
+        );
 
         String json = mapper.writeValueAsString(list);
         logger.debug("serialize:{}", json);

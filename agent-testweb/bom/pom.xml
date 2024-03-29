@@ -22,7 +22,7 @@
         <groupId>com.navercorp.pinpoint</groupId>
         <artifactId>pinpoint</artifactId>
         <relativePath>../../pom.xml</relativePath>
-        <version>2.5.1-SNAPSHOT</version>
+        <version>3.0.0-SNAPSHOT</version>
     </parent>
 
     <packaging>pom</packaging>
@@ -38,41 +38,14 @@
         <apache.dubbo.version>2.7.2</apache.dubbo.version>
         <ehcache.version>2.10.6</ehcache.version>
         <undertow.version>2.2.17.Final</undertow.version>
-        <j2html.version>1.6.0</j2html.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-starter-web</artifactId>
-                <version>${spring.boot.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-starter-logging</artifactId>
-                <version>${spring.boot.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-starter-tomcat</artifactId>
-                <version>${spring.boot.version}</version>
-                <scope>provided</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-starter-actuator</artifactId>
-                <version>${spring.boot.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>org.springdoc</groupId>
                 <artifactId>springdoc-openapi-ui</artifactId>
-                <version>1.4.4</version>
-            </dependency>
-            <dependency>
-                <groupId>com.j2html</groupId>
-                <artifactId>j2html</artifactId>
-                <version>${j2html.version}</version>
+                <version>1.6.14</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

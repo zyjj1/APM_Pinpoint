@@ -21,7 +21,6 @@ import com.navercorp.pinpoint.common.server.bo.stat.DataSourceBo;
 import com.navercorp.pinpoint.common.server.bo.stat.DataSourceListBo;
 import com.navercorp.pinpoint.common.server.util.time.Range;
 import com.navercorp.pinpoint.common.trace.ServiceType;
-import com.navercorp.pinpoint.common.util.CollectionUtils;
 import com.navercorp.pinpoint.common.util.StringUtils;
 import com.navercorp.pinpoint.web.alarm.CheckerCategory;
 import com.navercorp.pinpoint.web.alarm.DataCollectorCategory;
@@ -38,6 +37,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 /**
@@ -67,10 +67,11 @@ public class DataSourceConnectionUsageRateCheckerTest {
     public void before() {
         Range range = Range.newUncheckedRange(START_TIME_MILLIS, CURRENT_TIME_MILLIS);
 
-        List<DataSourceListBo> dataSourceListBoList = new ArrayList<>();
-        dataSourceListBoList.add(createDataSourceListBo(1, 30, 40, 3));
-        dataSourceListBoList.add(createDataSourceListBo(2, 25, 40, 3));
-        dataSourceListBoList.add(createDataSourceListBo(3, 10, 40, 3));
+        List<DataSourceListBo> dataSourceListBoList = List.of(
+                createDataSourceListBo(1, 30, 40, 3),
+                createDataSourceListBo(2, 25, 40, 3),
+                createDataSourceListBo(3, 10, 40, 3)
+        );
 
         when(mockDataSourceDao.getAgentStatList(AGENT_ID, range)).thenReturn(dataSourceListBoList);
     }
@@ -84,11 +85,11 @@ public class DataSourceConnectionUsageRateCheckerTest {
         checker.check();
         Assertions.assertTrue(checker.isDetected());
 
-        String emailMessage = checker.getEmailMessage();
+        String emailMessage = checker.getEmailMessage("pinpointUrl", "applicationId", "serviceType", "currentTime");
         Assertions.assertTrue(StringUtils.hasLength(emailMessage));
 
         List<String> smsMessage = checker.getSmsMessage();
-        Assertions.assertEquals(2, smsMessage.size());
+        assertThat(smsMessage).hasSize(2);
     }
 
     @Test
@@ -100,11 +101,11 @@ public class DataSourceConnectionUsageRateCheckerTest {
         checker.check();
         Assertions.assertFalse(checker.isDetected());
 
-        String emailMessage = checker.getEmailMessage();
+        String emailMessage = checker.getEmailMessage("pinpointUrl", "applicationId", "serviceType", "currentTime");
         Assertions.assertTrue(StringUtils.isEmpty(emailMessage));
 
         List<String> smsMessage = checker.getSmsMessage();
-        Assertions.assertTrue(CollectionUtils.isEmpty(smsMessage));
+        assertThat(smsMessage).isEmpty();
     }
 
     private DataSourceListBo createDataSourceListBo(int id, int activeConnectionSize, int maxConnectionSize, int numValues) {

@@ -16,8 +16,9 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author Woonduk Kang(emeroad)
@@ -38,8 +39,8 @@ public class SpanMapperV2Test {
         firstSpanEventBo.setExceptionInfo(2, "first");
         firstSpanEventBo.setEndElapsed(100);
 
-        AnnotationBo annotationBo = newAnnotation(200, "annotation");
-        firstSpanEventBo.setAnnotationBoList(Collections.singletonList(annotationBo));
+        AnnotationBo annotationBo = AnnotationBo.of(200, "annotation");
+        firstSpanEventBo.setAnnotationBoList(List.of(annotationBo));
         firstSpanEventBo.setServiceType((short) 1003);
         firstSpanEventBo.setSequence((short) 0);
 
@@ -64,12 +65,12 @@ public class SpanMapperV2Test {
         SpanDecodingContext decodingContext = new SpanDecodingContext();
         decoder.readSpanValue(buffer, readSpan, decodingContext);
 
-        Assertions.assertEquals(readSpan.getSpanEventBoList().size(), 2);
+        assertThat(readSpan.getSpanEventBoList()).hasSize(2);
 
 
         // span
         Assertions.assertEquals(readSpan.getServiceType(), 1000);
-        Assertions.assertEquals(readSpan.hasException(), true);
+        Assertions.assertTrue(readSpan.hasException());
         Assertions.assertEquals(readSpan.getExceptionId(), 1);
         Assertions.assertEquals(readSpan.getExceptionMessage(), "spanException");
 
@@ -81,7 +82,7 @@ public class SpanMapperV2Test {
         Assertions.assertEquals(readNext.getEndElapsed(), 200);
 
         Assertions.assertEquals(readFirst.getExceptionId(), 2);
-        Assertions.assertEquals(readNext.hasException(), false);
+        Assertions.assertFalse(readNext.hasException());
 
         Assertions.assertEquals(readFirst.getServiceType(), 1003);
         Assertions.assertEquals(readNext.getServiceType(), 2003);
@@ -89,11 +90,6 @@ public class SpanMapperV2Test {
         Assertions.assertEquals(readFirst.getSequence(), 0);
         Assertions.assertEquals(readNext.getSequence(), 1);
 
-    }
-
-    private AnnotationBo newAnnotation(int key, Object value) {
-        AnnotationBo annotationBo = new AnnotationBo(key, value);
-        return annotationBo;
     }
 
 }

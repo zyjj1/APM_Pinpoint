@@ -16,17 +16,20 @@
 
 package com.navercorp.pinpoint.uristat.web.controller;
 
-import com.navercorp.pinpoint.common.server.tenant.TenantProvider;
-import com.navercorp.pinpoint.common.util.StringUtils;
-import com.navercorp.pinpoint.uristat.common.model.UriStat;
-import com.navercorp.pinpoint.uristat.web.model.UriStatSummary;
-import com.navercorp.pinpoint.uristat.web.service.UriStatService;
-import com.navercorp.pinpoint.metric.web.util.Range;
+import com.navercorp.pinpoint.metric.common.model.Range;
+import com.navercorp.pinpoint.metric.common.model.TimeWindow;
+import com.navercorp.pinpoint.metric.common.util.TimeWindowSampler;
+import com.navercorp.pinpoint.metric.common.util.TimeWindowSlotCentricSampler;
 import com.navercorp.pinpoint.metric.web.util.TimePrecision;
-import com.navercorp.pinpoint.metric.web.util.TimeWindow;
-import com.navercorp.pinpoint.metric.web.util.TimeWindowSampler;
-import com.navercorp.pinpoint.metric.web.util.TimeWindowSlotCentricSampler;
-import com.navercorp.pinpoint.uristat.web.util.UriStatQueryParameter;
+import com.navercorp.pinpoint.pinot.tenant.TenantProvider;
+import com.navercorp.pinpoint.uristat.web.chart.UriStatChartType;
+import com.navercorp.pinpoint.uristat.web.chart.UriStatChartTypeFactory;
+import com.navercorp.pinpoint.uristat.web.model.UriStatChartValue;
+import com.navercorp.pinpoint.uristat.web.model.UriStatSummary;
+import com.navercorp.pinpoint.uristat.web.service.UriStatChartService;
+import com.navercorp.pinpoint.uristat.web.service.UriStatSummaryService;
+import com.navercorp.pinpoint.uristat.web.util.UriStatChartQueryParameter;
+import com.navercorp.pinpoint.uristat.web.util.UriStatSummaryQueryParameter;
 import com.navercorp.pinpoint.uristat.web.view.UriStatView;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -40,56 +43,102 @@ import java.util.concurrent.TimeUnit;
 @RestController
 @RequestMapping(value = "/uriStat")
 public class UriStatController {
-    private final UriStatService uriStatService;
-    private final TimeWindowSampler DEFAULT_TIME_WINDOW_SAMPLER = new TimeWindowSlotCentricSampler(30000L, 200);
+    private final UriStatSummaryService uriStatService;
     private final TenantProvider tenantProvider;
+    private final UriStatChartService uriStatChartService;
+    private final UriStatChartTypeFactory chartTypeFactory;
+    private final TimeWindowSampler DEFAULT_TIME_WINDOW_SAMPLER = new TimeWindowSlotCentricSampler(30000L, 200);
 
-    public UriStatController(UriStatService uriStatService, TenantProvider tenantProvider) {
+    public UriStatController(UriStatSummaryService uriStatService,
+                             UriStatChartService uriStatChartService,
+                             TenantProvider tenantProvider,
+                             UriStatChartTypeFactory chartTypeFactory) {
         this.uriStatService = Objects.requireNonNull(uriStatService);
+        this.uriStatChartService = Objects.requireNonNull(uriStatChartService);
+        this.chartTypeFactory = Objects.requireNonNull(chartTypeFactory);
         this.tenantProvider = Objects.requireNonNull(tenantProvider, "tenantProvider");
     }
 
-    @GetMapping("top50")
-    public List<UriStatSummary> getUriStatSummary(@RequestParam("applicationName") String applicationName,
-                                            @RequestParam(value = "agentId", required = false) String agentId,
-                                            @RequestParam("from") long from,
-                                            @RequestParam("to") long to) {
-        UriStatQueryParameter.Builder builder = new UriStatQueryParameter.Builder();
-        builder.setTenantId(tenantProvider.getTenantId());
-        builder.setApplicationName(applicationName);
-        builder.setRange(Range.newRange(from, to));
+    @GetMapping("summary")
+    public List<UriStatSummary> getUriStatPagedSummary(
+            @RequestParam("applicationName") String applicationName,
+            @RequestParam(value = "agentId", required = false) String agentId,
+            @RequestParam("from") long from,
+            @RequestParam("to") long to,
+            @RequestParam("orderby") String column,
+            @RequestParam("isDesc") boolean isDesc,
+            @RequestParam("count") int count
+    ) {
+        UriStatSummaryQueryParameter query = new UriStatSummaryQueryParameter.Builder()
+                .setTenantId(tenantProvider.getTenantId())
+                .setApplicationName(applicationName)
+                .setAgentId(agentId)
+                .setRange(Range.newRange(from, to))
+                .setOrderby(column)
+                .setDesc(isDesc)
+                .setLimit(count)
+                .build();
 
-        if (StringUtils.isEmpty(agentId)) {
-            return uriStatService.getUriStatApplicationSummary(builder.build());
+        if (query.isApplicationStat()) {
+            return uriStatService.getUriStatApplicationPagedSummary(query);
         } else {
-            builder.setAgentId(agentId);
-            return uriStatService.getUriStatAgentSummary(builder.build());
+            return uriStatService.getUriStatAgentPagedSummary(query);
         }
     }
 
-    @GetMapping("chart")
-    public UriStatView getCollectedUriStat(@RequestParam("applicationName") String applicationName,
-                                           @RequestParam(value = "agentId", required = false) String agentId,
-                                           @RequestParam("uri") String uri,
-                                           @RequestParam("from") long from,
-                                           @RequestParam("to") long to) {
-        TimeWindow timeWindow = new TimeWindow(Range.newRange(from, to), DEFAULT_TIME_WINDOW_SAMPLER);
-        UriStatQueryParameter.Builder builder = new UriStatQueryParameter.Builder();
-        builder.setTenantId(tenantProvider.getTenantId());
-        builder.setApplicationName(applicationName);
-        builder.setUri(uri);
-        builder.setRange(timeWindow.getWindowRange());
-        builder.setTimeSize((int) timeWindow.getWindowSlotSize());
-        builder.setTimePrecision(TimePrecision.newTimePrecision(TimeUnit.MILLISECONDS, (int) timeWindow.getWindowSlotSize()));
+    @GetMapping("top50")
+    @Deprecated
+    public List<UriStatSummary> getUriStatSummary(
+            @RequestParam("applicationName") String applicationName,
+            @RequestParam(value = "agentId", required = false) String agentId,
+            @RequestParam("from") long from,
+            @RequestParam("to") long to
+    ) {
+        UriStatSummaryQueryParameter query = new UriStatSummaryQueryParameter.Builder()
+                .setTenantId(tenantProvider.getTenantId())
+                .setApplicationName(applicationName)
+                .setAgentId(agentId)
+                .setRange(Range.newRange(from, to))
+                .build();
 
-        List<UriStat> uriStats;
-        if (StringUtils.isEmpty(agentId)) {
-            uriStats = uriStatService.getCollectedUriStatApplication(builder.build());
+        if (query.isApplicationStat()) {
+            return uriStatService.getUriStatApplicationSummary(query);
         } else {
-            builder.setAgentId(agentId);
-            uriStats = uriStatService.getCollectedUriStatAgent(builder.build());
+            return uriStatService.getUriStatAgentSummary(query);
         }
+    }
 
-        return new UriStatView(uri, timeWindow, uriStats);
+    @Deprecated
+    @GetMapping("/chart")
+    public UriStatView getCollectedUriStat(
+            @RequestParam("applicationName") String applicationName,
+            @RequestParam(value = "agentId", required = false) String agentId,
+            @RequestParam("uri") String uri,
+            @RequestParam("from") long from,
+            @RequestParam("to") long to,
+            @RequestParam(value = "type", required = false) String type
+    ) {
+        TimeWindow timeWindow = new TimeWindow(Range.newRange(from, to), DEFAULT_TIME_WINDOW_SAMPLER);
+        UriStatChartQueryParameter query = new UriStatChartQueryParameter.Builder()
+                .setTenantId(tenantProvider.getTenantId())
+                .setApplicationName(applicationName)
+                .setAgentId(agentId)
+                .setUri(uri)
+                .setRange(timeWindow.getWindowRange())
+                .setTimeSize((int) timeWindow.getWindowSlotSize())
+                .setTimePrecision(TimePrecision.newTimePrecision(TimeUnit.MILLISECONDS, (int) timeWindow.getWindowSlotSize()))
+                .build();
+
+        UriStatChartType chartType = chartTypeFactory.valueOf(type.toLowerCase());
+        List<UriStatChartValue> uriStats = getChartData(chartType, query);
+        return new UriStatView(uri, timeWindow, uriStats, chartType);
+    }
+
+    private List<UriStatChartValue> getChartData(UriStatChartType chartType, UriStatChartQueryParameter query) {
+        if (query.isApplicationStat()) {
+            return uriStatChartService.getUriStatChartDataApplication(chartType, query);
+        } else {
+            return uriStatChartService.getUriStatChartDataAgent(chartType, query);
+        }
     }
 }

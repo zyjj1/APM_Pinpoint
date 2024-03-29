@@ -17,16 +17,14 @@ package com.navercorp.pinpoint.web.view;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.navercorp.pinpoint.common.profiler.util.TransactionId;
-import com.navercorp.pinpoint.common.profiler.util.TransactionIdUtils;
-import com.navercorp.pinpoint.web.config.LogConfiguration;
 import com.navercorp.pinpoint.web.vo.callstacks.RecordSet;
 
 public class TransactionTimelineInfoViewModel {
     private final TransactionId transactionId;
     private final RecordSet recordSet;
-    private String traceViewerDataURL;
+    private final String traceViewerDataURL;
 
-    public TransactionTimelineInfoViewModel(TransactionId transactionId, long spanId, RecordSet recordSet, String traceViewerDataURL, LogConfiguration logConfiguration) {
+    public TransactionTimelineInfoViewModel(TransactionId transactionId, RecordSet recordSet, String traceViewerDataURL) {
         this.transactionId = transactionId;
         this.recordSet = recordSet;
         this.traceViewerDataURL = traceViewerDataURL;
@@ -34,11 +32,13 @@ public class TransactionTimelineInfoViewModel {
 
     @JsonProperty("transactionId")
     public String getTransactionId() {
-        return TransactionIdUtils.formatString(transactionId);
+        return transactionId.toString();
     }
 
     @JsonProperty("agentId")
-    public String getAgentId() { return recordSet.getAgentId(); }
+    public String getAgentId() {
+        return recordSet.getAgentId();
+    }
 
     @JsonProperty("applicationId")
     public String getApplicationId() {
@@ -46,6 +46,8 @@ public class TransactionTimelineInfoViewModel {
     }
 
     @JsonProperty("traceViewerDataURL")
-    public String getTraceViewerDataURL() { return traceViewerDataURL;}
+    public String getTraceViewerDataURL() {
+        return traceViewerDataURL;
+    }
 
 }

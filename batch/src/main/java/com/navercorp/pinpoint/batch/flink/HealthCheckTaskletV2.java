@@ -15,7 +15,8 @@
  */
 package com.navercorp.pinpoint.batch.flink;
 
-import com.navercorp.pinpoint.batch.common.BatchConfiguration;
+import com.navercorp.pinpoint.batch.common.BatchProperties;
+import com.navercorp.pinpoint.common.util.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.batch.core.StepContribution;
@@ -28,7 +29,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -49,13 +50,13 @@ public class HealthCheckTaskletV2 implements Tasklet {
 
     private final RestTemplate restTemplate;
 
-    private final BatchConfiguration batchConfiguration;
+    private final BatchProperties batchProperties;
 
-    public HealthCheckTaskletV2(BatchConfiguration batchConfiguration, RestTemplate restTemplate) {
+    public HealthCheckTaskletV2(BatchProperties batchProperties, RestTemplate restTemplate) {
         this.jobNameList = new ArrayList<>(1);
         jobNameList.add("Aggregation Stat Data");
 
-        this.batchConfiguration = Objects.requireNonNull(batchConfiguration, "batchConfiguration");
+        this.batchProperties = Objects.requireNonNull(batchProperties, "batchProperties");
         this.restTemplate = Objects.requireNonNull(restTemplate, "restTemplate");
     }
 
@@ -91,7 +92,7 @@ public class HealthCheckTaskletV2 implements Tasklet {
             }
         }
 
-        if (notExecuteJobList.size() > 0) {
+        if (CollectionUtils.hasLength(notExecuteJobList)) {
             String exceptionMessage = String.format("job fail : %s", notExecuteJobList);
             throw new Exception(exceptionMessage);
         }
@@ -120,8 +121,8 @@ public class HealthCheckTaskletV2 implements Tasklet {
 
     // @VisibleForTesting
     List<String> generatedFlinkManagerServerApi() {
-        List<String> flinkServerList = batchConfiguration.getFlinkServerList();
-        int flinkRestPort = batchConfiguration.getFlinkRestPort();
+        List<String> flinkServerList = batchProperties.getFlinkServerList();
+        int flinkRestPort = batchProperties.getFlinkRestPort();
         List<String> urlList = new ArrayList<>(flinkServerList.size());
 
         for (String flinkServerIp : flinkServerList) {

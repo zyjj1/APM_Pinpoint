@@ -16,23 +16,23 @@
 
 package com.pinpoint.test.plugin.spring.data.r2dbc;
 
-import org.junit.AfterClass;
-import org.junit.Assume;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.MSSQLServerContainer;
 
-import java.util.concurrent.TimeUnit;
-
 public class R2dbcMssqlTest {
-    private static MSSQLServerContainer container;
+    private static MSSQLServerContainer<?> container;
 
-    @BeforeClass
+    @BeforeAll
     public static void beforeClass() {
-        Assume.assumeTrue("Docker not enabled", DockerClientFactory.instance().isDockerAvailable());
+        Assumptions.assumeTrue(DockerClientFactory.instance().isDockerAvailable(), "Docker not enabled");
+        Assumptions.assumeFalse(DockerTestUtils.isArmDockerServer(), "ARM not supported");
 
-        container = new MSSQLServerContainer("mcr.microsoft.com/mssql/server:2017-CU12");
+        container = new MSSQLServerContainer<>("mcr.microsoft.com/mssql/server:2017-CU12");
+        container.acceptLicense();
         container.withInitScript("mssql-init.sql");
         container.start();
 
@@ -43,7 +43,7 @@ public class R2dbcMssqlTest {
         System.out.println("##password=" + container.getPassword());
     }
 
-    @AfterClass
+    @AfterAll
     public static void select() {
         if (container != null) {
             container.stop();

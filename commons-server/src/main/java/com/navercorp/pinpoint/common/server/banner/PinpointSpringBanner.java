@@ -7,18 +7,19 @@ import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.core.env.Environment;
 
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
-import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 public class PinpointSpringBanner extends PinpointBanner implements ApplicationListener<ApplicationStartedEvent> {
-    private ServerBootLogger logger = ServerBootLogger.getLogger(PinpointSpringBanner.class);
+
+    private static final String CONFIG_SEPARATOR = ",";
+
+    private final ServerBootLogger logger = ServerBootLogger.getLogger(PinpointSpringBanner.class);
 
     private Environment environment;
 
     public PinpointSpringBanner() {
-        this.pinpointBannerMode = Mode.CONSOLE;
+        this.setPinpointBannerMode(Mode.CONSOLE);
     }
 
     @Override
@@ -37,9 +38,9 @@ public class PinpointSpringBanner extends PinpointBanner implements ApplicationL
         this.setPinpointBannerMode(mode);
 
         if (bannerConfigs == null) {
-            this.keysToPrint = new ArrayList<>();
+            this.setKeysToPrint(List.of());
         } else {
-            this.keysToPrint = Arrays.asList(bannerConfigs.split(","));
+            this.setKeysToPrint(Arrays.asList(bannerConfigs.split(CONFIG_SEPARATOR)));
         }
 
         printBanner();
@@ -52,43 +53,30 @@ public class PinpointSpringBanner extends PinpointBanner implements ApplicationL
             return;
         }
 
-        switch (this.pinpointBannerMode) {
-            case OFF:
-                return;
-            case LOG:
-                printBanner(logger);
-                return;
-            default:
-                printBanner(System.out);
-                return;
+        switch (this.getPinpointBannerMode()) {
+            case OFF -> {
+            }
+            case LOG -> logger.info(buildBannerString());
+            default -> System.out.println(buildBannerString());
         }
     }
 
-    private void printBanner(ServerBootLogger logger) {
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        PrintStream ps = new PrintStream(outputStream);
-        printBanner(ps);
-        logger.info(outputStream.toString());
-    }
+    private String buildBannerString() {
+        StringBuilder sb = new StringBuilder();
 
-    private void printBanner(PrintStream out) {
         for (String line : BANNER) {
-            out.println(line);
+            sb.append(line).append(System.lineSeparator());
         }
-        out.println(format("Pinpoint Version", Version.VERSION));
+        sb.append(format("Pinpoint Version", Version.VERSION)).append(System.lineSeparator());
 
-        for (String key: this.keysToPrint) {
+        for (String key: this.getKeysToPrint()) {
             String value = environment.getProperty(key);
             if ( value != null ) {
-                out.println(format(key, value));
+                sb.append(format(key, value)).append(System.lineSeparator());
             }
         }
 
-        out.println();
+        return sb.toString();
     }
 
-    @Override
-    public void setPinpointBannerMode(Mode mode) {
-        this.pinpointBannerMode = mode;
-    }
 }

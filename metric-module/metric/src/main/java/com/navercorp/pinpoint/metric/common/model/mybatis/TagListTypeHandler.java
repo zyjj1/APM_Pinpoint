@@ -16,8 +16,10 @@
 
 package com.navercorp.pinpoint.metric.common.model.mybatis;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.navercorp.pinpoint.common.server.util.json.Jackson;
+import com.navercorp.pinpoint.common.server.util.json.JsonRuntimeException;
 import com.navercorp.pinpoint.metric.common.model.Tag;
 import com.navercorp.pinpoint.metric.common.model.json.Tags;
 import org.apache.ibatis.type.JdbcType;
@@ -26,7 +28,6 @@ import org.apache.ibatis.type.TypeHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.IOException;
 import java.sql.CallableStatement;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -40,16 +41,13 @@ import java.util.List;
 public class TagListTypeHandler implements TypeHandler<List<Tag>> {
 
     private final Logger logger = LogManager.getLogger(this.getClass());
-    private final static ObjectMapper OBJECT_MAPPER = createObjectMapper();
+    private final static ObjectMapper OBJECT_MAPPER = getMapper();
 
 
-    public static ObjectMapper createObjectMapper() {
-        ObjectMapper objectMapper = new ObjectMapper();
-
-        SimpleModule module = new SimpleModule();
-        Class<List<Tag>> type = ((Class) List.class);
-        module.addSerializer(type, new TagMySqlSerializer());
-        return objectMapper.registerModule(module);
+    static ObjectMapper getMapper() {
+        return Jackson.newBuilder()
+                .serializerByType(List.class, new TagMySqlSerializer())
+                .build();
     }
 
     @Override
@@ -79,9 +77,9 @@ public class TagListTypeHandler implements TypeHandler<List<Tag>> {
     public String serialize(List<Tag> tagList) {
         try {
             return OBJECT_MAPPER.writeValueAsString(tagList);
-        } catch (IOException e) {
+        } catch (JsonProcessingException e) {
             logger.error("Error serializing List<Tag> : {}", tagList, e);
-            throw new RuntimeException("Error serializing tagList", e);
+            throw new JsonRuntimeException("Error serializing tagList", e);
         }
     }
 
@@ -89,9 +87,9 @@ public class TagListTypeHandler implements TypeHandler<List<Tag>> {
         try {
             Tags tags = OBJECT_MAPPER.readValue(tagListJson, Tags.class);
             return tags.getTags();
-        } catch (IOException e) {
+        } catch (JsonProcessingException e) {
             logger.error("Error deserializing tagList json : {}", tagListJson, e);
-            throw new RuntimeException("Error deserializing tagListJson", e);
+            throw new JsonRuntimeException("Error deserializing tagListJson", e);
         }
     }
 }

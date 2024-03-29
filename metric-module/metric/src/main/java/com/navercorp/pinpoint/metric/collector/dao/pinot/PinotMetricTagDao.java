@@ -16,21 +16,25 @@
 
 package com.navercorp.pinpoint.metric.collector.dao.pinot;
 
+import com.navercorp.pinpoint.common.server.util.StringPrecondition;
 import com.navercorp.pinpoint.metric.collector.dao.MetricTagDao;
 import com.navercorp.pinpoint.metric.common.model.MetricTag;
 import com.navercorp.pinpoint.metric.common.model.MetricTagCollection;
 import com.navercorp.pinpoint.metric.common.model.MetricTagKey;
-import com.navercorp.pinpoint.metric.common.model.StringPrecondition;
 import com.navercorp.pinpoint.metric.common.model.mybatis.TagListTypeHandler;
+import com.navercorp.pinpoint.pinot.kafka.util.KafkaCallbacks;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.BiConsumer;
 
 /**
  * @author minwoo.jung
@@ -46,6 +50,9 @@ public class PinotMetricTagDao implements MetricTagDao {
     private final TagListTypeHandler tagListTypeHandler = new TagListTypeHandler();
     private final String topic;
 
+    private final BiConsumer<SendResult<String, MetricJsonTag>, Throwable> resultCallback
+            = KafkaCallbacks.loggingCallback("Kafka(MetricJsonTag)", logger);
+
     public PinotMetricTagDao(SqlSessionTemplate sqlPinotSessionTemplate,
                              KafkaTemplate<String, MetricJsonTag> kafkaTagTemplate,
                              @Value("${kafka.metadata.tag.topic}") String topic) {
@@ -57,10 +64,11 @@ public class PinotMetricTagDao implements MetricTagDao {
     @Override
     public void insertMetricTag(MetricTag metricTag) {
         MetricJsonTag metricJsonTag = MetricJsonTag.covertMetricJsonTag(tagListTypeHandler, metricTag);
-        kafkaTagTemplate.send(topic, metricTag.getHostGroupName(), metricJsonTag);
+        CompletableFuture<SendResult<String, MetricJsonTag>> callBack = kafkaTagTemplate.send(topic, metricTag.getHostGroupName(), metricJsonTag);
+        callBack.whenComplete(resultCallback);
     }
 
-    private static class MetricJsonTag {
+    public static class MetricJsonTag {
 
         private String tenantId;
         private String hostGroupName;

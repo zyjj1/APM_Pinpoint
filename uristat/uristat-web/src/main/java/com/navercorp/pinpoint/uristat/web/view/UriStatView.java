@@ -15,12 +15,13 @@
  */
 package com.navercorp.pinpoint.uristat.web.view;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.navercorp.pinpoint.uristat.common.model.UriStat;
+import com.navercorp.pinpoint.metric.common.model.TimeWindow;
+import com.navercorp.pinpoint.metric.common.util.TimeUtils;
+import com.navercorp.pinpoint.uristat.web.chart.UriStatChartType;
 import com.navercorp.pinpoint.uristat.web.model.UriStatGroup;
-import com.navercorp.pinpoint.metric.web.util.TimeWindow;
 import com.navercorp.pinpoint.metric.web.view.TimeSeriesView;
 import com.navercorp.pinpoint.metric.web.view.TimeseriesValueGroupView;
+import com.navercorp.pinpoint.uristat.web.model.UriStatChartValue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,39 +30,24 @@ import java.util.Objects;
 public class UriStatView implements TimeSeriesView {
 
     private final List<Long> timestampList;
-
     private final List<TimeseriesValueGroupView> uriStats = new ArrayList<>();
 
-    public UriStatView(String uri, TimeWindow timeWindow, List<UriStat> uriStats) {
+    public UriStatView(String uri, TimeWindow timeWindow, List<UriStatChartValue> uriStats, UriStatChartType chartType) {
         Objects.requireNonNull(timeWindow, "timeWindow");
         Objects.requireNonNull(uriStats, "uriStats");
-        this.timestampList = createTimeStampList(timeWindow);
+        Objects.requireNonNull(chartType, "chartType");
+
+        this.timestampList = TimeUtils.createTimeStampList(timeWindow);
         if (uriStats.isEmpty()) {
             this.uriStats.add(UriStatGroup.EMPTY_URI_STAT_GROUP);
         } else {
-            this.uriStats.add(new UriStatGroup(uri, timestampList.size(), timeWindow, uriStats));
+            this.uriStats.add(new UriStatGroup(uri, timestampList.size(), timeWindow, uriStats, chartType.getFieldNames()));
         }
-    }
-
-    private List<Long> createTimeStampList(TimeWindow timeWindow) {
-        List<Long> timestampList = new ArrayList<>((int) timeWindow.getWindowRangeCount());
-
-        for (Long timestamp : timeWindow) {
-            timestampList.add(timestamp);
-        }
-
-        return timestampList;
     }
 
     @Override
     public String getTitle() {
         return "uriStat";
-    }
-
-    @Override
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    public String getUnit() {
-        return null;
     }
 
     @Override

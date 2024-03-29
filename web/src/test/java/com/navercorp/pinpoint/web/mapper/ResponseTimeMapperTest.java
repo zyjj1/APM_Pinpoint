@@ -25,13 +25,13 @@ import com.navercorp.pinpoint.web.applicationmap.histogram.Histogram;
 import com.navercorp.pinpoint.web.vo.ResponseTime;
 import com.sematext.hbase.wd.RowKeyDistributorByHashPrefix;
 import org.apache.hadoop.hbase.Cell;
-import org.apache.hadoop.hbase.CellUtil;
+import org.apache.hadoop.hbase.CellBuilderFactory;
+import org.apache.hadoop.hbase.CellBuilderType;
 import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
 /**
@@ -50,19 +50,23 @@ public class ResponseTimeMapperTest {
         byte[] bufferArray = buffer.getBuffer();
         byte[] valueArray = Bytes.toBytes(1L);
 
-        Cell mockCell = CellUtil.createCell(HConstants.EMPTY_BYTE_ARRAY, HConstants.EMPTY_BYTE_ARRAY, bufferArray, HConstants.LATEST_TIMESTAMP, KeyValue.Type.Maximum.getCode(), valueArray);
+        Cell mockCell = CellBuilderFactory.create(CellBuilderType.SHALLOW_COPY)
+                .setRow(HConstants.EMPTY_BYTE_ARRAY)
+                .setFamily(HConstants.EMPTY_BYTE_ARRAY)
+                .setQualifier(bufferArray)
+                .setTimestamp(HConstants.LATEST_TIMESTAMP)
+                .setType(Cell.Type.Put)
+                .setValue(valueArray)
+                .build();
 
         ResponseTimeMapper responseTimeMapper = new ResponseTimeMapper(mock(ServiceTypeRegistryService.class), mock(RowKeyDistributorByHashPrefix.class));
         ResponseTime responseTime = new ResponseTime("applicationName", ServiceType.STAND_ALONE, System.currentTimeMillis());
         responseTimeMapper.recordColumn(responseTime, mockCell);
 
         Histogram agentHistogram = responseTime.findHistogram("agent");
-        long fastCount = agentHistogram.getFastCount();
-        Assertions.assertEquals(fastCount, 1);
-        long normal = agentHistogram.getNormalCount();
-        Assertions.assertEquals(normal, 0);
-        long slow = agentHistogram.getSlowCount();
-        Assertions.assertEquals(slow, 0);
 
+        assertThat(agentHistogram)
+                .extracting(Histogram::getFastCount, Histogram::getNormalCount, Histogram::getSlowCount)
+                .containsExactly(1L, 0L, 0L);
     }
 }

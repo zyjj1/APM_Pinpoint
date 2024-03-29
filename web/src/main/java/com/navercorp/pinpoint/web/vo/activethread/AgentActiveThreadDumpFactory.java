@@ -16,11 +16,10 @@
 
 package com.navercorp.pinpoint.web.vo.activethread;
 
+import com.navercorp.pinpoint.common.server.bo.event.ThreadDumpBo;
+import com.navercorp.pinpoint.common.server.bo.event.ThreadState;
 import com.navercorp.pinpoint.common.util.CollectionUtils;
-import com.navercorp.pinpoint.thrift.dto.command.TActiveThreadDump;
-import com.navercorp.pinpoint.thrift.dto.command.TActiveThreadLightDump;
-import com.navercorp.pinpoint.thrift.dto.command.TThreadDump;
-import com.navercorp.pinpoint.thrift.dto.command.TThreadLightDump;
+import com.navercorp.pinpoint.realtime.dto.ActiveThreadDump;
 import com.navercorp.pinpoint.thrift.dto.command.TThreadState;
 import com.navercorp.pinpoint.web.util.ThreadDumpUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -40,13 +39,13 @@ public class AgentActiveThreadDumpFactory {
     public AgentActiveThreadDumpFactory() {
     }
 
-    public AgentActiveThreadDumpList create1(List<TActiveThreadDump> tActiveThreadDumpList) {
-        if (CollectionUtils.isEmpty(tActiveThreadDumpList)) {
+    public AgentActiveThreadDumpList create1(List<ActiveThreadDump> activeThreadDumps) {
+        if (CollectionUtils.isEmpty(activeThreadDumps)) {
             return AgentActiveThreadDumpList.EMPTY_INSTANCE;
         }
 
-        AgentActiveThreadDumpList result = new AgentActiveThreadDumpList(tActiveThreadDumpList.size());
-        for (TActiveThreadDump activeThreadDump : tActiveThreadDumpList) {
+        AgentActiveThreadDumpList result = new AgentActiveThreadDumpList(activeThreadDumps.size());
+        for (ActiveThreadDump activeThreadDump : activeThreadDumps) {
             try {
                 AgentActiveThreadDump agentActiveThreadDump = create1(activeThreadDump);
                 result.add(agentActiveThreadDump);
@@ -57,37 +56,37 @@ public class AgentActiveThreadDumpFactory {
         return result;
     }
 
-    private AgentActiveThreadDump create1(TActiveThreadDump tActiveThreadDump) {
-        Objects.requireNonNull(tActiveThreadDump, "tActiveThreadDump");
+    private AgentActiveThreadDump create1(ActiveThreadDump activeThreadDump) {
+        Objects.requireNonNull(activeThreadDump, "activeThreadDump");
 
 
-        TThreadDump activeThreadDump = tActiveThreadDump.getThreadDump();
+        ThreadDumpBo threadDump = Objects.requireNonNull(activeThreadDump.getThreadDump(), "threadDump");
 
         AgentActiveThreadDump.Builder builder = new AgentActiveThreadDump.Builder();
-        builder.setThreadId(activeThreadDump.getThreadId());
-        builder.setThreadName(activeThreadDump.getThreadName());
-        builder.setThreadState(getThreadState(activeThreadDump.getThreadState()));
+        builder.setThreadId(threadDump.getThreadId());
+        builder.setThreadName(threadDump.getThreadName());
+        builder.setThreadState(getThreadState(threadDump.getThreadState()));
 
-        builder.setStartTime(tActiveThreadDump.getStartTime());
-        builder.setExecTime(System.currentTimeMillis() - tActiveThreadDump.getStartTime());
-        builder.setLocalTraceId(tActiveThreadDump.getLocalTraceId());
+        builder.setStartTime(activeThreadDump.getStartTime());
+        builder.setExecTime(System.currentTimeMillis() - activeThreadDump.getStartTime());
+        builder.setLocalTraceId(activeThreadDump.getLocalTraceId());
 
-        builder.setSampled(tActiveThreadDump.isSampled());
-        builder.setTransactionId(tActiveThreadDump.getTransactionId());
-        builder.setEntryPoint(tActiveThreadDump.getEntryPoint());
+        builder.setSampled(activeThreadDump.isSampled());
+        builder.setTransactionId(activeThreadDump.getTransactionId());
+        builder.setEntryPoint(activeThreadDump.getEntryPoint());
 
-        builder.setDetailMessage(ThreadDumpUtils.createDumpMessage(activeThreadDump));
+        builder.setDetailMessage(ThreadDumpUtils.createDumpMessage(threadDump));
 
         return builder.build();
     }
 
-    public AgentActiveThreadDumpList create2(List<TActiveThreadLightDump> tActiveThreadLightDumpList) {
+    public AgentActiveThreadDumpList create2(List<ActiveThreadDump> tActiveThreadLightDumpList) {
         if (CollectionUtils.isEmpty(tActiveThreadLightDumpList)) {
             return AgentActiveThreadDumpList.EMPTY_INSTANCE;
         }
 
         AgentActiveThreadDumpList result = new AgentActiveThreadDumpList(tActiveThreadLightDumpList.size());
-        for (TActiveThreadLightDump activeThreadLightDump : tActiveThreadLightDumpList) {
+        for (ActiveThreadDump activeThreadLightDump : tActiveThreadLightDumpList) {
             try {
                 AgentActiveThreadDump agentActiveThreadDump = create2(activeThreadLightDump);
                 result.add(agentActiveThreadDump);
@@ -98,34 +97,34 @@ public class AgentActiveThreadDumpFactory {
         return result;
     }
 
-    private AgentActiveThreadDump create2(TActiveThreadLightDump tActiveThreadLightDump) {
-        Objects.requireNonNull(tActiveThreadLightDump, "tActiveThreadLightDump");
+    private AgentActiveThreadDump create2(ActiveThreadDump activeThreadDump) {
+        Objects.requireNonNull(activeThreadDump, "activeThreadDump");
 
 
-        TThreadLightDump activeThreadDump = tActiveThreadLightDump.getThreadDump();
+        ThreadDumpBo threadDump = Objects.requireNonNull(activeThreadDump.getThreadDump(), "threadDump");
         AgentActiveThreadDump.Builder builder = new AgentActiveThreadDump.Builder();
-        builder.setThreadId(activeThreadDump.getThreadId());
-        builder.setThreadName(activeThreadDump.getThreadName());
-        builder.setThreadState(getThreadState(activeThreadDump.getThreadState()));
+        builder.setThreadId(threadDump.getThreadId());
+        builder.setThreadName(threadDump.getThreadName());
+        builder.setThreadState(getThreadState(threadDump.getThreadState()));
 
-        builder.setStartTime(tActiveThreadLightDump.getStartTime());
-        builder.setExecTime(System.currentTimeMillis() - tActiveThreadLightDump.getStartTime());
-        builder.setLocalTraceId(tActiveThreadLightDump.getLocalTraceId());
+        builder.setStartTime(activeThreadDump.getStartTime());
+        builder.setExecTime(System.currentTimeMillis() - activeThreadDump.getStartTime());
+        builder.setLocalTraceId(activeThreadDump.getLocalTraceId());
 
-        builder.setSampled(tActiveThreadLightDump.isSampled());
-        builder.setTransactionId(tActiveThreadLightDump.getTransactionId());
-        builder.setEntryPoint(tActiveThreadLightDump.getEntryPoint());
+        builder.setSampled(activeThreadDump.isSampled());
+        builder.setTransactionId(activeThreadDump.getTransactionId());
+        builder.setEntryPoint(activeThreadDump.getEntryPoint());
 
         builder.setDetailMessage(StringUtils.EMPTY);
 
         return builder.build();
     }
 
-    private TThreadState getThreadState(TThreadState threadState) {
+    private TThreadState getThreadState(ThreadState threadState) {
         if (threadState == null) {
             return TThreadState.UNKNOWN;
         } else {
-            return threadState;
+            return TThreadState.findByValue(threadState.getValue());
         }
     }
 

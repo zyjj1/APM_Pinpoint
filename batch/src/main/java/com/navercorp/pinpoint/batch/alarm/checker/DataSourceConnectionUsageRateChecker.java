@@ -16,8 +16,12 @@
 
 package com.navercorp.pinpoint.batch.alarm.checker;
 
+import com.navercorp.pinpoint.batch.alarm.collector.DataCollector;
 import com.navercorp.pinpoint.batch.alarm.collector.DataSourceDataCollector;
+import com.navercorp.pinpoint.batch.alarm.collector.DataSourceDataGetter;
+import com.navercorp.pinpoint.batch.alarm.collector.FileDescriptorDataGetter;
 import com.navercorp.pinpoint.batch.alarm.vo.DataSourceAlarmVO;
+import com.navercorp.pinpoint.common.util.Assert;
 import com.navercorp.pinpoint.web.alarm.vo.Rule;
 
 import java.util.ArrayList;
@@ -33,8 +37,10 @@ public class DataSourceConnectionUsageRateChecker extends DataSourceAlarmListVal
     private static final String SMS_MESSAGE_FORMAT = "[PINPOINT Alarm - %s] DataSource %s connection pool usage %s%s (Threshold : %s%s, Raw : %s/%s)";
     private static final String EMAIL_MESSAGE_FORMAT = " Value of agent(%s) has %s%s(DataSource %s connection pool usage) during the past 5 mins.(Threshold : %s%s, Raw : %s/%s)";
 
-    public DataSourceConnectionUsageRateChecker(DataSourceDataCollector dataSourceDataCollector, Rule rule) {
+    public DataSourceConnectionUsageRateChecker(DataCollector dataSourceDataCollector, Rule rule) {
         super(rule, "%", dataSourceDataCollector);
+        Assert.isTrue(dataSourceDataCollector instanceof DataSourceDataGetter, "dataCollector must be an instance of DataSourceDataGetter");
+
     }
 
     @Override
@@ -58,7 +64,7 @@ public class DataSourceConnectionUsageRateChecker extends DataSourceAlarmListVal
 
     @Override
     protected Map<String, List<DataSourceAlarmVO>> getAgentValues() {
-        return ((DataSourceDataCollector) dataCollector).getDataSourceConnectionUsageRate();
+        return ((DataSourceDataGetter) dataCollector).getDataSourceConnectionUsageRate();
     }
 
     public List<String> getSmsMessage() {
@@ -78,16 +84,18 @@ public class DataSourceConnectionUsageRateChecker extends DataSourceAlarmListVal
     }
 
     @Override
-    public String getEmailMessage() {
+    public String getEmailMessage(String pinpointUrl, String applicationId, String serviceType, String currentTime) {
         StringBuilder contents = new StringBuilder();
         for (Map.Entry<String, List<DataSourceAlarmVO>> detected : detectedAgents.entrySet()) {
+            String agentId = detected.getKey();
             for (DataSourceAlarmVO eachVo : detected.getValue()) {
                 if (decideResult0(eachVo)) {
                     String message = String.format(EMAIL_MESSAGE_FORMAT, detected.getKey(), eachVo.getConnectionUsedRate(), unit, eachVo.getDatabaseName(), rule.getThreshold(), unit, eachVo.getActiveConnectionAvg(), eachVo.getMaxConnectionAvg());
                     contents.append(message);
                 }
             }
-
+            contents.append(String.format(INSPECTOR_LINK_FORMAT, pinpointUrl, applicationId, serviceType, currentTime, agentId, agentId));
+            contents.append(LINE_FEED);
         }
         return contents.toString();
     }

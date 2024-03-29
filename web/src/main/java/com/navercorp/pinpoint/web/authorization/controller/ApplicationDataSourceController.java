@@ -5,8 +5,11 @@ import com.navercorp.pinpoint.web.service.appmetric.ApplicationDataSourceService
 import com.navercorp.pinpoint.web.util.TimeWindow;
 import com.navercorp.pinpoint.web.util.TimeWindowSlotCentricSampler;
 import com.navercorp.pinpoint.web.vo.stat.chart.StatChart;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.PositiveOrZero;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -14,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
+@Validated
 public class ApplicationDataSourceController {
     private final Logger logger = LogManager.getLogger(this.getClass());
 
@@ -24,7 +28,11 @@ public class ApplicationDataSourceController {
     }
 
     @GetMapping("/getApplicationStat/dataSource/chart")
-    public List<StatChart> getAgentStatChart(@RequestParam("applicationId") String applicationId, @RequestParam("from") long from, @RequestParam("to") long to) {
+    public List<StatChart> getAgentStatChart(
+            @RequestParam("applicationId") @NotBlank String applicationId,
+            @RequestParam("from") @PositiveOrZero long from,
+            @RequestParam("to") @PositiveOrZero long to
+    ) {
         TimeWindowSlotCentricSampler sampler = new TimeWindowSlotCentricSampler();
         TimeWindow timeWindow = new TimeWindow(Range.between(from, to), sampler);
         try {

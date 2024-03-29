@@ -1,22 +1,24 @@
 package com.navercorp.pinpoint.metric.collector.model.serialize;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.navercorp.pinpoint.common.server.util.json.Jackson;
 import com.navercorp.pinpoint.metric.collector.model.TelegrafMetric;
 import com.navercorp.pinpoint.metric.collector.model.TelegrafMetrics;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 
 public class TelegrafJsonDeserializerTest {
     private final Logger logger = LogManager.getLogger(this.getClass());
 
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = Jackson.newMapper();
 
 
     @Test
@@ -27,11 +29,11 @@ public class TelegrafJsonDeserializerTest {
         TelegrafMetrics systemMetrics = mapper.readValue(stream, TelegrafMetrics.class);
         List<TelegrafMetric> metrics = systemMetrics.getMetrics();
 
-        Assertions.assertEquals(2, metrics.size());
-        logger.debug("{}", metrics);
-
-        Assertions.assertTrue(metrics.get(0).getFields().contains(new TelegrafMetric.Field("field_1", 30)));
-        Assertions.assertTrue(metrics.get(1).getFields().contains(new TelegrafMetric.Field("field_N", 59)));
+        assertThat(metrics)
+                .hasSize(2)
+                .flatMap(TelegrafMetric::getFields)
+                .contains(new TelegrafMetric.Field("field_1", 30),
+                        new TelegrafMetric.Field("field_N", 59));
     }
 
     @Test
@@ -42,10 +44,9 @@ public class TelegrafJsonDeserializerTest {
         TelegrafMetrics systemMetrics = mapper.readValue(stream, TelegrafMetrics.class);
         List<TelegrafMetric> metrics = systemMetrics.getMetrics();
 
-        Assertions.assertEquals(1, metrics.size());
-        logger.debug("{}", metrics);
-
-
-        Assertions.assertTrue(metrics.get(0).getFields().contains(new TelegrafMetric.Field("field_1", 30)));
+        assertThat(metrics)
+                .hasSize(1)
+                .flatMap(TelegrafMetric::getFields)
+                .containsOnlyOnce(new TelegrafMetric.Field("field_1", 30));
     }
 }

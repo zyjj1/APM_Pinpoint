@@ -28,6 +28,10 @@ import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * @author jaehong.kim
@@ -41,6 +45,19 @@ public class CallTreeIteratorTest {
     private static final int ELAPSED = 10;
 
     private final CallTreeFactory factory = new CallTreeFactory();
+
+    @Test
+    public void rootIsNull() {
+        CallTreeIterator iterator = new CallTreeIterator(null);
+        List<Align> list = iterator.values();
+        assertNotNull(list);
+        assertFalse(iterator.hasNext());
+        assertNull(iterator.next());
+        assertFalse(iterator.hasPrev());
+        assertNull(iterator.prev());
+        assertTrue(iterator.isEmpty());
+        assertEquals(0, iterator.size());
+    }
 
     @Test
     public void internal00() {
@@ -508,14 +525,17 @@ public class CallTreeIteratorTest {
             buffer.append(align.getStartTime());
             buffer.append(", lastTime=");
             buffer.append(align.getEndTime());
-            if (!align.isSpan()) {
-                buffer.append(", nextAsyncId=");
-                buffer.append(align.getSpanEventBo().getNextAsyncId());
+            if (align.isAsync()) {
                 buffer.append(", asyncId=");
-                buffer.append(align.getSpanEventBo().getAsyncId());
+                buffer.append(align.getAsyncId());
+            } else if (!align.isSpan()) {
+                int nextAsyncId = align.getSpanEventBo().getNextAsyncId();
+                if (nextAsyncId != -1) {
+                    buffer.append(", nextAsyncId=");
+                    buffer.append(nextAsyncId);
+                }
             }
             buffer.append("\n");
-
         }
         logger.debug(buffer.toString());
     }
@@ -535,7 +555,7 @@ public class CallTreeIteratorTest {
     }
 
 
-    class CallStackDummy {
+    static class CallStackDummy {
         final List<StackEvent> stackEvents = new ArrayList<>();
 
         public void add(String event, int depth, int gap, int exec) {

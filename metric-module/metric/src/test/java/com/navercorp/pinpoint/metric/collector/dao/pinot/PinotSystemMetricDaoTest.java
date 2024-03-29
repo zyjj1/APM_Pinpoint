@@ -21,7 +21,6 @@ import com.navercorp.pinpoint.metric.common.model.DoubleMetric;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,14 +29,18 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.stubbing.Answer;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.CompletableFuture;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
 
 /**
  * @author Hyunjoon Cho
@@ -60,10 +63,11 @@ public class PinotSystemMetricDaoTest {
 
         doAnswer(new Answer() {
             @Override
-            public Object answer(InvocationOnMock invocation) throws Throwable {
+            public CompletableFuture<SendResult<String, SystemMetricView>> answer(InvocationOnMock invocation) throws Throwable {
                 sendCount.increment();
                 logger.info("Sending View {}", sendCount.intValue());
-                return null;
+                SendResult<String, SystemMetricView> result = mock(SendResult.class);
+                return CompletableFuture.completedFuture(result);
             }
         }).when(kafkaTemplate).send(anyString(), anyString(), any(SystemMetricView.class));
     }
@@ -76,12 +80,12 @@ public class PinotSystemMetricDaoTest {
 
         longDao.insert("tenantId", "hostGroupName", "hostName", doubleMetricList);
 
-        Assertions.assertEquals(doubleMetricList.size(), sendCount.intValue());
+        assertThat(doubleMetricList).hasSize(sendCount.intValue());
     }
 
     private List<DoubleMetric> createDoubleCounterList() {
         List<DoubleMetric> doubleMetricList = new ArrayList<>();
-        int numCounter = random.nextInt(100);
+        int numCounter = random.nextInt(100) + 1;
         for (int i = 0; i < numCounter; i++) {
             doubleMetricList.add(doubleMetric);
         }

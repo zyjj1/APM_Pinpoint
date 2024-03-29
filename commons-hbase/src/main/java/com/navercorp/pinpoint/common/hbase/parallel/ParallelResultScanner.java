@@ -17,8 +17,8 @@
 package com.navercorp.pinpoint.common.hbase.parallel;
 
 import com.navercorp.pinpoint.common.hbase.HbaseAccessor;
+import com.navercorp.pinpoint.common.hbase.scan.ScanUtils;
 import com.sematext.hbase.wd.AbstractRowKeyDistributor;
-
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
@@ -51,7 +51,7 @@ public class ParallelResultScanner implements ResultScanner {
         this.keyDistributor = Objects.requireNonNull(keyDistributor, "keyDistributor");
 
         final ScanTaskConfig scanTaskConfig = new ScanTaskConfig(tableName, hbaseAccessor, keyDistributor, originalScan.getCaching());
-        final Scan[] splitScans = splitScans(originalScan);
+        final Scan[] splitScans = ScanUtils.splitScans(originalScan, keyDistributor);
 
         this.scanTasks = createScanTasks(scanTaskConfig, splitScans, numParallelThreads);
         this.nextResults = new Result[scanTasks.size()];
@@ -60,14 +60,6 @@ public class ParallelResultScanner implements ResultScanner {
         }
     }
 
-    private Scan[] splitScans(Scan originalScan) throws IOException {
-        Scan[] scans = this.keyDistributor.getDistributedScans(originalScan);
-        for (int i = 0; i < scans.length; i++) {
-            Scan scan = scans[i];
-            scan.setId(originalScan.getId() + "-" + i);
-        }
-        return scans;
-    }
 
     private List<ScanTask> createScanTasks(ScanTaskConfig scanTaskConfig, Scan[] splitScans, int numParallelThreads) {
         if (splitScans.length <= numParallelThreads) {
@@ -183,7 +175,7 @@ public class ParallelResultScanner implements ResultScanner {
     @Override
     public Iterator<Result> iterator() {
         // Identical to HTable.ClientScanner implementation
-        return new Iterator<Result>() {
+        return new Iterator<>() {
             // The next RowResult, possibly pre-read
             Result next = null;
 

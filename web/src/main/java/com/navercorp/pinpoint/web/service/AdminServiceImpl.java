@@ -42,8 +42,6 @@ public class AdminServiceImpl implements AdminService {
 
     private final Logger logger = LogManager.getLogger(this.getClass());
 
-    private static final int MIN_DURATION_DAYS_FOR_INACTIVITY = 30;
-
     private final ApplicationIndexDao applicationIndexDao;
 
     private final AgentInfoService agentInfoService;
@@ -64,6 +62,7 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
+    @Deprecated
     public void removeInactiveAgents(int durationDays) {
         if (durationDays < MIN_DURATION_DAYS_FOR_INACTIVITY) {
             throw new IllegalArgumentException("duration may not be less than " + MIN_DURATION_DAYS_FOR_INACTIVITY + " days");
@@ -85,25 +84,12 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     public int removeInactiveAgentInApplication(String applicationName, int durationDays) {
-        int retry = 3;
-
-        while (retry-- > 0) {
-            try {
-                return removeInactiveAgentInApplication0(applicationName, durationDays);
-            } catch (Exception e) {
-                logger.error("Backoff to remove inactive agents in application {}", applicationName, e);
-                waitOneMinute();
-            }
-        }
-        logger.error("Failed to remove inactive agents in application {}", applicationName);
-
-        return 0;
-    }
-
-    private void waitOneMinute() {
         try {
-            Thread.sleep(60000);
-        } catch (Exception ignored) {}
+            return removeInactiveAgentInApplication0(applicationName, durationDays);
+        } catch (Exception e) {
+            logger.error("Backoff to remove inactive agents in application {}", applicationName, e);
+        }
+        return 0;
     }
 
     private int removeInactiveAgentInApplication0(String applicationName, int durationDays) {
@@ -156,7 +142,7 @@ public class AdminServiceImpl implements AdminService {
         for (Map.Entry<String, List<Application>> entry : agentIdMap.entrySet()) {
             String agentId = entry.getKey();
             List<Application> applications = entry.getValue();
-            if (applications.size() > 1) {
+            if (CollectionUtils.hasLength(applications)) {
                 duplicateAgentIdMap.put(agentId, applications);
             }
         }
